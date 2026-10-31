@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../../config/db.js';
 import { authenticateJwt } from '../../middleware/auth.middleware.js';
+import { authorizePermission } from '../../middleware/permission.middleware.js';
 import { parsePagination, formatPaginationMeta } from '../../utils/pagination.js';
 
 const router = Router();
@@ -67,6 +68,24 @@ router.post('/public/request', async (req: Request, res: Response): Promise<void
       res.status(400).json({
         success: false,
         message: 'Aset, Nama Pemohon, No. WhatsApp/HP, Keperluan Acara, Tanggal Mulai, dan Tanggal Selesai wajib diisi.',
+      });
+      return;
+    }
+
+    const cleanPhone = String(borrowerPhone).trim().replace(/\s+/g, '');
+    const phoneRegex = /^(\+62|62|0)8[0-9]{8,12}$/;
+    if (!phoneRegex.test(cleanPhone)) {
+      res.status(400).json({
+        success: false,
+        message: 'Nomor WhatsApp/HP tidak valid. Gunakan format nomor telepon Indonesia (contoh: 08123456789 atau +6281234567890).',
+      });
+      return;
+    }
+
+    if (new Date(expectedReturnAt) < new Date(borrowedAt)) {
+      res.status(400).json({
+        success: false,
+        message: 'Tanggal/waktu pengembalian tidak boleh mendahului tanggal/waktu mulai peminjaman.',
       });
       return;
     }
@@ -180,6 +199,7 @@ router.get('/public/track/:query', async (req: Request, res: Response): Promise<
 // ADMIN / INTERNAL PROTECTED ROUTES
 // ============================================================================
 router.use(authenticateJwt);
+router.use(authorizePermission('ASSETS'));
 
 // ----------------------------------------------------------------------------
 // 1. GET / — Daftar Seluruh Aset & Inventaris
@@ -280,10 +300,17 @@ router.get('/loans', async (req: Request, res: Response): Promise<void> => {
         a.asset_type,
         a.location_room,
         a.rental_price,
-        sl.label as category_label
+        sl.label as category_label,
+        m.full_name as member_full_name,
+        m.phone_number as member_phone,
+        m.member_number,
+        u.full_name as approver_name,
+        u.email as approver_email
       FROM asset_loans al
       JOIN assets a ON al.asset_id = a.id
       LEFT JOIN system_lookups sl ON a.category_id = sl.id
+      LEFT JOIN members m ON al.borrower_member_id = m.id
+      LEFT JOIN users u ON al.approved_by = u.id
       ${whereClause}
       ORDER BY al.borrowed_at DESC, al.created_at DESC
     `;
@@ -668,6 +695,59 @@ router.put('/loans/:id/handover', async (req: Request, res: Response): Promise<v
     });
   } catch (err: any) {
     res.status(500).json({ success: false, message: 'Gagal memproses serah terima aset.', error: err.message });
+  }
+});
+
+// ----------------------------------------------------------------------------
+// 4e. GET /:id — Detail Relasional Tunggal Aset Beserta Riwayat Sirkulasi Peminjaman
+// ----------------------------------------------------------------------------
+router.get('/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const assetRes = await db.query(
+      `SELECT 
+        a.*, 
+        sl.label as category_label,
+        sl.code as category_code
+      FROM assets a
+      LEFT JOIN system_lookups sl ON a.category_id = sl.id
+      WHERE a.id::text = $1 OR a.asset_code = $1`,
+      [id]
+    );
+
+    if (assetRes.rows.length === 0) {
+      res.status(404).json({ success: false, message: 'Aset tidak ditemukan dalam database.' });
+      return;
+    }
+
+    const asset = assetRes.rows[0];
+
+    const loansRes = await db.query(
+      `SELECT 
+        al.*,
+        m.full_name as member_full_name,
+        m.phone_number as member_phone,
+        m.member_number,
+        u.full_name as approver_name,
+        u.email as approver_email
+      FROM asset_loans al
+      LEFT JOIN members m ON al.borrower_member_id = m.id
+      LEFT JOIN users u ON al.approved_by = u.id
+      WHERE al.asset_id = $1
+      ORDER BY al.borrowed_at DESC, al.created_at DESC`,
+      [asset.id]
+    );
+
+    res.status(200).json({
+      success: true,
+      asset: {
+        ...asset,
+        loans: loansRes.rows,
+      },
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: 'Gagal mengambil detail aset.', error: err.message });
   }
 });
 

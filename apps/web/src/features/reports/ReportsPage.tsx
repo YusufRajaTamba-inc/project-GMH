@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
-import { Navigate, NavLink, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import {
   Download,
   RefreshCw,
@@ -9,7 +9,6 @@ import {
   Building2,
   Search,
   FileBarChart2,
-  DollarSign,
   ArrowDownLeft,
   FileText,
   Landmark,
@@ -233,44 +232,6 @@ const ReportsPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Modern Submenu Tabs */}
-      <nav
-        aria-label="Submenu laporan"
-        style={{
-          display: 'flex',
-          gap: 12,
-          borderBottom: '1px solid var(--gmh-border, #e2e8f0)',
-          flexWrap: 'wrap',
-          marginBottom: 4,
-        }}
-      >
-        {[
-          { path: 'ringkasan', label: 'Ringkasan Eksekutif', icon: <FileBarChart2 size={16} /> },
-          { path: 'keuangan', label: 'Laporan Keuangan', icon: <DollarSign size={16} /> },
-          { path: 'anggota', label: 'Keanggotaan & Demografi', icon: <Users size={16} /> },
-        ].map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            style={({ isActive }) => ({
-              textDecoration: 'none',
-              padding: '10px 16px',
-              fontSize: 13.5,
-              fontWeight: isActive ? 700 : 500,
-              color: isActive ? 'var(--gmh-brand, #047857)' : 'var(--gmh-text-muted, #64748b)',
-              borderBottom: isActive ? '3px solid var(--gmh-brand, #047857)' : '3px solid transparent',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              transition: 'all 0.15s ease',
-              marginBottom: -1,
-            })}
-          >
-            {item.icon}
-            <span>{item.label}</span>
-          </NavLink>
-        ))}
-      </nav>
 
       {error && (
         <div

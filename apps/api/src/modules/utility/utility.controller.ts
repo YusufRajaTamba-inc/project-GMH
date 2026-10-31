@@ -12,6 +12,7 @@ export const SYSTEM_MENUS = [
   { id: 'PROGRAMS', label: 'Program & Acara', icon: 'Calendar', description: 'Kategori agenda persekutuan/seminar dan penugasan roster pelayan' },
   { id: 'PRAYER', label: 'Permohonan Doa', icon: 'Heart', description: 'Kategori pokok doa jemaat/alumni dan status tindak lanjut pastoral' },
   { id: 'ASSETS', label: 'Inventaris Sarana', icon: 'Package', description: 'Kategori inventaris aset, penempatan ruangan, dan klasifikasi kondisi fisik' },
+  { id: 'SEKRETARIAT', label: 'Sekretariat & Persuratan', icon: 'Mail', description: 'Format penomoran surat keluar, kode klasifikasi surat, dan tata kelola surat masuk' },
 ];
 
 export const getSystemMenus = async (_req: Request, res: Response): Promise<void> => {
@@ -74,6 +75,10 @@ export const CATEGORY_CANONICAL_MAP: Record<string, string> = {
   ASSET_LOCATION: 'ASSET_LOCATION',
   ASSET_CONDITION: 'PHYSICAL_CONDITION',
   PHYSICAL_CONDITION: 'PHYSICAL_CONDITION',
+
+  // SEKRETARIAT
+  LETTER_CATEGORY: 'LETTER_CATEGORY',
+  LETTER_FORMAT: 'LETTER_FORMAT',
 };
 
 // Aliases mapping in reverse so both old and new keys exist in groupedByCategory
@@ -116,6 +121,7 @@ export const getLookups = async (req: Request, res: Response): Promise<void> => 
       PROGRAMS: [],
       PRAYER: [],
       ASSETS: [],
+      SEKRETARIAT: [],
     };
 
     for (const row of result.rows) {
@@ -132,6 +138,7 @@ export const getLookups = async (req: Request, res: Response): Promise<void> => 
         else if (['PROGRAM_CATEGORY', 'ROSTER_ROLE'].includes(canonical)) menuGroup = 'PROGRAMS';
         else if (['PRAYER_CATEGORY', 'PRAYER_STATUS'].includes(canonical)) menuGroup = 'PRAYER';
         else if (['ASSET_CATEGORY', 'ASSET_LOCATION', 'PHYSICAL_CONDITION'].includes(canonical)) menuGroup = 'ASSETS';
+        else if (['LETTER_CATEGORY', 'LETTER_FORMAT'].includes(canonical)) menuGroup = 'SEKRETARIAT';
         else menuGroup = 'ALUMNI';
       }
 
@@ -190,6 +197,7 @@ export const getLookups = async (req: Request, res: Response): Promise<void> => 
             else if (['PROGRAM_CATEGORY', 'ROSTER_ROLE'].includes(canonical)) m = 'PROGRAMS';
             else if (['PRAYER_CATEGORY', 'PRAYER_STATUS'].includes(canonical)) m = 'PRAYER';
             else if (['ASSET_CATEGORY', 'ASSET_LOCATION', 'PHYSICAL_CONDITION'].includes(canonical)) m = 'ASSETS';
+            else if (['LETTER_CATEGORY', 'LETTER_FORMAT'].includes(canonical)) m = 'SEKRETARIAT';
             else m = 'ALUMNI';
           }
           return (m || '').toUpperCase() === (menu as string).toUpperCase();

@@ -19,6 +19,8 @@ import {
   RefreshCw,
   AlertCircle,
   Layers,
+  Mail,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useDynamicConfig } from '../../state/DynamicConfigContext';
@@ -63,6 +65,7 @@ const MENU_ICONS: Record<string, React.ReactNode> = {
   PROGRAMS: <Calendar size={18} />,
   PRAYER: <Heart size={18} />,
   ASSETS: <Package size={18} />,
+  SEKRETARIAT: <Mail size={18} />,
 };
 
 export const MENU_CATEGORIES_PRESETS: Record<string, Array<{ key: string; label: string; target: string }>> = {
@@ -98,6 +101,10 @@ export const MENU_CATEGORIES_PRESETS: Record<string, Array<{ key: string; label:
     { key: 'ASSET_CATEGORY', label: 'Kategori Inventaris Aset', target: 'Inventaris Sarana & Kode Barang' },
     { key: 'ASSET_LOCATION', label: 'Lokasi Penempatan Ruangan', target: 'Distribusi Ruangan Gedung Yayasan' },
     { key: 'PHYSICAL_CONDITION', label: 'Klasifikasi Kondisi Fisik', target: 'Pemeriksaan Kelaikan Sarana' },
+  ],
+  SEKRETARIAT: [
+    { key: 'LETTER_CATEGORY', label: 'Klasifikasi Jenis Surat', target: 'Surat Keluar & Surat Masuk Sekretariat' },
+    { key: 'LETTER_FORMAT', label: 'Format Penomoran Surat Keluar', target: 'Generator Nomor Otomatis Surat Keluar' },
   ],
 };
 
@@ -152,6 +159,10 @@ const CATEGORY_NAMES: Record<string, string> = {
   ASSET_LOCATION: 'Lokasi Penempatan Ruangan',
   PHYSICAL_CONDITION: 'Klasifikasi Kondisi Fisik',
   ASSET_CONDITION: 'Klasifikasi Kondisi Fisik',
+
+  // SEKRETARIAT
+  LETTER_CATEGORY: 'Klasifikasi Jenis Surat',
+  LETTER_FORMAT: 'Format Penomoran Surat Keluar',
 };
 
 const CATEGORY_TARGET_MAP: Record<string, string> = {
@@ -190,6 +201,8 @@ const CATEGORY_TARGET_MAP: Record<string, string> = {
   ASSET_LOCATION: 'Penempatan Ruangan Sarana Gedung GMH',
   PHYSICAL_CONDITION: 'Klasifikasi Kelaikan Kondisi Sarana',
   ASSET_CONDITION: 'Klasifikasi Kelaikan Kondisi Sarana',
+  LETTER_CATEGORY: 'Surat Keluar & Surat Masuk Sekretariat',
+  LETTER_FORMAT: 'Generator Nomor Otomatis Surat Keluar',
 };
 
 const UtilityPage: React.FC = () => {
@@ -222,6 +235,80 @@ const UtilityPage: React.FC = () => {
     setTimeout(() => setToastMsg(null), 3500);
   };
 
+  // Secretariat Numbering Configuration
+  const [numberingConfig, setNumberingConfig] = useState({
+    pattern: '{NOMOR}/{PREFIX}/{CATEGORY}/{ROMAN_MONTH}/{YEAR}',
+    prefix: 'GMH-PAKMK',
+    padding: 3,
+    counter: 1,
+    resetPeriod: 'YEARLY',
+  });
+  const [numberingPreview, setNumberingPreview] = useState('');
+  const [isSavingNumbering, setIsSavingNumbering] = useState(false);
+
+  const calculatePreview = (
+    pattern: string,
+    prefix: string,
+    counter: number,
+    padding: number,
+    sampleCategory: string = 'SK'
+  ) => {
+    const ROMAN: Record<number, string> = {
+      1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V', 6: 'VI',
+      7: 'VII', 8: 'VIII', 9: 'IX', 10: 'X', 11: 'XI', 12: 'XII',
+    };
+    const now = new Date();
+    const padded = String(counter || 1).padStart(padding || 3, '0');
+    const m = now.getMonth() + 1;
+    const rMonth = ROMAN[m] || String(m);
+    const dMonth = String(m).padStart(2, '0');
+    const y = String(now.getFullYear());
+
+    let res = pattern || '{NOMOR}/{PREFIX}/{CATEGORY}/{ROMAN_MONTH}/{YEAR}';
+    res = res.replace(/\{NOMOR\}/gi, padded);
+    res = res.replace(/\{NUMBER\}/gi, padded);
+    res = res.replace(/\{PREFIX\}/gi, prefix || 'GMH-PAKMK');
+    res = res.replace(/\{KODE_ORGANISASI\}/gi, prefix || 'GMH-PAKMK');
+    res = res.replace(/\{CATEGORY\}/gi, sampleCategory);
+    res = res.replace(/\{KATEGORI\}/gi, sampleCategory);
+    res = res.replace(/\{ROMAN_MONTH\}/gi, rMonth);
+    res = res.replace(/\{BULAN_ROMAWI\}/gi, rMonth);
+    res = res.replace(/\{MONTH\}/gi, dMonth);
+    res = res.replace(/\{BULAN_ANGKA\}/gi, dMonth);
+    res = res.replace(/\{YEAR\}/gi, y);
+    res = res.replace(/\{TAHUN\}/gi, y);
+    return res;
+  };
+
+  const loadNumberingConfig = useCallback(async () => {
+    try {
+      const res = await api.secretariat.getNumberingConfig();
+      if (res.success && res.config) {
+        setNumberingConfig(res.config);
+        setNumberingPreview(res.preview);
+      }
+    } catch (err) {
+      console.error('Error loading numbering config:', err);
+    }
+  }, []);
+
+  const handleSaveNumberingConfig = async () => {
+    setIsSavingNumbering(true);
+    try {
+      const res = await api.secretariat.updateNumberingConfig(numberingConfig);
+      if (res.success) {
+        showToast('Format penomoran surat keluar berhasil disimpan ke database!');
+        setNumberingPreview(res.preview);
+        await loadData();
+        refreshFromApi();
+      }
+    } catch (err: any) {
+      showToast('Gagal menyimpan format penomoran: ' + err.message, 'error');
+    } finally {
+      setIsSavingNumbering(false);
+    }
+  };
+
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -229,6 +316,7 @@ const UtilityPage: React.FC = () => {
         api.utility.getSystemMenus(),
         api.utility.getLookups(),
         api.utility.getFormConfigs(),
+        loadNumberingConfig(),
       ]);
 
       if (menuRes?.data) {
@@ -491,6 +579,185 @@ const UtilityPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Dynamic Numbering Setup Card for SEKRETARIAT */}
+      {activeMenuId === 'SEKRETARIAT' && (
+        <div className="card" style={{ marginBottom: 24, border: '1px solid #bfdbfe', background: '#f8fafc' }}>
+          <div className="card-header" style={{ borderBottom: '1px solid #e2e8f0', background: '#eff6ff', flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#1e40af' }}>
+                <SlidersHorizontal size={18} /> Setup Dinamis Penomoran Otomatis Surat Keluar
+              </div>
+              <div style={{ fontSize: 12.5, color: '#475569', marginTop: 3 }}>
+                Konfigurasi formula penomoran surat keluar yayasan secara dinamis di database PostgreSQL. Sistem secara otomatis menghasilkan nomor resmi saat surat dibuat.
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={handleSaveNumberingConfig}
+                disabled={isSavingNumbering}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
+              >
+                <Save size={14} /> {isSavingNumbering ? 'Menyimpan...' : 'Simpan Setup Penomoran'}
+              </button>
+            </div>
+          </div>
+
+          <div style={{ padding: '20px 24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1.4fr) minmax(280px, 1fr)', gap: 24 }}>
+              {/* Left Column: Form Setup */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div>
+                  <label className="form-label" style={{ fontWeight: 600, display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Pola Formula Format Nomor Surat:</span>
+                    <span style={{ fontSize: 11, color: '#64748b' }}>Klik token untuk menyisipkan</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={numberingConfig.pattern}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setNumberingConfig((prev) => ({ ...prev, pattern: val }));
+                      setNumberingPreview(calculatePreview(val, numberingConfig.prefix, numberingConfig.counter, numberingConfig.padding));
+                    }}
+                    placeholder="{NOMOR}/{PREFIX}/{CATEGORY}/{ROMAN_MONTH}/{YEAR}"
+                    style={{ fontFamily: 'monospace', fontWeight: 600, letterSpacing: '0.03em' }}
+                  />
+                  {/* Clickable token chips */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                    {[
+                      { token: '{NOMOR}', desc: 'No. Urut (001)' },
+                      { token: '{PREFIX}', desc: 'Kode Organisasi' },
+                      { token: '{CATEGORY}', desc: 'Kode Surat (SK/ST/SP)' },
+                      { token: '{ROMAN_MONTH}', desc: 'Bulan Romawi (I-XII)' },
+                      { token: '{MONTH}', desc: 'Bulan Angka (01-12)' },
+                      { token: '{YEAR}', desc: 'Tahun (2026)' },
+                    ].map((item) => (
+                      <button
+                        key={item.token}
+                        type="button"
+                        onClick={() => {
+                          if (!numberingConfig.pattern.includes(item.token)) {
+                            const newPat = `${numberingConfig.pattern}/${item.token}`.replace(/\/{2,}/g, '/');
+                            setNumberingConfig((prev) => ({ ...prev, pattern: newPat }));
+                            setNumberingPreview(calculatePreview(newPat, numberingConfig.prefix, numberingConfig.counter, numberingConfig.padding));
+                          }
+                        }}
+                        className="badge badge-neutral"
+                        style={{ cursor: 'pointer', fontSize: 11, padding: '4px 8px', border: '1px dashed #cbd5e1' }}
+                        title={`Sisipkan ${item.desc}`}
+                      >
+                        <code>{item.token}</code> ({item.desc})
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12 }}>
+                  <div>
+                    <label className="form-label" style={{ fontWeight: 600 }}>Prefix Instansi:</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={numberingConfig.prefix}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setNumberingConfig((prev) => ({ ...prev, prefix: val }));
+                        setNumberingPreview(calculatePreview(numberingConfig.pattern, val, numberingConfig.counter, numberingConfig.padding));
+                      }}
+                      placeholder="GMH-PAKMK"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label" style={{ fontWeight: 600 }}>Digit Padding:</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={6}
+                      className="form-input"
+                      value={numberingConfig.padding}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value, 10) || 3;
+                        setNumberingConfig((prev) => ({ ...prev, padding: val }));
+                        setNumberingPreview(calculatePreview(numberingConfig.pattern, numberingConfig.prefix, numberingConfig.counter, val));
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label" style={{ fontWeight: 600 }}>Counter Urut Berjalan:</label>
+                    <input
+                      type="number"
+                      min={1}
+                      className="form-input"
+                      value={numberingConfig.counter}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value, 10) || 1;
+                        setNumberingConfig((prev) => ({ ...prev, counter: val }));
+                        setNumberingPreview(calculatePreview(numberingConfig.pattern, numberingConfig.prefix, val, numberingConfig.padding));
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label" style={{ fontWeight: 600 }}>Periode Reset:</label>
+                    <select
+                      className="form-select"
+                      value={numberingConfig.resetPeriod}
+                      onChange={(e) => setNumberingConfig((prev) => ({ ...prev, resetPeriod: e.target.value }))}
+                    >
+                      <option value="YEARLY">Tahunan (Tiap 1 Jan)</option>
+                      <option value="MONTHLY">Bulanan (Tiap Awal Bulan)</option>
+                      <option value="NEVER">Tidak Pernah Reset</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Live Dynamic Preview Box */}
+              <div style={{ background: '#ffffff', borderRadius: 10, border: '1px solid #cbd5e1', padding: 18, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748b', marginBottom: 6 }}>
+                    Live Preview Nomor Surat Keluar:
+                  </div>
+                  <div
+                    style={{
+                      background: '#f1f5f9',
+                      border: '1.5px dashed #0284c7',
+                      borderRadius: 8,
+                      padding: '12px 16px',
+                      fontFamily: 'monospace',
+                      fontSize: 16,
+                      fontWeight: 700,
+                      color: '#0369a1',
+                      textAlign: 'center',
+                      wordBreak: 'break-all',
+                    }}
+                  >
+                    {numberingPreview || calculatePreview(numberingConfig.pattern, numberingConfig.prefix, numberingConfig.counter, numberingConfig.padding)}
+                  </div>
+                  <div style={{ marginTop: 12, fontSize: 12, color: '#64748b' }}>
+                    <strong>Contoh untuk kategori lain:</strong>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6, fontSize: 11.5 }}>
+                      <div>• Surat Tugas: <code style={{ color: '#0f766e' }}>{calculatePreview(numberingConfig.pattern, numberingConfig.prefix, numberingConfig.counter, numberingConfig.padding, 'ST')}</code></div>
+                      <div>• Surat Permohonan: <code style={{ color: '#0f766e' }}>{calculatePreview(numberingConfig.pattern, numberingConfig.prefix, numberingConfig.counter, numberingConfig.padding, 'SP')}</code></div>
+                      <div>• Surat Undangan: <code style={{ color: '#0f766e' }}>{calculatePreview(numberingConfig.pattern, numberingConfig.prefix, numberingConfig.counter, numberingConfig.padding, 'SU')}</code></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid #f1f5f9', fontSize: 11, color: '#94a3b8' }}>
+                  ℹ️ Nomor surat berikutnya otomatis bertambah saat tombol <em>Buat Surat Keluar</em> dikirim.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Section 1: Master Lookups per System Menu */}
       <div className="card" style={{ marginBottom: 24 }}>

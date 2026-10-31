@@ -1066,7 +1066,7 @@ const FinanceOperationalPage: React.FC = () => {
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <button
-            className="btn btn-outline btn-sm"
+            className="btn btn-ghost btn-sm"
             id="btn-refresh-finance"
             onClick={handleRefresh}
             disabled={isRefreshing}
@@ -1076,20 +1076,20 @@ const FinanceOperationalPage: React.FC = () => {
             {isRefreshing ? 'Memperbarui…' : 'Segarkan'}
           </button>
           <button
-            className="btn btn-outline btn-sm"
+            className="btn btn-ghost btn-sm"
             id="btn-export-csv"
             onClick={handleExportCSV}
             title="Download jurnal mutasi ke file CSV"
           >
-            <FileSpreadsheet size={14} color="#059669" /> Ekspor CSV
+            <FileSpreadsheet size={14} /> Ekspor CSV
           </button>
           <button
-            className="btn btn-outline btn-sm"
+            className="btn btn-ghost btn-sm"
             id="btn-export-finance"
             onClick={() => setShowExportModal(true)}
             title="Cetak format laporan resmi"
           >
-            <FileText size={14} color="#0284c7" /> Unduh PDF
+            <FileText size={14} /> Unduh PDF
           </button>
           <button
             className="btn btn-primary btn-sm"
@@ -1127,7 +1127,7 @@ const FinanceOperationalPage: React.FC = () => {
           {/* Left: Label & Selector */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Calendar size={18} color="var(--gmh-green)" />
+              <Calendar size={18} color="var(--gmh-text-muted)" />
               <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gmh-text)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                 PERIODE KAS:
               </span>
@@ -1169,7 +1169,7 @@ const FinanceOperationalPage: React.FC = () => {
                     const isCurrent = ym === currentMonthKey;
                     return (
                       <option key={ym} value={ym}>
-                        {isCurrent ? '⭐' : '📅'} {moName} {yr} {isCurrent ? '(Bulan Berjalan)' : ''}
+                        {moName} {yr} {isCurrent ? '(Bulan Berjalan)' : ''}
                       </option>
                     );
                   })}
@@ -1212,7 +1212,7 @@ const FinanceOperationalPage: React.FC = () => {
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm"
-                  style={{ fontSize: 11.5, color: 'var(--gmh-green-mid)', fontWeight: 600, padding: '4px 8px' }}
+                  style={{ fontSize: 11.5, color: 'var(--gmh-text-muted)', fontWeight: 600, padding: '4px 8px' }}
                   onClick={() => setPeriodKey(currentMonthKey)}
                   title={`Kembali ke bulan berjalan (${MONTH_NAMES_MAP[currentMonthKey.split('-')[1]] || 'Oktober'} ${currentMonthKey.split('-')[0]})`}
                 >
@@ -1230,9 +1230,9 @@ const FinanceOperationalPage: React.FC = () => {
                 fontWeight: 600,
                 padding: '4px 10px',
                 borderRadius: 6,
-                background: '#ecfdf5',
-                color: '#065f46',
-                border: '1px solid #a7f3d0',
+                background: '#f1f5f9',
+                color: '#475569',
+                border: '1px solid var(--gmh-border)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 5,
@@ -1313,20 +1313,20 @@ const FinanceOperationalPage: React.FC = () => {
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div className="stat-card-label">SALDO KAS OPERASIONAL (KANTOR)</div>
-            <Wallet size={18} color="var(--gmh-green)" />
+            <Wallet size={18} color="var(--gmh-text-muted)" />
           </div>
           <div
             className="stat-card-value"
             style={{
               fontSize: 22,
-              color: opBalance >= 0 ? 'var(--gmh-green)' : '#b91c1c',
+              color: 'var(--gmh-text)',
             }}
           >
             {formatRupiah(opBalance)}
           </div>
           <div className="stat-card-meta">
             Pemasukan Kas Periode Ini:{' '}
-            <strong style={{ color: periodStats.totalIn > 0 ? '#059669' : undefined }}>
+            <strong>
               {formatRupiah(periodStats.totalIn)}
             </strong>
             {periodStats.bldIn > 0 && (
@@ -1342,8 +1342,8 @@ const FinanceOperationalPage: React.FC = () => {
           className="stat-card"
           style={
             {
-              '--stat-color': 'var(--gmh-danger)',
-              '--stat-color-pale': '#fee2e2',
+              '--stat-color': 'var(--gmh-text-muted)',
+              '--stat-color-pale': 'var(--gmh-surface-2)',
             } as React.CSSProperties
           }
         >
@@ -1353,12 +1353,12 @@ const FinanceOperationalPage: React.FC = () => {
               <ArrowDownRight size={16} />
             </div>
           </div>
-          <div className="stat-card-value" style={{ fontSize: 22, color: '#b91c1c' }}>
+          <div className="stat-card-value" style={{ fontSize: 22, color: 'var(--gmh-text)' }}>
             {formatRupiah(periodStats.totalOut)}
           </div>
           <div className="stat-card-meta">
             Arus Kas Bersih:{' '}
-            <strong style={{ color: periodStats.net >= 0 ? '#059669' : '#b91c1c' }}>
+            <strong>
               {periodStats.net >= 0 ? '+' : ''}{formatRupiah(periodStats.net)}
             </strong>
           </div>
@@ -1369,22 +1369,22 @@ const FinanceOperationalPage: React.FC = () => {
           className="stat-card"
           style={
             {
-              '--stat-color': 'var(--gmh-gold)',
-              '--stat-color-pale': '#fef9ec',
+              '--stat-color': 'var(--gmh-text-muted)',
+              '--stat-color-pale': 'var(--gmh-surface-2)',
             } as React.CSSProperties
           }
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div className="stat-card-label">KAS PEMBANGUNAN & BANK</div>
-            <Landmark size={18} color="var(--gmh-gold-dark)" />
+            <Landmark size={18} color="var(--gmh-text-muted)" />
           </div>
-          <div className="stat-card-value" style={{ fontSize: 22, color: 'var(--gmh-gold-dark)' }}>
+          <div className="stat-card-value" style={{ fontSize: 22, color: 'var(--gmh-text)' }}>
             {formatRupiah(buildingBalance + bankBalance)}
           </div>
           <div className="stat-card-meta">
             Khusus Pembangunan: <strong>{formatRupiah(buildingBalance)}</strong>
             {periodStats.bldIn > 0 && (
-              <span style={{ color: '#059669', marginLeft: 6, fontWeight: 600 }}>
+              <span style={{ marginLeft: 6, fontWeight: 600 }}>
                 (+{formatRupiah(periodStats.bldIn)} periode ini)
               </span>
             )}
@@ -1574,25 +1574,9 @@ const FinanceOperationalPage: React.FC = () => {
                                   fontWeight: 600,
                                   padding: '1px 6px',
                                   borderRadius: 4,
-                                  background:
-                                    t.account === 'KAS_PEMBANGUNAN'
-                                      ? '#fef3c7'
-                                      : t.account === 'KAS_BANK'
-                                      ? '#eff6ff'
-                                      : '#ecfdf5',
-                                  color:
-                                    t.account === 'KAS_PEMBANGUNAN'
-                                      ? '#92400e'
-                                      : t.account === 'KAS_BANK'
-                                      ? '#1e40af'
-                                      : '#065f46',
-                                  border: `1px solid ${
-                                    t.account === 'KAS_PEMBANGUNAN'
-                                      ? '#fde68a'
-                                      : t.account === 'KAS_BANK'
-                                      ? '#bfdbfe'
-                                      : '#a7f3d0'
-                                  }`,
+                                  background: '#f1f5f9',
+                                  color: '#475569',
+                                  border: '1px solid #e2e8f0',
                                 }}
                               >
                                 {t.account === 'KAS_PEMBANGUNAN'
@@ -1636,7 +1620,7 @@ const FinanceOperationalPage: React.FC = () => {
                               style={{
                                 fontWeight: 700,
                                 fontSize: 13,
-                                color: isCredit ? '#059669' : '#111827',
+                                color: 'var(--gmh-text)',
                               }}
                             >
                               {isCredit ? `+${formatRupiah(t.amount)}` : `-${formatRupiah(t.amount)}`}
@@ -1648,9 +1632,9 @@ const FinanceOperationalPage: React.FC = () => {
                             <span
                               className="badge"
                               style={{
-                                background: t.status === 'Approved' ? '#ecfdf5' : '#fef3c7',
-                                color: t.status === 'Approved' ? '#065f46' : '#92400e',
-                                border: `1px solid ${t.status === 'Approved' ? '#a7f3d0' : '#fde68a'}`,
+                                background: t.status === 'Approved' ? '#ecfdf5' : '#fffbeb',
+                                color: t.status === 'Approved' ? '#166534' : '#92400e',
+                                border: `1px solid ${t.status === 'Approved' ? '#bbf7d0' : '#fde68a'}`,
                                 fontSize: 11,
                                 padding: '2px 8px',
                                 borderRadius: 12,
@@ -1678,8 +1662,6 @@ const FinanceOperationalPage: React.FC = () => {
                                   padding: '3px 8px',
                                   fontSize: 11.5,
                                   height: 'auto',
-                                  color: '#dc2626',
-                                  borderColor: '#fca5a5',
                                 }}
                                 onClick={() => handleDeleteTransaction(t)}
                                 title="Hapus transaksi"

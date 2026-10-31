@@ -16,8 +16,15 @@ import {
   CheckCircle,
   RefreshCw,
   X,
+  ShieldCheck,
+  Lock,
+  Check,
+  RotateCcw,
+  KeyRound,
+  AlertTriangle,
 } from 'lucide-react';
-import { api } from '../../services/api';
+import { api, type SystemModuleInfo, type RolePermissionMatrixItem } from '../../services/api';
+import { useAuth } from '../../state/AuthContext';
 import { Pagination } from '../../components/common/Pagination';
 import { usePagination } from '../../utils/usePagination';
 
@@ -86,9 +93,127 @@ const UsersPage: React.FC = () => {
   // Detail Modal
   const [detailUser, setDetailUser] = useState<SystemUser | null>(null);
 
+  // Tab 2: Hak Akses Role (RBAC) State
+  const { user: currentUser, refreshProfile } = useAuth();
+  const [mainTab, setMainTab] = useState<'users' | 'permissions'>('users');
+  const [selectedRole, setSelectedRole] = useState<string>('SUPER_ADMIN');
+  const [matrixData, setMatrixData] = useState<RolePermissionMatrixItem[]>([]);
+  const [modulesList, setModulesList] = useState<SystemModuleInfo[]>([]);
+  const [rolePermsMap, setRolePermsMap] = useState<Record<string, boolean>>({});
+  const [isSavingPerms, setIsSavingPerms] = useState<boolean>(false);
+  const [activeSignature, setActiveSignature] = useState<string>('');
+  const [activeIntegrityHash, setActiveIntegrityHash] = useState<string>('');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
+  const [isPermsLoading, setIsPermsLoading] = useState<boolean>(false);
+
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 3500);
+  };
+
+  const loadPermissions = async () => {
+    setIsPermsLoading(true);
+    try {
+      const res = await api.users.getPermissionsMatrix();
+      if (res && res.success) {
+        if (res.roles) {
+          const cleanRoles = (res.roles as SystemRole[]).filter((r: SystemRole) => !['ANGGOTA_ALUMNI', 'ALUMNI_ANGGOTA'].includes(r.id));
+          setRoles(cleanRoles);
+        }
+        if (res.modules) setModulesList(res.modules);
+        if (res.permissions) {
+          setMatrixData(res.permissions);
+          const initialMap: Record<string, boolean> = {};
+          res.permissions
+            .filter((p) => p.role_id === selectedRole)
+            .forEach((p) => {
+              initialMap[p.module_key] = p.can_access;
+            });
+          setRolePermsMap(initialMap);
+          setHasUnsavedChanges(false);
+        }
+      }
+    } catch (err: any) {
+      showToast('Gagal memuat matriks hak akses: ' + err.message);
+    } finally {
+      setIsPermsLoading(false);
+    }
+  };
+
+  const handleSelectRole = (roleId: string) => {
+    setSelectedRole(roleId);
+    const map: Record<string, boolean> = {};
+    matrixData
+      .filter((p) => p.role_id === roleId)
+      .forEach((p) => {
+        map[p.module_key] = p.can_access;
+      });
+    setRolePermsMap(map);
+    setHasUnsavedChanges(false);
+  };
+
+  const handleToggleModule = (modKey: string) => {
+    if (selectedRole === 'SUPER_ADMIN' && (modKey === 'USERS' || modKey === 'DASHBOARD')) {
+      alert('Modul USERS dan DASHBOARD tidak dapat dinonaktifkan untuk Super Admin demi menjaga akses sistem.');
+      return;
+    }
+    setRolePermsMap((prev) => ({
+      ...prev,
+      [modKey]: !prev[modKey],
+    }));
+    setHasUnsavedChanges(true);
+  };
+
+  const handleSelectAll = () => {
+    const map: Record<string, boolean> = {};
+    modulesList.forEach((m) => {
+      map[m.key] = true;
+    });
+    setRolePermsMap(map);
+    setHasUnsavedChanges(true);
+  };
+
+  const handleDeselectAll = () => {
+    const map: Record<string, boolean> = {};
+    modulesList.forEach((m) => {
+      if (selectedRole === 'SUPER_ADMIN' && (m.key === 'USERS' || m.key === 'DASHBOARD')) {
+        map[m.key] = true;
+      } else {
+        map[m.key] = false;
+      }
+    });
+    setRolePermsMap(map);
+    setHasUnsavedChanges(true);
+  };
+
+  const handleSavePermissions = async () => {
+    setIsSavingPerms(true);
+    try {
+      const res = await api.users.updateRolePermissions(selectedRole, rolePermsMap);
+      if (res && res.success) {
+        showToast(res.message || 'Hak akses berhasil disimpan dan ditandatangani HMAC-SHA256.');
+        if (res.permissions) {
+          setActiveSignature(res.permissions.signature);
+          setActiveIntegrityHash(res.permissions.integrityHash);
+        }
+        setHasUnsavedChanges(false);
+        await loadPermissions();
+        if (currentUser.role === selectedRole) {
+          await refreshProfile();
+        }
+      }
+    } catch (err: any) {
+      alert('Gagal menyimpan hak akses: ' + err.message);
+    } finally {
+      setIsSavingPerms(false);
+    }
+  };
+
+  const getRoleAllowedCount = (roleId: string) => {
+    if (roleId === selectedRole && hasUnsavedChanges) {
+      return Object.values(rolePermsMap).filter(Boolean).length;
+    }
+    return matrixData.filter((p) => p.role_id === roleId && p.can_access).length;
   };
 
   const loadData = async () => {
@@ -101,7 +226,8 @@ const UsersPage: React.FC = () => {
           setStats(res.stats);
         }
         if (res.roles) {
-          setRoles(res.roles);
+          const cleanRoles = (res.roles as SystemRole[]).filter((r: SystemRole) => !['ANGGOTA_ALUMNI', 'ALUMNI_ANGGOTA'].includes(r.id));
+          setRoles(cleanRoles);
         }
       }
     } catch (err: any) {
@@ -113,6 +239,7 @@ const UsersPage: React.FC = () => {
 
   useEffect(() => {
     loadData();
+    void loadPermissions();
   }, []);
 
   // Filtered Users
@@ -289,38 +416,138 @@ const UsersPage: React.FC = () => {
             }}
           >
             <div className="page-header-text">
-              <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Data Pengguna</h2>
+              <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>
+                {mainTab === 'users' ? 'Data Pengguna' : 'Pengaturan Hak Akses Role (RBAC)'}
+              </h2>
               <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 13 }}>
-                Kelola data akun pengguna, hak akses modul, dan peran sistem yayasan
+                {mainTab === 'users'
+                  ? 'Kelola data akun pengguna, peran sistem, dan status akses backoffice yayasan'
+                  : 'Konfigurasi hak akses modul per peran dengan tanda tangan kriptografis HMAC-SHA256'}
               </p>
             </div>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-              <button
-                className="btn btn-outline btn-sm"
-                onClick={loadData}
-                disabled={isLoading}
-                style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-              >
-                <RefreshCw size={14} className={isLoading ? 'spin' : ''} /> Segarkan
-              </button>
-              <button
-                className="btn btn-primary btn-sm"
-                onClick={handleAddNew}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  background: '#0f172a',
-                  color: '#fff',
-                  border: 'none',
-                  padding: '7px 14px',
-                  fontWeight: 600,
-                }}
-              >
-                <Plus size={15} /> Tambah Pengguna
-              </button>
+              {mainTab === 'users' ? (
+                <>
+                  <button
+                    className="btn btn-outline btn-sm"
+                    onClick={loadData}
+                    disabled={isLoading}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                  >
+                    <RefreshCw size={14} className={isLoading ? 'spin' : ''} /> Segarkan
+                  </button>
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={handleAddNew}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      background: '#0f172a',
+                      color: '#fff',
+                      border: 'none',
+                      padding: '7px 14px',
+                      fontWeight: 600,
+                    }}
+                  >
+                    <Plus size={15} /> Tambah Pengguna
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    className="btn btn-outline btn-sm"
+                    onClick={loadPermissions}
+                    disabled={isPermsLoading}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                  >
+                    <RefreshCw size={14} className={isPermsLoading ? 'spin' : ''} /> Segarkan Matriks
+                  </button>
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={handleSavePermissions}
+                    disabled={isSavingPerms}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      background: hasUnsavedChanges ? '#16a34a' : '#0f172a',
+                      color: '#fff',
+                      border: 'none',
+                      padding: '7px 16px',
+                      fontWeight: 650,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <Save size={15} /> {isSavingPerms ? 'Menyimpan...' : 'Simpan Hak Akses'}
+                  </button>
+                </>
+              )}
             </div>
           </div>
+
+          {/* Main Navigation Tabs */}
+          <div
+            style={{
+              display: 'flex',
+              gap: 8,
+              marginBottom: 20,
+              borderBottom: '1px solid #e2e8f0',
+              paddingBottom: 10,
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setMainTab('users')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '9px 18px',
+                borderRadius: 8,
+                fontWeight: 650,
+                fontSize: 13.5,
+                border: 'none',
+                background: mainTab === 'users' ? '#0f172a' : '#f1f5f9',
+                color: mainTab === 'users' ? '#ffffff' : '#475569',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <Users size={16} /> Data Pengguna & Akun ({stats.total})
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMainTab('permissions');
+                if (modulesList.length === 0) {
+                  void loadPermissions();
+                }
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '9px 18px',
+                borderRadius: 8,
+                fontWeight: 650,
+                fontSize: 13.5,
+                border: 'none',
+                background: mainTab === 'permissions' ? '#0f172a' : '#f1f5f9',
+                color: mainTab === 'permissions' ? '#ffffff' : '#475569',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <Shield size={16} /> Pengaturan Hak Akses Role (RBAC)
+              {hasUnsavedChanges && (
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b', marginLeft: 2 }} />
+              )}
+            </button>
+          </div>
+
+          {mainTab === 'users' ? (
+            <div>
 
           {/* 3 Top Summary KPI Cards (Matching Screenshot 1) */}
           <div
@@ -665,7 +892,405 @@ const UsersPage: React.FC = () => {
             />
           </div>
         </div>
+      ) : (
+        /* ==================================================================== */
+        /* TAB 2: PENGATURAN HAK AKSES PERAN (RBAC) */
+        /* ==================================================================== */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Security Cryptographic Status Card */}
+          <div
+            style={{
+              ...cardStyle,
+              padding: '16px 20px',
+              background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+              border: '1px solid #cbd5e1',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 16,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 10,
+                  background: '#0f172a',
+                  color: '#10b981',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <ShieldCheck size={24} />
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
+                    Tanda Tangan Kriptografis HMAC-SHA256 & Anti-Tampering
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: '2px 8px',
+                      borderRadius: 12,
+                      background: '#dcfce7',
+                      color: '#15803d',
+                    }}
+                  >
+                    Aktif & Terlindungi
+                  </span>
+                </div>
+                <p style={{ margin: '4px 0 0', fontSize: 12, color: '#475569' }}>
+                  Respons menu otentikasi ditandatangani dengan server secret. Jika klien memodifikasi daftar menu di browser, signature otomatis ditolak dan seluruh API memblokir akses (HTTP 403 Forbidden).
+                </p>
+              </div>
+            </div>
+
+            {activeSignature && (
+              <div
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 8,
+                  padding: '6px 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  fontSize: 11.5,
+                  fontFamily: 'monospace',
+                  color: '#0369a1',
+                }}
+              >
+                <KeyRound size={14} />
+                <span>Sig: {activeSignature.slice(0, 16)}...</span>
+                {activeIntegrityHash && <span style={{ color: '#64748b' }}>| Hash: {activeIntegrityHash.slice(0, 10)}...</span>}
+              </div>
+            )}
+          </div>
+
+          {/* Role Selector Grid */}
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 10 }}>
+              PILIH PERAN (ROLE) YANG INGIN DIATUR:
+            </div>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gap: 12,
+              }}
+            >
+              {roles.map((r) => {
+                const isSelected = r.id === selectedRole;
+                const count = getRoleAllowedCount(r.id);
+                const totalMod = modulesList.length || 16;
+                return (
+                  <div
+                    key={r.id}
+                    onClick={() => handleSelectRole(r.id)}
+                    style={{
+                      ...cardStyle,
+                      padding: '12px 14px',
+                      cursor: 'pointer',
+                      border: isSelected ? '2px solid #0f172a' : '1px solid #e2e8f0',
+                      background: isSelected ? '#f8fafc' : '#ffffff',
+                      transition: 'all 0.15s ease',
+                      boxShadow: isSelected ? '0 4px 12px rgba(15, 23, 42, 0.08)' : 'none',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: isSelected ? '#0f172a' : '#334155' }}>
+                        {r.name}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 10.5,
+                          fontWeight: 700,
+                          padding: '2px 7px',
+                          borderRadius: 10,
+                          background: count === totalMod ? '#dcfce7' : count > 0 ? '#e0f2fe' : '#fee2e2',
+                          color: count === totalMod ? '#15803d' : count > 0 ? '#0369a1' : '#b91c1c',
+                        }}
+                      >
+                        {count}/{totalMod} Modul
+                      </span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: 11, color: '#64748b', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      {r.description}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Active Role Control Bar */}
+          {(() => {
+            const activeRoleObj = roles.find((r) => r.id === selectedRole);
+            const activeAllowedCount = getRoleAllowedCount(selectedRole);
+            const totalMod = modulesList.length || 16;
+
+            return (
+              <div
+                style={{
+                  ...cardStyle,
+                  padding: '16px 20px',
+                  background: '#ffffff',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: 14,
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0f172a' }}>
+                      Konfigurasi Hak Akses: {activeRoleObj?.name || selectedRole}
+                    </h3>
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 650,
+                        padding: '3px 10px',
+                        borderRadius: 12,
+                        background: '#f1f5f9',
+                        color: '#334155',
+                      }}
+                    >
+                      {activeAllowedCount} dari {totalMod} Modul Diaktifkan
+                    </span>
+                    {hasUnsavedChanges && (
+                      <span
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          fontSize: 11.5,
+                          fontWeight: 700,
+                          color: '#b45309',
+                          background: '#fef3c7',
+                          padding: '2px 8px',
+                          borderRadius: 8,
+                        }}
+                      >
+                        <AlertTriangle size={12} /> Ada perubahan belum disimpan
+                      </span>
+                    )}
+                  </div>
+                  <p style={{ margin: '4px 0 0', fontSize: 12.5, color: '#64748b' }}>
+                    {activeRoleObj?.description || 'Pengaturan akses modul dan batasan API untuk peran ini.'}
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    onClick={handleSelectAll}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}
+                  >
+                    <Check size={14} /> Pilih Semua
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    onClick={handleDeselectAll}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}
+                  >
+                    <RotateCcw size={14} /> Batalkan Semua
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    onClick={handleSavePermissions}
+                    disabled={isSavingPerms}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      fontSize: 12,
+                      background: hasUnsavedChanges ? '#16a34a' : '#0f172a',
+                      color: '#ffffff',
+                      border: 'none',
+                      padding: '7px 16px',
+                      fontWeight: 650,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <Save size={14} /> {isSavingPerms ? 'Menyimpan...' : 'Simpan Hak Akses'}
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Category Modules Accordion / Groups */}
+          {[
+            { key: 'Utama', label: 'Modul Utama & Eksekutif', icon: '🏛️', desc: 'Ringkasan data, KPI statistik, dan shortcut navigasi sistem' },
+            { key: 'Keanggotaan', label: 'Modul Keanggotaan & Kepengurusan', icon: '👥', desc: 'Database jemaat/alumni, pendaftaran mandiri, dan bagan pengurus' },
+            { key: 'Keuangan Yayasan', label: 'Modul Keuangan Yayasan', icon: '💰', desc: 'Kas kantor operasional, penerimaan donasi, janji iman, dan penggajian payroll' },
+            { key: 'Program Yayasan', label: 'Modul Program & Pelayanan', icon: '🌍', desc: 'Pos pelayanan misi daerah, persekutuan alumni, seminar, dan permohonan doa' },
+            { key: 'Manajemen', label: 'Modul Manajemen & Operasional', icon: '📦', desc: 'Inventaris aset yayasan, penomoran persuratan resmi, dan laporan yayasan' },
+            { key: 'Pengaturan Sistem', label: 'Modul Pengaturan Sistem & Keamanan', icon: '⚙️', desc: 'Data pengguna login, matriks hak akses, dan utilitas kamus data dinamis' },
+          ].map((cat) => {
+            const catModules = modulesList.filter((m) => m.category === cat.key);
+            if (catModules.length === 0) return null;
+
+            const catAllowedCount = catModules.filter((m) => Boolean(rolePermsMap[m.key])).length;
+
+            return (
+              <div key={cat.key} style={{ ...cardStyle, overflow: 'hidden' }}>
+                <div
+                  style={{
+                    padding: '12px 18px',
+                    background: '#f8fafc',
+                    borderBottom: '1px solid #e2e8f0',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 16 }}>{cat.icon}</span>
+                    <div>
+                      <span style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a' }}>{cat.label}</span>
+                      <span style={{ fontSize: 12, color: '#64748b', marginLeft: 8 }}>— {cat.desc}</span>
+                    </div>
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 11.5,
+                      fontWeight: 700,
+                      padding: '2px 8px',
+                      borderRadius: 10,
+                      background: catAllowedCount === catModules.length ? '#dcfce7' : catAllowedCount > 0 ? '#e0f2fe' : '#f1f5f9',
+                      color: catAllowedCount === catModules.length ? '#15803d' : catAllowedCount > 0 ? '#0369a1' : '#64748b',
+                    }}
+                  >
+                    {catAllowedCount} / {catModules.length} Aktif
+                  </span>
+                </div>
+
+                <div style={{ padding: '14px 18px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 14 }}>
+                  {catModules.map((m) => {
+                    const isAllowed = Boolean(rolePermsMap[m.key]);
+                    const isSuperAdminLocked = selectedRole === 'SUPER_ADMIN' && (m.key === 'USERS' || m.key === 'DASHBOARD');
+
+                    return (
+                      <div
+                        key={m.key}
+                        style={{
+                          border: isAllowed ? '1px solid #bbf7d0' : '1px solid #e2e8f0',
+                          borderRadius: 10,
+                          padding: '12px 14px',
+                          background: isAllowed ? '#f0fdf4' : '#ffffff',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          gap: 10,
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                            <div style={{ fontWeight: 700, fontSize: 13.5, color: '#0f172a' }}>
+                              {m.label}
+                            </div>
+                            <code
+                              style={{
+                                fontSize: 11,
+                                background: isAllowed ? '#dcfce7' : '#f1f5f9',
+                                color: isAllowed ? '#166534' : '#475569',
+                                padding: '1px 6px',
+                                borderRadius: 4,
+                                fontWeight: 600,
+                              }}
+                            >
+                              {m.path}
+                            </code>
+                          </div>
+                          <p style={{ margin: '6px 0 0', fontSize: 12, color: '#475569', lineHeight: 1.45 }}>
+                            {m.description}
+                          </p>
+                        </div>
+
+                        <div
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            paddingTop: 10,
+                            borderTop: '1px solid',
+                            borderColor: isAllowed ? 'rgba(34, 197, 94, 0.2)' : '#f1f5f9',
+                          }}
+                        >
+                          <div style={{ fontSize: 11, color: '#64748b' }}>
+                            API: <code style={{ fontSize: 10.5 }}>/api/v1{m.path === '/' ? '/dashboard' : m.path}</code>
+                          </div>
+
+                          {isSuperAdminLocked ? (
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                fontSize: 11.5,
+                                fontWeight: 700,
+                                color: '#0f172a',
+                                background: '#e2e8f0',
+                                padding: '4px 10px',
+                                borderRadius: 6,
+                              }}
+                            >
+                              <Lock size={12} /> Terkunci (Super Admin)
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleModule(m.key)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                background: isAllowed ? '#15803d' : '#94a3b8',
+                                color: '#ffffff',
+                                border: 'none',
+                                padding: '5px 12px',
+                                borderRadius: 20,
+                                fontSize: 11.5,
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'background 0.15s ease',
+                              }}
+                            >
+                              <span
+                                style={{
+                                  width: 8,
+                                  height: 8,
+                                  borderRadius: '50%',
+                                  background: '#ffffff',
+                                }}
+                              />
+                              {isAllowed ? 'Akses Diizinkan' : 'Akses Ditolak (403)'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
+    </div>
+  )}
 
       {/* ==================================================================== */}
       {/* VIEW 2: FORM TAMBAH / UBAH PENGGUNA (Matching Screenshot 2) */}

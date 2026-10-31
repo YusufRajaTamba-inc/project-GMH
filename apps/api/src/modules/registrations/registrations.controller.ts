@@ -23,9 +23,60 @@ export const publicRegisterAlumni = async (req: Request, res: Response): Promise
       maritalStatus,
     } = req.body;
 
-    if (!fullName || !phoneNumber || !homeAddress) {
-      res.status(400).json({ success: false, message: 'Nama lengkap, nomor telepon (WhatsApp), dan alamat wajib diisi.' });
+    // Validasi field wajib dan format data
+    const trimmedName = fullName?.trim();
+    if (!trimmedName || trimmedName.length < 3) {
+      res.status(400).json({ success: false, message: 'Nama lengkap wajib diisi minimal 3 karakter.' });
       return;
+    }
+
+    const trimmedPhone = phoneNumber?.trim().replace(/\s+/g, '');
+    const phoneRegex = /^(\+62|62|0)8[0-9]{8,12}$/;
+    if (!trimmedPhone || !phoneRegex.test(trimmedPhone)) {
+      res.status(400).json({
+        success: false,
+        message: 'Nomor WhatsApp tidak valid. Gunakan format nomor Indonesia (contoh: 08123456789 atau +6281234567890).',
+      });
+      return;
+    }
+
+    if (email && email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email.trim())) {
+        res.status(400).json({ success: false, message: 'Format alamat email tidak valid.' });
+        return;
+      }
+    }
+
+    if (nik && nik.trim()) {
+      const nikClean = nik.trim().replace(/\s+/g, '');
+      if (!/^\d{16}$/.test(nikClean)) {
+        res.status(400).json({ success: false, message: 'Nomor Induk Kependudukan (NIK) harus terdiri dari 16 digit angka.' });
+        return;
+      }
+    }
+
+    const trimmedAddress = homeAddress?.trim();
+    if (!trimmedAddress || trimmedAddress.length < 5) {
+      res.status(400).json({ success: false, message: 'Alamat domisili lengkap wajib diisi minimal 5 karakter.' });
+      return;
+    }
+
+    if (!faculty || !faculty.trim()) {
+      res.status(400).json({ success: false, message: 'Fakultas asal USU wajib dipilih.' });
+      return;
+    }
+
+    const currentYear = new Date().getFullYear();
+    if (entryYear) {
+      const y = parseInt(entryYear, 10);
+      if (isNaN(y) || y < 1960 || y > currentYear + 1) {
+        res.status(400).json({
+          success: false,
+          message: `Tahun angkatan (stambuk) harus berada di antara 1960 dan ${currentYear + 1}.`,
+        });
+        return;
+      }
     }
 
     // Generate ticket code: REG-GMH-YYYYMM-XXX

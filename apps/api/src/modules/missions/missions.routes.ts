@@ -5,6 +5,9 @@ import { logAudit } from '../../middleware/audit.interceptor.js';
 
 const router = Router();
 
+// Protect all mission routes
+router.use(authenticateJwt);
+
 // GET /api/v1/missions - List all mission activities
 router.get('/', authenticateJwt, async (req: Request, res: Response): Promise<void> => {
   try {

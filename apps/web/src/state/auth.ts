@@ -7,13 +7,13 @@ export type UserRole =
   | 'BENDAHARA_YAYASAN'
   | 'BENDAHARA_ADMIN'
   | 'KOORDINATOR_DEPARTEMEN'
-  | 'ADMIN_OPERASIONAL'
-  | 'ANGGOTA_ALUMNI'
-  | 'ALUMNI_ANGGOTA';
+  | 'ADMIN_OPERASIONAL';
 
 export interface CurrentUser {
   id: string;
+  username?: string;
   name: string;
+  email?: string;
   role: UserRole;
   department?: string;
   initials: string;
@@ -26,12 +26,11 @@ export const ROLE_LABELS: Record<string, string> = {
   BENDAHARA_YAYASAN: 'Bendahara Yayasan (Pusat & Gaji)',
   BENDAHARA_ADMIN: 'Bendahara Admin (Operasional Kas)',
   KOORDINATOR_DEPARTEMEN: 'Koordinator Departemen',
-  ANGGOTA_ALUMNI: 'Anggota / Alumni PA KMK',
 };
 
-// Check if role can access payroll (Strictly isolated to Pengurus Yayasan Inti - Dewan Pengawas & Pembina)
+// Check if role can access payroll (Strictly isolated to Pengurus Yayasan Inti - Dewan Pengawas, Pembina, Super Admin, Bendahara Yayasan)
 export const canAccessPayroll = (role: string) =>
-  ['DEWAN_PENGAWAS_PEMBINA', 'DEWAN_PENGAWAS'].includes(role);
+  ['SUPER_ADMIN', 'DEWAN_PENGAWAS_PEMBINA', 'DEWAN_PENGAWAS', 'BENDAHARA_YAYASAN'].includes(role);
 
 // Check if role can approve registrations (Flow 1)
 export const canApproveRegistrations = (role: string) =>

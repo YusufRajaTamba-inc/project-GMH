@@ -6,10 +6,20 @@
 
 -- 1. MODUL IDENTITAS, RBAC & AUDIT LOG
 CREATE TABLE IF NOT EXISTS roles (
-    id VARCHAR(50) PRIMARY KEY, -- 'SUPER_ADMIN', 'DEWAN_PENGAWAS_PEMBINA', 'PENGURUS_HARIAN', 'BENDAHARA_YAYASAN', 'BENDAHARA_ADMIN', 'KOORDINATOR_DEPARTEMEN', 'ANGGOTA_ALUMNI'
+    id VARCHAR(50) PRIMARY KEY, -- 'SUPER_ADMIN', 'DEWAN_PENGAWAS_PEMBINA', 'PENGURUS_HARIAN', 'BENDAHARA_YAYASAN', 'BENDAHARA_ADMIN', 'KOORDINATOR_DEPARTEMEN'
     name VARCHAR(100) NOT NULL,
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS role_permissions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    role_id VARCHAR(50) NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+    module_key VARCHAR(50) NOT NULL,
+    can_access BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_role_permission UNIQUE (role_id, module_key)
 );
 
 CREATE TABLE IF NOT EXISTS users (
@@ -342,3 +352,54 @@ CREATE TABLE IF NOT EXISTS asset_loans (
     approved_by UUID REFERENCES users(id),
     status VARCHAR(20) DEFAULT 'BORROWED'       -- 'BORROWED', 'RETURNED', 'OVERDUE'
 );
+
+-- 10. MODUL SEKRETARIAT & PERSURATAN YAYASAN
+CREATE TABLE IF NOT EXISTS secretariat_outgoing_letters (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    letter_number VARCHAR(100) UNIQUE NOT NULL, -- Format dinamis: 001/GMH-PAKMK/SK/X/2026
+    category_code VARCHAR(50) NOT NULL,         -- 'SK', 'ST', 'SP', 'SU', 'SKet', 'SPb', 'MOU', 'REK'
+    category_label VARCHAR(150),
+    letter_date DATE NOT NULL,
+    subject VARCHAR(255) NOT NULL,
+    recipient VARCHAR(255) NOT NULL,
+    recipient_address TEXT,
+    signer_name VARCHAR(150) NOT NULL,
+    signer_position VARCHAR(150),
+    attachment_count VARCHAR(50) DEFAULT '-',
+    content_summary TEXT,
+    file_url TEXT,
+    status VARCHAR(30) DEFAULT 'TERKIRIM',       -- 'DRAFT', 'TERKIRIM', 'DIARSIPKAN'
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS secretariat_incoming_letters (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    agenda_number VARCHAR(50) UNIQUE NOT NULL,   -- Format agenda: AG-2026-0001
+    sender_letter_number VARCHAR(100) NOT NULL,
+    sender_name VARCHAR(150) NOT NULL,
+    sender_institution VARCHAR(200),
+    subject VARCHAR(255) NOT NULL,
+    letter_date DATE NOT NULL,
+    received_date DATE NOT NULL,
+    disposition_to VARCHAR(150),
+    disposition_notes TEXT,
+    status VARCHAR(30) DEFAULT 'DITERIMA',       -- 'DITERIMA', 'DIDISPOSISIKAN', 'DITINDAKLANJUTI', 'SELESAI', 'DIARSIPKAN'
+    file_url TEXT,
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+-- 11. HAK AKSES PERAN (ROLE-BASED ACCESS CONTROL MATRIX)
+CREATE TABLE IF NOT EXISTS role_permissions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    role_id VARCHAR(50) NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+    module_key VARCHAR(50) NOT NULL,
+    can_access BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_role_permission UNIQUE (role_id, module_key)
+);
+

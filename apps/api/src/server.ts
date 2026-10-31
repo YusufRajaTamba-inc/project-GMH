@@ -4,6 +4,8 @@ import cookieParser from 'cookie-parser';
 import { ENV } from './config/env.js';
 import { authRateLimiter, generalRateLimiter } from './middleware/rateLimit.middleware.js';
 import { db } from './config/db.js';
+import { authenticateJwt } from './middleware/auth.middleware.js';
+import { authorizePermission } from './middleware/permission.middleware.js';
 
 // Route modules
 import authRoutes from './modules/auth/auth.routes.js';
@@ -20,6 +22,9 @@ import prayerRoutes from './modules/prayer/prayer.routes.js';
 import assetsRoutes from './modules/assets/assets.routes.js';
 import reportsRoutes from './modules/reports/reports.routes.js';
 import usersRoutes from './modules/users/users.routes.js';
+import organizationRoutes from './modules/organization/organization.routes.js';
+import notificationsRoutes from './modules/notifications/notifications.routes.js';
+import secretariatRoutes from './modules/secretariat/secretariat.routes.js';
 
 const app = express();
 
@@ -82,19 +87,24 @@ app.get('/health', async (_req: Request, res: Response) => {
 // P1-C: Auth rate limiter khusus — 5 percobaan per 15 menit
 app.use('/api/v1/auth/login', authRateLimiter);
 app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/utility', utilityRoutes);
-app.use('/api/v1/registrations', registrationsRoutes);
-app.use('/api/v1/members', membersRoutes);
-app.use('/api/v1/finance', financeRoutes);
-app.use('/api/v1/payroll', payrollRoutes);
-app.use('/api/v1/dashboard', dashboardRoutes);
-app.use('/api/v1/building', buildingRoutes);
-app.use('/api/v1/programs', programsRoutes);
-app.use('/api/v1/missions', missionsRoutes);
-app.use('/api/v1/prayer', prayerRoutes);
-app.use('/api/v1/assets', assetsRoutes);
-app.use('/api/v1/reports', reportsRoutes);
-app.use('/api/v1/users', usersRoutes);
+
+// Protected routes with explicit module permissions
+app.use('/api/v1/dashboard', authenticateJwt, authorizePermission('DASHBOARD'), dashboardRoutes);
+app.use('/api/v1/members', authenticateJwt, authorizePermission('MEMBERS'), membersRoutes);
+app.use('/api/v1/registrations', registrationsRoutes); // Flow registrasi publik & admin internal guard
+app.use('/api/v1/organization', authenticateJwt, authorizePermission('ORGANIZATION'), organizationRoutes);
+app.use('/api/v1/finance', financeRoutes); // E-receipt publik & finance internal guard
+app.use('/api/v1/payroll', authenticateJwt, authorizePermission('PAYROLL'), payrollRoutes);
+app.use('/api/v1/building', authenticateJwt, authorizePermission('BUILDING'), buildingRoutes);
+app.use('/api/v1/programs', authenticateJwt, authorizePermission('PROGRAMS'), programsRoutes);
+app.use('/api/v1/missions', authenticateJwt, authorizePermission('MISSIONS'), missionsRoutes);
+app.use('/api/v1/prayer', authenticateJwt, authorizePermission('PRAYER'), prayerRoutes);
+app.use('/api/v1/assets', assetsRoutes); // Peminjaman aset publik & assets internal guard
+app.use('/api/v1/secretariat', authenticateJwt, authorizePermission('SECRETARIAT'), secretariatRoutes);
+app.use('/api/v1/reports', authenticateJwt, authorizePermission('REPORTS'), reportsRoutes);
+app.use('/api/v1/users', usersRoutes); // Internal auth & authorizePermission('USERS')
+app.use('/api/v1/utility', authenticateJwt, authorizePermission('UTILITY'), utilityRoutes);
+app.use('/api/v1/notifications', authenticateJwt, notificationsRoutes);
 
 // Root greeting
 app.get('/', (_req: Request, res: Response) => {

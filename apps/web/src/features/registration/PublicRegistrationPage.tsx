@@ -10,9 +10,12 @@ import {
   Globe,
   ArrowLeft,
   FileCheck,
+  AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
 import { useMemberStore } from '../../state/MemberStoreContext';
 import { useDynamicConfig } from '../../state/DynamicConfigContext';
+import { api } from '../../services/api';
 
 const PublicRegistrationPage: React.FC = () => {
   const { submitPublicRegistration } = useMemberStore();
@@ -44,51 +47,149 @@ const PublicRegistrationPage: React.FC = () => {
     childrenCount: 0,
   });
 
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [customValues, setCustomValues] = useState<Record<string, any>>({});
   const [submittedTicket, setSubmittedTicket] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const memberCustomFields = customFields.filter((cf) => cf.module === 'MEMBERS');
 
+  const validateField = (name: string, value: any): string | null => {
+    switch (name) {
+      case 'name':
+        if (!value || String(value).trim().length < 3) return 'Nama lengkap wajib diisi minimal 3 karakter.';
+        return null;
+      case 'wa': {
+        const clean = String(value).trim().replace(/\s+/g, '');
+        if (!clean) return 'Nomor WhatsApp wajib diisi.';
+        if (!/^(\+62|62|0)8[0-9]{8,12}$/.test(clean)) return 'Format nomor WhatsApp tidak valid (contoh: 08123456789 atau +6281234567890).';
+        return null;
+      }
+      case 'email': {
+        if (value && String(value).trim()) {
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value).trim())) return 'Format email tidak valid.';
+        }
+        return null;
+      }
+      case 'nik': {
+        const clean = String(value).trim().replace(/\s+/g, '');
+        if (clean && !/^\d{16}$/.test(clean)) return 'NIK harus berupa tepat 16 digit angka.';
+        return null;
+      }
+      case 'address':
+        if (!value || String(value).trim().length < 5) return 'Alamat domisili lengkap wajib diisi minimal 5 karakter.';
+        return null;
+      case 'birthDate':
+        if (!value) return 'Tanggal lahir wajib diisi untuk data keanggotaan.';
+        return null;
+      case 'faculty':
+        if (!value) return 'Fakultas asal USU wajib dipilih.';
+        return null;
+      case 'major':
+        if (!value || String(value).trim().length < 2) return 'Program studi / jurusan wajib diisi.';
+        return null;
+      case 'entryYear': {
+        const y = Number(value);
+        const cur = new Date().getFullYear();
+        if (!y || isNaN(y) || y < 1960 || y > cur + 1) return `Tahun stambuk harus antara 1960 dan ${cur + 1}.`;
+        return null;
+      }
+      case 'weddingDate':
+        if (formData.maritalStatus === 'Menikah' && !value) return 'Tanggal pernikahan wajib diisi untuk status Menikah.';
+        return null;
+      default:
+        return null;
+    }
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    const err = validateField(name, value);
+    setFormErrors((prev) => {
+      const next = { ...prev };
+      if (err) next[name] = err;
+      else delete next[name];
+      return next;
+    });
   };
 
   const handleCustomChange = (fieldName: string, value: any) => {
     setCustomValues((prev) => ({ ...prev, [fieldName]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
+    setSubmitError(null);
 
-    setTimeout(() => {
-      const ticket = submitPublicRegistration({
-        name: formData.name,
-        nik: formData.nik,
+    const errors: Record<string, string> = {};
+    const fieldsToValidate = ['name', 'nik', 'birthDate', 'wa', 'email', 'address', 'faculty', 'major', 'entryYear'];
+    if (formData.maritalStatus === 'Menikah') fieldsToValidate.push('weddingDate');
+
+    for (const key of fieldsToValidate) {
+      const err = validateField(key, (formData as any)[key]);
+      if (err) errors[key] = err;
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      setSubmitError('Mohon perbaiki data formulir yang bertanda merah sebelum mengirim.');
+      window.scrollTo({ top: 300, behavior: 'smooth' });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await api.registrations.publicRegister({
+        fullName: formData.name.trim(),
+        nik: formData.nik?.trim() || undefined,
         gender: formData.gender,
         birthDate: formData.birthDate,
-        faculty: formData.faculty,
-        major: formData.major,
-        entryYear: Number(formData.entryYear),
-        wa: formData.wa,
-        email: formData.email,
-        city: formData.city,
-        address: formData.address,
-        profession: formData.profession,
-        company: formData.company,
-        ktb: formData.ktb,
-        maritalStatus: formData.maritalStatus,
         weddingDate: formData.maritalStatus === 'Menikah' ? formData.weddingDate : undefined,
-        partnerName: formData.maritalStatus === 'Menikah' ? formData.partnerName : undefined,
-        childrenCount: formData.maritalStatus === 'Menikah' ? Number(formData.childrenCount) : 0,
+        phoneNumber: formData.wa.trim(),
+        email: formData.email?.trim() || undefined,
+        faculty: formData.faculty,
+        major: formData.major.trim(),
+        entryYear: Number(formData.entryYear),
+        homeAddress: formData.address.trim(),
+        city: formData.city,
+        province: formData.province,
+        currentProfession: formData.profession?.trim() || undefined,
+        maritalStatus: formData.maritalStatus,
       });
 
-      setSubmittedTicket(ticket);
+      if (res.success && res.ticket) {
+        setSubmittedTicket(res.ticket.registration_code);
+        submitPublicRegistration({
+          name: formData.name,
+          nik: formData.nik,
+          gender: formData.gender,
+          birthDate: formData.birthDate,
+          faculty: formData.faculty,
+          major: formData.major,
+          entryYear: Number(formData.entryYear),
+          wa: formData.wa,
+          email: formData.email,
+          city: formData.city,
+          address: formData.address,
+          profession: formData.profession,
+          company: formData.company,
+          ktb: formData.ktb,
+          maritalStatus: formData.maritalStatus,
+          weddingDate: formData.maritalStatus === 'Menikah' ? formData.weddingDate : undefined,
+          partnerName: formData.maritalStatus === 'Menikah' ? formData.partnerName : undefined,
+          childrenCount: formData.maritalStatus === 'Menikah' ? Number(formData.childrenCount) : 0,
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        setSubmitError(res.message || 'Gagal memproses pendaftaran.');
+      }
+    } catch (err: any) {
+      setSubmitError(err.message || 'Terjadi kesalahan sistem saat mengirim formulir.');
+    } finally {
       setIsSubmitting(false);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, 600);
+    }
   };
 
   return (
@@ -303,6 +404,26 @@ const PublicRegistrationPage: React.FC = () => {
               </div>
             </div>
 
+            {submitError && (
+              <div
+                style={{
+                  padding: '14px 18px',
+                  borderRadius: 10,
+                  background: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  color: '#991b1b',
+                  fontSize: 13,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  boxShadow: '0 2px 6px rgba(239,68,68,0.08)',
+                }}
+              >
+                <AlertCircle size={18} style={{ flexShrink: 0, color: '#dc2626' }} />
+                <span style={{ fontWeight: 600 }}>{submitError}</span>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
               {/* SECTION 1: IDENTITAS DIRI */}
               <div className="card">
@@ -323,7 +444,9 @@ const PublicRegistrationPage: React.FC = () => {
                         value={formData.name}
                         onChange={handleChange}
                         required
+                        style={{ borderColor: formErrors.name ? '#dc2626' : undefined }}
                       />
+                      {formErrors.name && <div style={{ color: '#dc2626', fontSize: 11.5, marginTop: 4, fontWeight: 600 }}>{formErrors.name}</div>}
                     </div>
 
                     <div className="form-group">
@@ -337,7 +460,9 @@ const PublicRegistrationPage: React.FC = () => {
                         onChange={handleChange}
                         maxLength={16}
                         required
+                        style={{ borderColor: formErrors.nik ? '#dc2626' : undefined }}
                       />
+                      {formErrors.nik && <div style={{ color: '#dc2626', fontSize: 11.5, marginTop: 4, fontWeight: 600 }}>{formErrors.nik}</div>}
                     </div>
 
                     <div className="form-group">
@@ -369,7 +494,9 @@ const PublicRegistrationPage: React.FC = () => {
                         value={formData.birthDate}
                         onChange={handleChange}
                         required
+                        style={{ borderColor: formErrors.birthDate ? '#dc2626' : undefined }}
                       />
+                      {formErrors.birthDate && <div style={{ color: '#dc2626', fontSize: 11.5, marginTop: 4, fontWeight: 600 }}>{formErrors.birthDate}</div>}
                     </div>
 
                     <div className="form-group">
@@ -382,10 +509,15 @@ const PublicRegistrationPage: React.FC = () => {
                         value={formData.wa}
                         onChange={handleChange}
                         required
+                        style={{ borderColor: formErrors.wa ? '#dc2626' : undefined }}
                       />
-                      <span style={{ fontSize: 11, color: 'var(--gmh-text-muted)' }}>
-                        Digunakan untuk pengiriman Nomor Induk Anggota (NIA) resmi
-                      </span>
+                      {formErrors.wa ? (
+                        <div style={{ color: '#dc2626', fontSize: 11.5, marginTop: 4, fontWeight: 600 }}>{formErrors.wa}</div>
+                      ) : (
+                        <span style={{ fontSize: 11, color: 'var(--gmh-text-muted)' }}>
+                          Digunakan untuk pengiriman Nomor Induk Anggota (NIA) resmi
+                        </span>
+                      )}
                     </div>
 
                     <div className="form-group">
@@ -398,11 +530,13 @@ const PublicRegistrationPage: React.FC = () => {
                         value={formData.email}
                         onChange={handleChange}
                         required
+                        style={{ borderColor: formErrors.email ? '#dc2626' : undefined }}
                       />
+                      {formErrors.email && <div style={{ color: '#dc2626', fontSize: 11.5, marginTop: 4, fontWeight: 600 }}>{formErrors.email}</div>}
                     </div>
 
                     <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                      <label className="form-label">Alamat Domisili Lengkap</label>
+                      <label className="form-label">Alamat Domisili Lengkap *</label>
                       <textarea
                         name="address"
                         className="form-input"
@@ -410,7 +544,9 @@ const PublicRegistrationPage: React.FC = () => {
                         placeholder="Jalan, Nomor Rumah, RT/RW, Kelurahan, Kecamatan"
                         value={formData.address}
                         onChange={handleChange}
+                        style={{ borderColor: formErrors.address ? '#dc2626' : undefined }}
                       />
+                      {formErrors.address && <div style={{ color: '#dc2626', fontSize: 11.5, marginTop: 4, fontWeight: 600 }}>{formErrors.address}</div>}
                     </div>
 
                     <div className="form-group">
@@ -458,6 +594,7 @@ const PublicRegistrationPage: React.FC = () => {
                         value={formData.faculty}
                         onChange={handleChange}
                         required
+                        style={{ borderColor: formErrors.faculty ? '#dc2626' : undefined }}
                       >
                         {lookups.faculties.map((f) => (
                           <option key={f} value={f}>
@@ -465,6 +602,7 @@ const PublicRegistrationPage: React.FC = () => {
                           </option>
                         ))}
                       </select>
+                      {formErrors.faculty && <div style={{ color: '#dc2626', fontSize: 11.5, marginTop: 4, fontWeight: 600 }}>{formErrors.faculty}</div>}
                     </div>
 
                     <div className="form-group">
@@ -479,7 +617,9 @@ const PublicRegistrationPage: React.FC = () => {
                         value={formData.major}
                         onChange={handleChange}
                         required
+                        style={{ borderColor: formErrors.major ? '#dc2626' : undefined }}
                       />
+                      {formErrors.major && <div style={{ color: '#dc2626', fontSize: 11.5, marginTop: 4, fontWeight: 600 }}>{formErrors.major}</div>}
                     </div>
 
                     <div className="form-group">
@@ -496,7 +636,9 @@ const PublicRegistrationPage: React.FC = () => {
                         min={1970}
                         max={2030}
                         required
+                        style={{ borderColor: formErrors.entryYear ? '#dc2626' : undefined }}
                       />
+                      {formErrors.entryYear && <div style={{ color: '#dc2626', fontSize: 11.5, marginTop: 4, fontWeight: 600 }}>{formErrors.entryYear}</div>}
                     </div>
 
                     <div className="form-group">
@@ -634,7 +776,9 @@ const PublicRegistrationPage: React.FC = () => {
                             value={formData.weddingDate}
                             onChange={handleChange}
                             required={formData.maritalStatus === 'Menikah'}
+                            style={{ borderColor: formErrors.weddingDate ? '#dc2626' : undefined }}
                           />
+                          {formErrors.weddingDate && <div style={{ color: '#dc2626', fontSize: 11.5, marginTop: 4, fontWeight: 600 }}>{formErrors.weddingDate}</div>}
                         </div>
 
                         <div className="form-group">
@@ -717,12 +861,21 @@ const PublicRegistrationPage: React.FC = () => {
                 <button
                   type="submit"
                   className="btn btn-primary"
-                  style={{ minWidth: 220, padding: '12px 24px', fontSize: 15 }}
+                  style={{ minWidth: 220, padding: '12px 24px', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
                   disabled={isSubmitting}
                   id="btn-submit-registration"
                 >
-                  {isSubmitting ? 'Mengirim Data...' : 'Kirim Pendaftaran Alumni'}
-                  <ArrowRight size={16} style={{ marginLeft: 6 }} />
+                  {isSubmitting ? (
+                    <>
+                      <RefreshCw size={15} className="spin" />
+                      <span>Mengirim Data ke Sistem...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Kirim Pendaftaran Alumni</span>
+                      <ArrowRight size={16} />
+                    </>
+                  )}
                 </button>
               </div>
             </form>

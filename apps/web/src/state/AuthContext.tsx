@@ -1,167 +1,189 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import type { CurrentUser, UserRole } from './auth';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import type { CurrentUser } from './auth';
 import { ROLE_LABELS } from './auth';
-import { api } from '../services/api';
+import { api, type SignedPermissionsPayload } from '../services/api';
 
 interface AuthContextValue {
   user: CurrentUser;
+  permissions: SignedPermissionsPayload | null;
+  isAuthenticated: boolean;
   isLoading: boolean;
-  setRole: (role: UserRole) => Promise<void>;
-  login: (username: string, password: string) => Promise<boolean>;
+  isRouteAllowed: (path: string) => boolean;
+  isModuleAllowed: (moduleKey: string) => boolean;
+  login: (username: string, password: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
-const DEFAULT_USER: CurrentUser = {
+export const GUEST_USER: CurrentUser = {
   id: '',
-  name: 'Guest',
-  role: 'ANGGOTA_ALUMNI',
-  department: 'Belum masuk',
-  initials: 'GU',
+  name: 'Tamu / Belum Masuk',
+  role: 'SUPER_ADMIN',
+  department: 'Belum masuk sesi',
+  initials: '--',
 };
 
 const AuthContext = createContext<AuthContextValue>({
-  user: DEFAULT_USER,
-  isLoading: false,
-  setRole: async () => {},
-  login: async () => false,
+  user: GUEST_USER,
+  permissions: null,
+  isAuthenticated: false,
+  isLoading: true,
+  isRouteAllowed: () => false,
+  isModuleAllowed: () => false,
+  login: async () => ({ success: false, message: '' }),
   logout: async () => {},
+  refreshProfile: async () => {},
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<CurrentUser>(DEFAULT_USER);
-  const [isLoading, setIsLoading] = useState(false);
+  const [user, setUser] = useState<CurrentUser>(GUEST_USER);
+  const [permissions, setPermissions] = useState<SignedPermissionsPayload | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // P1-A: Init sesi dengan memvalidasi cookie melalui /auth/me
-  useEffect(() => {
-    let cancelled = false;
-
-    const initAuth = async () => {
-      try {
-        const res = await api.auth.getMe();
-        if (cancelled) return;
-        if (res?.user) {
-          setUser({
-            id: res.user.id,
-            name: res.user.full_name || res.user.username,
-            role: res.user.role_id,
-            department: res.user.role_name || ROLE_LABELS[res.user.role_id] || 'Yayasan GMH',
-            initials: (res.user.full_name || res.user.username || 'YS')
-              .split(' ')
-              .map((n: string) => n[0])
-              .join('')
-              .toUpperCase()
-              .slice(0, 2),
-          });
-        }
-      } catch {
-        // Sesi tidak ada atau kedaluwarsa; tetap gunakan state default,
-        // jangan menerbitkan sesi demo otomatis.
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    };
-
-    setIsLoading(true);
-    void initAuth();
-    return () => { cancelled = true; };
-  }, []);
-
-
-  const setRole = async (role: UserRole) => {
-    setIsLoading(true);
-    // Role display names
-    const names: Record<string, string> = {
-      SUPER_ADMIN: 'Super Administrator',
-      DEWAN_PENGAWAS_PEMBINA: 'Bpk. Dewan Pengawas & Pembina',
-      DEWAN_PENGAWAS: 'Bpk. Dewan Pengawas',
-      PENGURUS_HARIAN: 'Pengurus Harian Yayasan',
-      BENDAHARA_YAYASAN: 'Ibu Bendahara Yayasan (Pusat & Gaji)',
-      BENDAHARA_ADMIN: 'Admin Kas Operasional',
-      KOORDINATOR_DEPARTEMEN: 'Koordinator Departemen Misi',
-      ADMIN_OPERASIONAL: 'Admin Operasional',
-      ANGGOTA_ALUMNI: 'Alumni PA KMK',
-      ALUMNI_ANGGOTA: 'Alumni PA KMK',
-    };
-
-    const initials: Record<string, string> = {
-      SUPER_ADMIN: 'SA',
-      DEWAN_PENGAWAS_PEMBINA: 'DP',
-      DEWAN_PENGAWAS: 'DP',
-      PENGURUS_HARIAN: 'PH',
-      BENDAHARA_YAYASAN: 'BY',
-      BENDAHARA_ADMIN: 'BA',
-      KOORDINATOR_DEPARTEMEN: 'KD',
-      ADMIN_OPERASIONAL: 'AO',
-      ANGGOTA_ALUMNI: 'AL',
-      ALUMNI_ANGGOTA: 'AL',
-    };
-
-    // Normalize role ID for backend
-    const normalizedRole = role === 'DEWAN_PENGAWAS' ? 'DEWAN_PENGAWAS_PEMBINA'
-      : role === 'ADMIN_OPERASIONAL' ? 'KOORDINATOR_DEPARTEMEN'
-      : role === 'ALUMNI_ANGGOTA' ? 'ANGGOTA_ALUMNI'
-      : role;
-
+  const refreshProfile = useCallback(async () => {
     try {
-      const res = await api.auth.demoSwitch(normalizedRole);
-      if (res.success && res.user) {
+      const res = await api.auth.getMe();
+      if (res?.user && res.user.id) {
+        const u = res.user;
         setUser({
-          id: res.user.id,
-          name: res.user.fullName || names[role] || 'User Yayasan',
-          role,
-          initials: initials[role] || 'GM',
-          department: ROLE_LABELS[normalizedRole] || ROLE_LABELS[role] || 'Yayasan GMH',
+          id: u.id,
+          username: u.username,
+          name: u.full_name || u.username,
+          email: u.email,
+          role: u.role_id,
+          department: u.role_name || ROLE_LABELS[u.role_id] || 'Yayasan GMH',
+          initials: (u.full_name || u.username || 'GM')
+            .split(' ')
+            .map((n: string) => n[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2),
         });
+
+        if (res.permissions) {
+          setPermissions(res.permissions);
+        }
+      } else {
+        setUser(GUEST_USER);
+        setPermissions(null);
       }
     } catch {
-      // Fallback local update hanya untuk demo UI jika API tidak tersedia.
-      setUser({
-        id: '1',
-        name: names[role] || 'User Yayasan',
-        role,
-        initials: initials[role] || 'GM',
-        department: ROLE_LABELS[role] || 'Yayasan GMH',
-      });
+      setUser(GUEST_USER);
+      setPermissions(null);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const login = async (username: string, password: string): Promise<boolean> => {
+  useEffect(() => {
+    void refreshProfile();
+  }, [refreshProfile]);
+
+  const login = async (username: string, password: string): Promise<{ success: boolean; message?: string }> => {
     setIsLoading(true);
     try {
-      // P1-A: res tidak mengandung token — cookie diterima otomatis oleh browser
       const res = await api.auth.login(username, password);
       if (res.success && res.user) {
+        const u = res.user;
         setUser({
-          id: res.user.id,
-          name: res.user.fullName,
-          role: res.user.roleId,
-          department: res.user.roleName || ROLE_LABELS[res.user.roleId],
-          initials: res.user.fullName.split(' ').map((n: string) => n[0]).join('').slice(0, 2),
+          id: u.id,
+          username: u.username,
+          name: u.fullName || u.username,
+          email: u.email,
+          role: u.roleId,
+          department: u.roleName || ROLE_LABELS[u.roleId] || 'Yayasan GMH',
+          initials: (u.fullName || u.username || 'GM')
+            .split(' ')
+            .map((n: string) => n[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2),
         });
-        return true;
+
+        if (res.permissions) {
+          setPermissions(res.permissions);
+        }
+        return { success: true, message: 'Login berhasil.' };
       }
-      return false;
-    } catch (err) {
-      console.error('Login failed:', err);
-      return false;
+      return { success: false, message: 'Gagal melakukan otentikasi.' };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Username atau kata sandi tidak cocok.' };
     } finally {
       setIsLoading(false);
     }
   };
 
   const logout = async () => {
-    await api.auth.logout();
-    setUser(DEFAULT_USER);
+    try {
+      await api.auth.logout();
+    } catch (err) {
+      console.warn('Logout error', err);
+    } finally {
+      setUser(GUEST_USER);
+      setPermissions(null);
+    }
   };
 
+  const isRouteAllowed = useCallback(
+    (path: string): boolean => {
+      if (!user || !user.id) return false;
+      // Super Admin selalu memiliki akses penuh ke seluruh rute sistem
+      if (user.role === 'SUPER_ADMIN') return true;
+
+      // Halaman notifikasi dan profil selalu diizinkan untuk semua peran aktif
+      if (path === '/notifications' || path === '/profile') return true;
+
+      if (!permissions) return false;
+
+      // Validasi bahwa respons ditandatangani secara kriptografis (HMAC)
+      if (!permissions.signature || !permissions.integrityHash) {
+        console.warn('[Security Guard] Manipulasi respons atau signature tidak valid terdeteksi.');
+        return false;
+      }
+
+      // Normalisasi path
+      const cleanPath = path.split('?')[0].replace(/\/+$/, '') || '/';
+
+      return permissions.allowedMenus.some((allowed) => {
+        const cleanAllowed = allowed.replace(/\/+$/, '') || '/';
+        if (cleanAllowed === '/') {
+          return cleanPath === '/';
+        }
+        return cleanPath === cleanAllowed || cleanPath.startsWith(`${cleanAllowed}/`);
+      });
+    },
+    [user, permissions]
+  );
+
+  const isModuleAllowed = useCallback(
+    (moduleKey: string): boolean => {
+      if (!user || !user.id) return false;
+      if (user.role === 'SUPER_ADMIN') return true;
+      if (!permissions || !permissions.signature) return false;
+      return permissions.allowedModules.includes(moduleKey);
+    },
+    [user, permissions]
+  );
+
+  const isAuthenticated = Boolean(user && user.id);
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, setRole, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        permissions,
+        isAuthenticated,
+        isLoading,
+        isRouteAllowed,
+        isModuleAllowed,
+        login,
+        logout,
+        refreshProfile,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
 
 export const useAuth = () => useContext(AuthContext);
-

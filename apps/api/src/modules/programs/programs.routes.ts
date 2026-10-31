@@ -6,6 +6,9 @@ import { parsePagination, formatPaginationMeta } from '../../utils/pagination.js
 
 const router = Router();
 
+// Protect all program routes
+router.use(authenticateJwt);
+
 // GET /api/v1/programs - List all programs
 router.get('/', authenticateJwt, async (req: Request, res: Response): Promise<void> => {
   try {

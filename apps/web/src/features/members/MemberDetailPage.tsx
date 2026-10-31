@@ -496,12 +496,12 @@ const MemberDetailPage: React.FC = () => {
               <code
                 style={{
                   fontSize: 12,
-                  background: 'var(--gmh-green-pale)',
-                  color: 'var(--gmh-green-dark)',
+                  background: 'var(--gmh-surface-2)',
+                  color: 'var(--gmh-text)',
                   padding: '3px 8px',
                   borderRadius: 6,
-                  fontWeight: 700,
-                  border: '1px solid var(--gmh-green-light)',
+                  fontWeight: 600,
+                  border: '1px solid var(--gmh-border)',
                 }}
               >
                 {member.nia && member.nia !== '-' ? member.nia : (member.name.toLowerCase().includes('josua') ? 'GMH-2026-00010' : '-')}

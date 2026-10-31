@@ -42,7 +42,9 @@ Semua akun terdaftar memiliki kata sandi default: **`admin123`** (di-hash dengan
 | `bendahara.yayasan` | `BENDAHARA_YAYASAN` | Pemegang kas utama yayasan, Janji Iman, dan **penggajian staf yayasan** |
 | `bendahara.admin` | `BENDAHARA_ADMIN` | Pengelola pencatatan kas kecil/operasional kantor (Terisolasi dari Payroll) |
 | `koordinator.misi` | `KOORDINATOR_DEPARTEMEN` | Koordinator departemen pelayanan mahasiswa & persekutuan alumni |
-| `alumni.yusuf` | `ANGGOTA_ALUMNI` | Profil alumni, riwayat donasi pribadi, dan pokok doa |
+
+> [!NOTE]
+> **Akses Anggota & Alumni**: Anggota dan alumni jemaat tidak memiliki akun login operator pada sistem FoundationOS internal ini, melainkan mengakses portal/website informasi publik yang terpisah.
 
 > [!IMPORTANT]
 > **Isolasi Modul Payroll (Flow 4)**:
@@ -52,7 +54,7 @@ Semua akun terdaftar memiliki kata sandi default: **`admin123`** (di-hash dengan
 
 ## 🗄️ 3. Skema Database Relasional PostgreSQL (23 Tabel)
 
-1. **`roles`**: Definisi 7 tingkatan hak akses yayasan.
+1. **`roles`**: Definisi 6 tingkatan hak akses operasional yayasan.
 2. **`users`**: Kredensial staf/pengurus (`password_hash`, `role_id`, status).
 3. **`audit_logs`**: Pencatatan jejak audit aksi administratif.
 4. **`system_lookups`**: Master data dinamis (Fakultas, Wilayah, Kategori Donasi/Kas/Doa).

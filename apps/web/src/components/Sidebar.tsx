@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -16,9 +16,12 @@ import {
   ChevronDown,
   ChevronRight,
   UserCog,
+  Sliders,
+  Award,
+  Mail,
+  LogOut,
 } from 'lucide-react';
 import { useAuth } from '../state/AuthContext';
-import { canAccessPayroll } from '../state/auth';
 
 interface NavSubItem {
   icon?: React.ReactNode;
@@ -53,6 +56,7 @@ const navSections: NavSection[] = [
     items: [
       { icon: <Users size={16} />, label: 'Data Anggota & Alumni', path: '/members' },
       { icon: <UserPlus size={16} />, label: 'Verifikasi Pendaftaran', path: '/registrations', badge: 3 },
+      { icon: <Award size={16} />, label: 'Struktur & Kepengurusan', path: '/organization' },
     ],
   },
   {
@@ -61,7 +65,7 @@ const navSections: NavSection[] = [
       { icon: <DollarSign size={16} />, label: 'Kas Operasional', path: '/finance/operational' },
       { icon: <Heart size={16} />, label: 'Donasi & Janji Iman', path: '/finance/donations' },
       { icon: <Building2 size={16} />, label: 'Proyek Yayasan', path: '/building' },
-      // Modul Penggajian (Payroll) disembunyikan untuk operasional admin staff harian
+      { icon: <DollarSign size={16} />, label: 'Penggajian (Payroll)', path: '/payroll' },
     ],
   },
   {
@@ -76,6 +80,7 @@ const navSections: NavSection[] = [
     label: 'Manajemen',
     items: [
       { icon: <Package size={16} />, label: 'Inventaris & Aset', path: '/assets' },
+      { icon: <Mail size={16} />, label: 'Sekretariat', path: '/secretariat' },
       {
         icon: <BarChart3 size={16} />,
         label: 'Laporan',
@@ -86,33 +91,78 @@ const navSections: NavSection[] = [
           { icon: <Users size={14} />, label: 'Keanggotaan & Demografi', path: '/reports/anggota' },
         ],
       },
-      { icon: <UserCog size={16} />, label: 'Data Pengguna', path: '/users' },
-      { icon: <Settings size={16} />, label: 'Sistem Utility', path: '/utility' },
+      {
+        icon: <Settings size={16} />,
+        label: 'Pengaturan Sistem',
+        path: '/settings',
+        subItems: [
+          { icon: <UserCog size={14} />, label: 'Data Pengguna', path: '/users' },
+          { icon: <Sliders size={14} />, label: 'Sistem Utility', path: '/utility' },
+        ],
+      },
     ],
   },
 ];
 
 const Sidebar: React.FC = () => {
-  const { user } = useAuth();
+  const { user, logout, isRouteAllowed } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [collapsed] = useState(false);
 
+  // Filter sections and items based on signed permissions
+  const visibleSections = useMemo(() => {
+    return navSections
+      .map((section) => {
+        const visibleItems = section.items
+          .map((item) => {
+            if (item.subItems && item.subItems.length > 0) {
+              const visibleSubItems = item.subItems.filter((sub) => isRouteAllowed(sub.path));
+              if (visibleSubItems.length === 0) return null;
+              return { ...item, subItems: visibleSubItems };
+            }
+            if (!isRouteAllowed(item.path)) return null;
+            return item;
+          })
+          .filter((item): item is NavItem => item !== null);
+
+        if (visibleItems.length === 0) return null;
+        return { ...section, items: visibleItems };
+      })
+      .filter((section): section is NavSection => section !== null);
+  }, [isRouteAllowed]);
+
   // Keep submenu open if currently on that route
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({
     '/reports': true,
+    '/settings': true,
   });
 
   useEffect(() => {
     if (location.pathname.startsWith('/reports')) {
       setOpenMenus((prev) => ({ ...prev, '/reports': true }));
     }
+    if (
+      location.pathname.startsWith('/users') ||
+      location.pathname.startsWith('/utility') ||
+      location.pathname.startsWith('/settings')
+    ) {
+      setOpenMenus((prev) => ({ ...prev, '/settings': true }));
+    }
   }, [location.pathname]);
 
   const toggleSubmenu = (item: NavItem) => {
     setOpenMenus((prev) => {
       const willOpen = !prev[item.path];
-      if (willOpen && !location.pathname.startsWith(item.path) && item.subItems && item.subItems.length > 0) {
+      const isSubActive =
+        item.subItems &&
+        item.subItems.some(
+          (s) =>
+            location.pathname === s.path ||
+            (s.path !== '/' && location.pathname.startsWith(s.path)) ||
+            (s.path === '/reports/ringkasan' && location.pathname === '/reports')
+        );
+      if (willOpen && !isSubActive && item.subItems && item.subItems.length > 0) {
         navigate(item.subItems[0].path);
       }
       return { ...prev, [item.path]: willOpen };
@@ -140,19 +190,22 @@ const Sidebar: React.FC = () => {
 
       {/* Navigation */}
       <nav className="sidebar-nav">
-        {navSections.map((section) => (
+        {visibleSections.map((section) => (
           <div key={section.label}>
             {!collapsed && (
               <div className="sidebar-section-label">{section.label}</div>
             )}
             {section.items.map((item) => {
-              // Hide payroll items if no access
-              if (item.requirePayroll && !canAccessPayroll(user.role)) return null;
 
               const hasSubItems = item.subItems && item.subItems.length > 0;
-              const isAnySubActive = hasSubItems && item.subItems!.some(
-                (s) => location.pathname === s.path || (s.path === '/reports/ringkasan' && location.pathname === '/reports')
-              );
+              const isAnySubActive =
+                hasSubItems &&
+                item.subItems!.some(
+                  (s) =>
+                    location.pathname === s.path ||
+                    (s.path !== '/' && location.pathname.startsWith(s.path)) ||
+                    (s.path === '/reports/ringkasan' && location.pathname === '/reports')
+                );
               const isOpen = openMenus[item.path] ?? isAnySubActive;
               const active = !hasSubItems && (
                 location.pathname === item.path ||
@@ -204,6 +257,7 @@ const Sidebar: React.FC = () => {
                       {item.subItems!.map((sub) => {
                         const isSubActive =
                           location.pathname === sub.path ||
+                          (sub.path !== '/' && location.pathname.startsWith(sub.path)) ||
                           (sub.path === '/reports/ringkasan' && location.pathname === '/reports');
 
                         return (
@@ -267,14 +321,37 @@ const Sidebar: React.FC = () => {
 
       {/* Footer / User */}
       <div className="sidebar-footer">
-        <div className="sidebar-user">
-          <div className="sidebar-user-avatar">{user.initials}</div>
-          {!collapsed && (
-            <div className="sidebar-user-info">
-              <div className="sidebar-user-name">{user.name}</div>
-              <div className="sidebar-user-role">{user.department}</div>
-            </div>
-          )}
+        <div className="sidebar-user" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+            <div className="sidebar-user-avatar">{user.initials}</div>
+            {!collapsed && (
+              <div className="sidebar-user-info" style={{ minWidth: 0, overflow: 'hidden' }}>
+                <div className="sidebar-user-name" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.name}</div>
+                <div className="sidebar-user-role" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.department}</div>
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => void logout()}
+            title="Keluar dari akun (Logout)"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#94a3b8',
+              cursor: 'pointer',
+              padding: '6px',
+              borderRadius: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.background = 'transparent'; }}
+          >
+            <LogOut size={16} />
+          </button>
         </div>
       </div>
     </aside>

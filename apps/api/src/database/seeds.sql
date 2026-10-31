@@ -10,8 +10,7 @@ INSERT INTO roles (id, name, description) VALUES
 ('PENGURUS_HARIAN', 'Pengurus Harian Yayasan', 'Pimpinan eksekutif dan operasional harian kantor yayasan GMH'),
 ('BENDAHARA_YAYASAN', 'Bendahara Yayasan', 'Pengendali kas besar yayasan, rekening bank, penerimaan donasi/janji iman, dan modul payroll rahasia'),
 ('BENDAHARA_ADMIN', 'Bendahara Admin (Operasional)', 'Pengelola kas operasional kantor, kas kecil, dan belanja kebutuhan sekretariat'),
-('KOORDINATOR_DEPARTEMEN', 'Koordinator Departemen', 'Kepala divisi pelayanan alumni, misi, pembinaan mahasiswa, atau komunikasi'),
-('ANGGOTA_ALUMNI', 'Anggota & Alumni PA KMK', 'Alumni dan anggota yayasan dengan akses profil pribadi dan partisipasi donasi')
+('KOORDINATOR_DEPARTEMEN', 'Koordinator Departemen', 'Kepala divisi pelayanan alumni, misi, pembinaan mahasiswa, atau komunikasi')
 ON CONFLICT (id) DO NOTHING;
 
 -- 2. SEED SYSTEM LOOKUPS

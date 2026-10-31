@@ -28,9 +28,11 @@ const INITIAL_PAYROLL: StaffPayroll[] = [
 ];
 
 const PayrollPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isModuleAllowed } = useAuth();
   const { addTransaction } = useFinanceStore();
   const { lookups, fieldLabels } = useDynamicConfig();
+
+  const hasAccess = canAccessPayroll(user.role) || isModuleAllowed('PAYROLL');
 
   const [payrollData, setPayrollData] = useState<StaffPayroll[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -78,10 +80,10 @@ const PayrollPage: React.FC = () => {
   };
 
   useEffect(() => {
-    if (canAccessPayroll(user.role)) {
+    if (hasAccess) {
       fetchStaffPayroll();
     }
-  }, [user.role]);
+  }, [hasAccess]);
 
   // Form State for Add Staff Salary
   const [formData, setFormData] = useState({
@@ -98,7 +100,7 @@ const PayrollPage: React.FC = () => {
     setTimeout(() => setToastMsg(null), 3500);
   };
 
-  if (!canAccessPayroll(user.role)) {
+  if (!hasAccess) {
     return (
       <div className="empty-state">
         <Lock size={48} className="empty-state-icon" />

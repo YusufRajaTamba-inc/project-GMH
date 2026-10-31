@@ -2,10 +2,15 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { db } from '../../config/db.js';
 import { authenticateJwt } from '../../middleware/auth.middleware.js';
+import { authorizePermission } from '../../middleware/permission.middleware.js';
+
+import { SYSTEM_MODULES, getSignedRolePermissions } from '../auth/auth.permissions.js';
+import { logAudit } from '../../middleware/audit.interceptor.js';
 
 const router = Router();
 
 router.use(authenticateJwt);
+router.use(authorizePermission('USERS'));
 
 // ----------------------------------------------------------------------------
 // 1. GET / — Daftar Seluruh Pengguna & KPI Statistik Akun
@@ -68,7 +73,7 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
           COUNT(CASE WHEN is_active = false THEN 1 END)::int as inactive
         FROM users
       `),
-      db.query(`SELECT id, name, description FROM roles ORDER BY name ASC`),
+      db.query(`SELECT id, name, description FROM roles WHERE id NOT IN ('ANGGOTA_ALUMNI', 'ALUMNI_ANGGOTA') ORDER BY name ASC`),
     ]);
 
     const stats = statsRes.rows[0] || { total: 0, active: 0, inactive: 0 };
@@ -91,10 +96,108 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
 // ----------------------------------------------------------------------------
 router.get('/roles', async (_req: Request, res: Response): Promise<void> => {
   try {
-    const rolesRes = await db.query(`SELECT id, name, description FROM roles ORDER BY name ASC`);
+    const rolesRes = await db.query(`SELECT id, name, description FROM roles WHERE id NOT IN ('ANGGOTA_ALUMNI', 'ALUMNI_ANGGOTA') ORDER BY name ASC`);
     res.status(200).json({ success: true, roles: rolesRes.rows });
   } catch (err: any) {
     res.status(500).json({ success: false, message: 'Gagal memuat daftar peran.', error: err.message });
+  }
+});
+
+// ----------------------------------------------------------------------------
+// 2B. GET /permissions — Matriks Hak Akses Modul Seluruh Role
+// ----------------------------------------------------------------------------
+router.get('/permissions', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const [rolesRes, permsRes] = await Promise.all([
+      db.query(`SELECT id, name, description FROM roles WHERE id NOT IN ('ANGGOTA_ALUMNI', 'ALUMNI_ANGGOTA') ORDER BY name ASC`),
+      db.query(`SELECT role_id, module_key, can_access FROM role_permissions ORDER BY role_id, module_key`),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      roles: rolesRes.rows,
+      modules: SYSTEM_MODULES,
+      permissions: permsRes.rows,
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      message: 'Gagal memuat matriks hak akses.',
+      error: err.message,
+    });
+  }
+});
+
+// ----------------------------------------------------------------------------
+// 2C. PUT /permissions — Update Hak Akses Modul untuk Suatu Role
+// ----------------------------------------------------------------------------
+router.put('/permissions', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { roleId, permissions } = req.body;
+    const actorUser = req.user;
+
+    if (!roleId || !permissions || typeof permissions !== 'object') {
+      res.status(400).json({
+        success: false,
+        message: 'roleId dan object permissions { [moduleKey]: boolean } wajib disertakan.',
+      });
+      return;
+    }
+
+    // Role check
+    const roleCheck = await db.query(`SELECT id, name FROM roles WHERE id = $1`, [roleId]);
+    if (roleCheck.rows.length === 0) {
+      res.status(404).json({ success: false, message: `Role "${roleId}" tidak ditemukan.` });
+      return;
+    }
+
+    // Keamanan: Super Admin tidak boleh dicabut modul USERS dan DASHBOARD
+    if (roleId === 'SUPER_ADMIN') {
+      permissions['USERS'] = true;
+      permissions['DASHBOARD'] = true;
+    }
+
+    // Upsert permissions
+    for (const mod of SYSTEM_MODULES) {
+      const canAccess = permissions[mod.key] !== undefined ? Boolean(permissions[mod.key]) : false;
+      await db.query(
+        `INSERT INTO role_permissions (role_id, module_key, can_access, updated_at)
+         VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+         ON CONFLICT (role_id, module_key)
+         DO UPDATE SET can_access = $3, updated_at = CURRENT_TIMESTAMP`,
+        [roleId, mod.key, canAccess]
+      );
+    }
+
+    // Generate fresh HMAC signature & integrity hash for this updated role
+    const signedPayload = await getSignedRolePermissions(roleId);
+
+    // Audit log
+    if (actorUser?.id) {
+      await logAudit(
+        actorUser.id,
+        'UPDATE_ROLE_PERMISSIONS',
+        'role_permissions',
+        roleId,
+        null,
+        { roleId, updatedBy: actorUser.username, allowedModulesCount: signedPayload.allowedModules.length },
+        req.ip,
+        req.headers['user-agent']
+      );
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Hak akses untuk peran "${roleCheck.rows[0].name}" berhasil diperbarui.`,
+      roleId,
+      permissions: signedPayload,
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      message: 'Gagal memperbarui hak akses peran.',
+      error: err.message,
+    });
   }
 });
 

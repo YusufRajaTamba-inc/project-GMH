@@ -32,12 +32,42 @@ async function request<T = any>(endpoint: string, options: RequestInit = {}): Pr
 
 
 
+export interface SignedPermissionsPayload {
+  roleId: string;
+  allowedModules: string[];
+  allowedMenus: string[];
+  timestamp: number;
+  signature: string;
+  integrityHash: string;
+}
+
+export interface SystemModuleInfo {
+  key: string;
+  label: string;
+  path: string;
+  category: string;
+  description: string;
+}
+
+export interface RolePermissionMatrixItem {
+  role_id: string;
+  module_key: string;
+  can_access: boolean;
+}
+
+export interface PermissionsMatrixResponse {
+  success: boolean;
+  roles: Array<{ id: string; name: string; description: string }>;
+  modules: SystemModuleInfo[];
+  permissions: RolePermissionMatrixItem[];
+}
+
 export const api = {
   // 1. Auth & RBAC
   auth: {
     login: async (username: string, password: string) => {
       // P1-A: Token tidak ada di body response, disimpan otomatis via HttpOnly Cookie
-      const res = await request<{ success: boolean; user: any }>('/auth/login', {
+      const res = await request<{ success: boolean; user: any; permissions?: SignedPermissionsPayload }>('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ username, password }),
       });
@@ -51,8 +81,13 @@ export const api = {
       });
       return res;
     },
-    getMe: () => request('/auth/me'),
+    getMe: () => request<{ success: boolean; user: any; permissions?: SignedPermissionsPayload }>('/auth/me'),
     getRoles: () => request('/auth/roles'),
+    changePassword: (data: { currentPassword?: string; newPassword: string; confirmPassword: string }) =>
+      request<{ success: boolean; message: string }>('/auth/change-password', {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
     logout: async () => {
       // P1-A: Hapus cookie di sisi server
       try {
@@ -236,6 +271,7 @@ export const api = {
       const query = new URLSearchParams(params as any).toString();
       return request(`/assets${query ? `?${query}` : ''}`);
     },
+    getById: (id: string) => request(`/assets/${id}`),
     create: (data: any) => request('/assets', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: string, data: any) => request(`/assets/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     delete: (id: string) => request(`/assets/${id}`, { method: 'DELETE' }),
@@ -261,11 +297,186 @@ export const api = {
       return request(`/users${query ? `?${query}` : ''}`);
     },
     getRoles: () => request('/users/roles'),
+    getPermissionsMatrix: () => request<PermissionsMatrixResponse>('/users/permissions'),
+    updateRolePermissions: (roleId: string, permissions: Record<string, boolean>) =>
+      request<{ success: boolean; message: string; roleId: string; permissions: SignedPermissionsPayload }>(
+        '/users/permissions',
+        {
+          method: 'PUT',
+          body: JSON.stringify({ roleId, permissions }),
+        }
+      ),
     getById: (id: string) => request(`/users/${id}`),
     create: (data: any) => request('/users', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: string, data: any) => request(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     toggleStatus: (id: string) => request(`/users/${id}/toggle-status`, { method: 'PATCH' }),
     delete: (id: string) => request(`/users/${id}`, { method: 'DELETE' }),
+  },
+  organization: {
+    getStats: () => request<{ success: boolean; stats: any }>('/organization/stats'),
+    lookupMembers: (search?: string) =>
+      request<{ success: boolean; members: any[] }>(`/organization/lookup-members${search ? `?search=${encodeURIComponent(search)}` : ''}`),
+    
+    // Tab 1: Committees
+    getCommittees: (params?: { search?: string; year?: number | string; status?: string; member_id?: string }) => {
+      const query = new URLSearchParams(params as any).toString();
+      return request<{ success: boolean; count: number; committees: any[] }>(`/organization/committees${query ? `?${query}` : ''}`);
+    },
+    createCommittee: (data: any) => request('/organization/committees', { method: 'POST', body: JSON.stringify(data) }),
+    updateCommittee: (id: string, data: any) => request(`/organization/committees/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteCommittee: (id: string) => request(`/organization/committees/${id}`, { method: 'DELETE' }),
+
+    // Tab 2: Core positions & Tenures
+    getPositions: () => request<{ success: boolean; count: number; positions: any[] }>('/organization/positions'),
+    createPosition: (data: any) => request('/organization/positions', { method: 'POST', body: JSON.stringify(data) }),
+    updatePosition: (id: string, data: any) => request(`/organization/positions/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deletePosition: (id: string) => request(`/organization/positions/${id}`, { method: 'DELETE' }),
+    getPositionTenures: (positionId: string) =>
+      request<{ success: boolean; count: number; tenures: any[] }>(`/organization/positions/${positionId}/tenures`),
+    addTenure: (positionId: string, data: any) =>
+      request(`/organization/positions/${positionId}/tenures`, { method: 'POST', body: JSON.stringify(data) }),
+    updateTenure: (tenureId: string, data: any) =>
+      request(`/organization/tenures/${tenureId}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteTenure: (tenureId: string) =>
+      request(`/organization/tenures/${tenureId}`, { method: 'DELETE' }),
+
+    // Tab 3: Full-time Staff
+    getStaff: (params?: { search?: string; department_id?: string; status?: string }) => {
+      const query = new URLSearchParams(params as any).toString();
+      return request<{ success: boolean; count: number; staff: any[] }>(`/organization/staff${query ? `?${query}` : ''}`);
+    },
+    createStaff: (data: any) => request('/organization/staff', { method: 'POST', body: JSON.stringify(data) }),
+    updateStaff: (id: string, data: any) => request(`/organization/staff/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteStaff: (id: string) => request(`/organization/staff/${id}`, { method: 'DELETE' }),
+
+    // Tab 4: Divisions & Members
+    getDivisions: () => request<{ success: boolean; count: number; divisions: any[] }>('/organization/divisions'),
+    createDivision: (data: any) => request('/organization/divisions', { method: 'POST', body: JSON.stringify(data) }),
+    updateDivision: (id: string, data: any) => request(`/organization/divisions/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteDivision: (id: string) => request(`/organization/divisions/${id}`, { method: 'DELETE' }),
+    getDivisionMembers: (divisionId: string, status?: string) =>
+      request<{ success: boolean; count: number; members: any[] }>(`/organization/divisions/${divisionId}/members${status ? `?status=${status}` : ''}`),
+    addDivisionMember: (divisionId: string, data: any) =>
+      request(`/organization/divisions/${divisionId}/members`, { method: 'POST', body: JSON.stringify(data) }),
+    updateDivisionMember: (assignmentId: string, data: any) =>
+      request(`/organization/division-members/${assignmentId}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteDivisionMember: (assignmentId: string) =>
+      request(`/organization/division-members/${assignmentId}`, { method: 'DELETE' }),
+  },
+  notifications: {
+    getAll: () =>
+      request<{
+        success: boolean;
+        totalCount: number;
+        counts: { total: number; programs: number; registrations: number; loans: number };
+        notifications: Array<{
+          id: string;
+          rawId: string;
+          type: 'PROGRAM' | 'REGISTRATION' | 'ASSET_LOAN';
+          title: string;
+          category?: string;
+          description: string;
+          date?: string;
+          daysLeft?: number;
+          badgeText: string;
+          badgeType: 'urgent' | 'warning' | 'info';
+          targetUrl: string;
+          createdAt: string;
+        }>;
+        groups: {
+          programs: any[];
+          registrations: any[];
+          loans: any[];
+        };
+      }>('/notifications'),
+  },
+  secretariat: {
+    getStats: () => request<{
+      success: boolean;
+      data: {
+        outgoing: { total: number; thisYear: number; drafts: number };
+        incoming: { total: number; thisYear: number; pendingDisposition: number };
+      };
+    }>('/secretariat/stats'),
+    getNumberingConfig: () => request<{
+      success: boolean;
+      config: {
+        pattern: string;
+        prefix: string;
+        padding: number;
+        counter: number;
+        resetPeriod: string;
+      };
+      preview: string;
+      categories: Array<{ id: string; code: string; label: string; sort_order: number }>;
+    }>('/secretariat/numbering-config'),
+    updateNumberingConfig: (data: {
+      pattern?: string;
+      prefix?: string;
+      padding?: number;
+      counter?: number;
+      resetPeriod?: string;
+    }) => request<{ success: boolean; message: string; config: any; preview: string }>('/secretariat/numbering-config', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+    getNextNumber: (category?: string, date?: string) => {
+      const q = new URLSearchParams();
+      if (category) q.set('category', category);
+      if (date) q.set('date', date);
+      return request<{
+        success: boolean;
+        nextNumber: string;
+        counter: number;
+        pattern: string;
+        prefix: string;
+      }>(`/secretariat/outgoing/next-number${q.toString() ? `?${q.toString()}` : ''}`);
+    },
+    // Surat Keluar
+    getOutgoing: (params?: { search?: string; category?: string; status?: string; page?: number; limit?: number }) => {
+      const q = new URLSearchParams();
+      if (params?.search) q.set('search', params.search);
+      if (params?.category) q.set('category', params.category);
+      if (params?.status) q.set('status', params.status);
+      if (params?.page) q.set('page', String(params.page));
+      if (params?.limit) q.set('limit', String(params.limit));
+      return request<{ success: boolean; letters: any[]; meta: any }>(`/secretariat/outgoing?${q.toString()}`);
+    },
+    getOutgoingById: (id: string) => request<{ success: boolean; letter: any }>(`/secretariat/outgoing/${id}`),
+    createOutgoing: (data: any) => request<{ success: boolean; message: string; letter: any }>('/secretariat/outgoing', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    updateOutgoing: (id: string, data: any) => request<{ success: boolean; message: string; letter: any }>(`/secretariat/outgoing/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+    deleteOutgoing: (id: string) => request<{ success: boolean; message: string }>(`/secretariat/outgoing/${id}`, {
+      method: 'DELETE',
+    }),
+
+    // Surat Masuk
+    getIncoming: (params?: { search?: string; status?: string; disposition_to?: string; page?: number; limit?: number }) => {
+      const q = new URLSearchParams();
+      if (params?.search) q.set('search', params.search);
+      if (params?.status) q.set('status', params.status);
+      if (params?.disposition_to) q.set('disposition_to', params.disposition_to);
+      if (params?.page) q.set('page', String(params.page));
+      if (params?.limit) q.set('limit', String(params.limit));
+      return request<{ success: boolean; letters: any[]; meta: any }>(`/secretariat/incoming?${q.toString()}`);
+    },
+    getIncomingById: (id: string) => request<{ success: boolean; letter: any }>(`/secretariat/incoming/${id}`),
+    createIncoming: (data: any) => request<{ success: boolean; message: string; letter: any }>('/secretariat/incoming', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    updateIncoming: (id: string, data: any) => request<{ success: boolean; message: string; letter: any }>(`/secretariat/incoming/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+    deleteIncoming: (id: string) => request<{ success: boolean; message: string }>(`/secretariat/incoming/${id}`, {
+      method: 'DELETE',
+    }),
   },
 };
 

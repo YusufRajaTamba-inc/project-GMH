@@ -27,6 +27,9 @@ import {
   CheckCheck,
   Eye,
   Info,
+  ShieldCheck,
+  Calendar,
+  RotateCcw,
 } from 'lucide-react';
 import { api } from '../../services/api';
 import NominalInput from '../../components/NominalInput';
@@ -52,6 +55,7 @@ export interface Asset {
   rental_price?: string | number;
   borrow_status?: string;
   notes?: string;
+  loans?: AssetLoan[];
 }
 
 export interface AssetLoan {
@@ -66,6 +70,10 @@ export interface AssetLoan {
   borrower_phone?: string;
   borrower_email?: string;
   borrower_institution?: string;
+  borrower_member_id?: string;
+  member_full_name?: string;
+  member_phone?: string;
+  member_number?: string;
   loan_purpose: string;
   loan_type: 'PINJAM' | 'SEWA';
   rental_fee: string | number;
@@ -79,6 +87,9 @@ export interface AssetLoan {
   request_code?: string;
   approval_notes?: string;
   rejection_reason?: string;
+  approved_by?: string;
+  approver_name?: string;
+  approver_email?: string;
   approved_at?: string;
   created_at: string;
 }
@@ -170,7 +181,21 @@ const AssetsPage: React.FC = () => {
   // Online Requests & Approvals State
   const [filterRequestStatus, setFilterRequestStatus] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
   const [searchRequest, setSearchRequest] = useState('');
+  const [filterRequestDateFrom, setFilterRequestDateFrom] = useState('');
+  const [filterRequestDateTo, setFilterRequestDateTo] = useState('');
   const [approvingLoan, setApprovingLoan] = useState<AssetLoan | null>(null);
+
+  // Active Loans Filters State
+  const [searchActiveLoan, setSearchActiveLoan] = useState('');
+  const [filterActiveType, setFilterActiveType] = useState<'ALL' | 'PINJAM' | 'SEWA'>('ALL');
+  const [filterActiveDateFrom, setFilterActiveDateFrom] = useState('');
+  const [filterActiveDateTo, setFilterActiveDateTo] = useState('');
+
+  // History Loans Filters State
+  const [searchHistoryLoan, setSearchHistoryLoan] = useState('');
+  const [filterHistoryCondition, setFilterHistoryCondition] = useState<'ALL' | 'GOOD' | 'FAIR' | 'DAMAGED'>('ALL');
+  const [filterHistoryDateFrom, setFilterHistoryDateFrom] = useState('');
+  const [filterHistoryDateTo, setFilterHistoryDateTo] = useState('');
   const [approvalNotes, setApprovalNotes] = useState('');
   const [isSubmittingApproval, setIsSubmittingApproval] = useState(false);
   const [rejectingLoan, setRejectingLoan] = useState<AssetLoan | null>(null);
@@ -178,7 +203,12 @@ const AssetsPage: React.FC = () => {
   const [isSubmittingRejection, setIsSubmittingRejection] = useState(false);
   const [isSubmittingHandover, setIsSubmittingHandover] = useState(false);
 
-  // Dynamic asset category options derived from system_lookups
+  // Relational Database State: Members & Detail Asset Loading
+  const [membersList, setMembersList] = useState<Array<{ id: string; member_number: string; full_name: string; phone_number?: string }>>([]);
+  const [selectedMemberId, setSelectedMemberId] = useState<string>('');
+  const [isLoadingDetail, setIsLoadingDetail] = useState<boolean>(false);
+
+  // 1. Dynamic asset category options derived from PostgreSQL system_lookups
   const categoryOptions = useMemo(() => {
     const fromRaw = rawLookups['ASSET_CATEGORY'] || rawLookups['assetCategories'] || [];
     if (fromRaw.length > 0) {
@@ -195,12 +225,48 @@ const AssetsPage: React.FC = () => {
     }));
   }, [rawLookups, lookups.assetCategories]);
 
-  // Set default category
+  // 2. Dynamic asset location options derived from PostgreSQL system_lookups
+  const locationOptions = useMemo(() => {
+    const fromRaw = rawLookups['ASSET_LOCATION'] || rawLookups['assetLocations'] || [];
+    if (fromRaw.length > 0) {
+      return fromRaw.map((item: any) => ({
+        id: item.id || item.code,
+        label: item.label || item.code,
+        code: item.code,
+      }));
+    }
+    return (lookups.assetLocations || []).map((label, idx) => ({
+      id: `LOC-${idx}`,
+      label,
+      code: `LOC_${idx}`,
+    }));
+  }, [rawLookups, lookups.assetLocations]);
+
+  // 3. Dynamic physical condition options derived from PostgreSQL system_lookups
+  const conditionOptions = useMemo(() => {
+    const fromRaw = rawLookups['PHYSICAL_CONDITION'] || rawLookups['ASSET_CONDITION'] || [];
+    if (fromRaw.length > 0) {
+      return fromRaw.map((item: any) => ({
+        code: item.code as 'GOOD' | 'FAIR' | 'DAMAGED',
+        label: item.label || item.code,
+      }));
+    }
+    return [
+      { code: 'GOOD' as const, label: 'Baik & Berfungsi Penuh' },
+      { code: 'FAIR' as const, label: 'Cukup / Perlu Perawatan Ringan' },
+      { code: 'DAMAGED' as const, label: 'Rusak / Dalam Perbaikan' },
+    ];
+  }, [rawLookups]);
+
+  // Set default category & location
   useEffect(() => {
     if (categoryOptions.length > 0 && !addCategoryId) {
       setAddCategoryId(categoryOptions[0].id);
     }
-  }, [categoryOptions, addCategoryId]);
+    if (locationOptions.length > 0 && (!addRoom || addRoom === 'Aula Utama Lt. 1')) {
+      setAddRoom(locationOptions[0].label);
+    }
+  }, [categoryOptions, locationOptions, addCategoryId, addRoom]);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -224,7 +290,7 @@ const AssetsPage: React.FC = () => {
     }
   };
 
-  // Load Loans from API
+  // Load Loans from API (relational JOIN with assets, system_lookups, members, users)
   const loadLoans = async () => {
     setIsLoadingLoans(true);
     try {
@@ -241,8 +307,22 @@ const AssetsPage: React.FC = () => {
     }
   };
 
+  // Load Members from API for relational borrower linking
+  const loadMembers = async () => {
+    try {
+      const res = await api.members.getAll({ limit: 'all' });
+      if (res && res.members) {
+        setMembersList(res.members);
+      } else if (res && res.data) {
+        setMembersList(res.data);
+      }
+    } catch (err: any) {
+      console.warn('Members fetch fallback:', err);
+    }
+  };
+
   const loadAll = async () => {
-    await Promise.all([loadAssets(), loadLoans()]);
+    await Promise.all([loadAssets(), loadLoans(), loadMembers()]);
   };
 
   useEffect(() => {
@@ -276,11 +356,9 @@ const AssetsPage: React.FC = () => {
     paginatedItems: paginatedAssets,
   } = usePagination(filteredAssets, { initialPageSize: 10 });
 
-  // Separate active and returned loans
-  const activeLoans = useMemo(() => loans.filter((l) => l.status === 'ACTIVE'), [loans]);
-  const historyLoans = useMemo(() => loans.filter((l) => l.status === 'RETURNED'), [loans]);
-
-  // Online Requests
+  // --------------------------------------------------------------------------
+  // TAB: Online Requests Filtering & Pagination
+  // --------------------------------------------------------------------------
   const pendingRequests = useMemo(() => loans.filter((l) => l.status === 'PENDING'), [loans]);
   const allRequests = useMemo(
     () => loans.filter((l) => Boolean(l.request_code) || l.status === 'PENDING' || l.status === 'APPROVED' || l.status === 'REJECTED'),
@@ -293,15 +371,99 @@ const AssetsPage: React.FC = () => {
       if (searchRequest.trim()) {
         const q = searchRequest.toLowerCase();
         const matchCode = (r.request_code || '').toLowerCase().includes(q);
-        const matchName = (r.borrower_name || '').toLowerCase().includes(q);
-        const matchPhone = (r.borrower_phone || '').toLowerCase().includes(q);
+        const matchAssetCode = (r.asset_code || '').toLowerCase().includes(q);
+        const matchAssetName = (r.asset_name || '').toLowerCase().includes(q);
+        const matchBorrower = (r.borrower_name || '').toLowerCase().includes(q) || (r.member_full_name || '').toLowerCase().includes(q);
+        const matchPhone = (r.borrower_phone || '').toLowerCase().includes(q) || (r.member_phone || '').toLowerCase().includes(q);
         const matchInst = (r.borrower_institution || '').toLowerCase().includes(q);
-        const matchAsset = (r.asset_name || '').toLowerCase().includes(q);
-        if (!matchCode && !matchName && !matchPhone && !matchInst && !matchAsset) return false;
+        const matchPurpose = (r.loan_purpose || '').toLowerCase().includes(q);
+        if (!matchCode && !matchAssetCode && !matchAssetName && !matchBorrower && !matchPhone && !matchInst && !matchPurpose) return false;
       }
+      const loanDate = (r.borrowed_at || '').slice(0, 10);
+      if (filterRequestDateFrom && loanDate < filterRequestDateFrom) return false;
+      if (filterRequestDateTo && loanDate > filterRequestDateTo) return false;
       return true;
     });
-  }, [allRequests, filterRequestStatus, searchRequest]);
+  }, [allRequests, filterRequestStatus, searchRequest, filterRequestDateFrom, filterRequestDateTo]);
+
+  const {
+    currentPage: pageRequests,
+    setCurrentPage: setPageRequests,
+    pageSize: pageSizeRequests,
+    setPageSize: setPageSizeRequests,
+    totalPages: totalPagesRequests,
+    paginatedItems: paginatedRequests,
+  } = usePagination(filteredRequests, { initialPageSize: 10 });
+
+  // --------------------------------------------------------------------------
+  // TAB: Active Loans Filtering & Pagination
+  // --------------------------------------------------------------------------
+  const activeLoans = useMemo(() => loans.filter((l) => l.status === 'ACTIVE'), [loans]);
+
+  const filteredActiveLoans = useMemo(() => {
+    return activeLoans.filter((l) => {
+      if (filterActiveType !== 'ALL' && l.loan_type !== filterActiveType) return false;
+      if (searchActiveLoan.trim()) {
+        const q = searchActiveLoan.toLowerCase();
+        const matchAssetCode = (l.asset_code || '').toLowerCase().includes(q);
+        const matchAssetName = (l.asset_name || '').toLowerCase().includes(q);
+        const matchBorrower = (l.borrower_name || '').toLowerCase().includes(q) || (l.member_full_name || '').toLowerCase().includes(q);
+        const matchPhone = (l.borrower_phone || '').toLowerCase().includes(q) || (l.member_phone || '').toLowerCase().includes(q);
+        const matchPurpose = (l.loan_purpose || '').toLowerCase().includes(q);
+        const matchReq = (l.request_code || '').toLowerCase().includes(q);
+        const matchRoom = (l.location_room || '').toLowerCase().includes(q);
+        if (!matchAssetCode && !matchAssetName && !matchBorrower && !matchPhone && !matchPurpose && !matchReq && !matchRoom) return false;
+      }
+      const loanDate = (l.borrowed_at || '').slice(0, 10);
+      if (filterActiveDateFrom && loanDate < filterActiveDateFrom) return false;
+      if (filterActiveDateTo && loanDate > filterActiveDateTo) return false;
+      return true;
+    });
+  }, [activeLoans, filterActiveType, searchActiveLoan, filterActiveDateFrom, filterActiveDateTo]);
+
+  const {
+    currentPage: pageActiveLoans,
+    setCurrentPage: setPageActiveLoans,
+    pageSize: pageSizeActiveLoans,
+    setPageSize: setPageSizeActiveLoans,
+    totalPages: totalPagesActiveLoans,
+    paginatedItems: paginatedActiveLoans,
+  } = usePagination(filteredActiveLoans, { initialPageSize: 10 });
+
+  // --------------------------------------------------------------------------
+  // TAB: History Loans Filtering & Pagination
+  // --------------------------------------------------------------------------
+  const historyLoans = useMemo(() => loans.filter((l) => l.status === 'RETURNED'), [loans]);
+
+  const filteredHistoryLoans = useMemo(() => {
+    return historyLoans.filter((l) => {
+      if (filterHistoryCondition !== 'ALL' && (l.condition_on_return || 'GOOD') !== filterHistoryCondition) return false;
+      if (searchHistoryLoan.trim()) {
+        const q = searchHistoryLoan.toLowerCase();
+        const matchAssetCode = (l.asset_code || '').toLowerCase().includes(q);
+        const matchAssetName = (l.asset_name || '').toLowerCase().includes(q);
+        const matchBorrower = (l.borrower_name || '').toLowerCase().includes(q) || (l.member_full_name || '').toLowerCase().includes(q);
+        const matchPhone = (l.borrower_phone || '').toLowerCase().includes(q) || (l.member_phone || '').toLowerCase().includes(q);
+        const matchPurpose = (l.loan_purpose || '').toLowerCase().includes(q);
+        const matchNotes = (l.notes || '').toLowerCase().includes(q);
+        const matchReq = (l.request_code || '').toLowerCase().includes(q);
+        if (!matchAssetCode && !matchAssetName && !matchBorrower && !matchPhone && !matchPurpose && !matchNotes && !matchReq) return false;
+      }
+      const loanDate = (l.borrowed_at || '').slice(0, 10);
+      if (filterHistoryDateFrom && loanDate < filterHistoryDateFrom) return false;
+      if (filterHistoryDateTo && loanDate > filterHistoryDateTo) return false;
+      return true;
+    });
+  }, [historyLoans, filterHistoryCondition, searchHistoryLoan, filterHistoryDateFrom, filterHistoryDateTo]);
+
+  const {
+    currentPage: pageHistoryLoans,
+    setCurrentPage: setPageHistoryLoans,
+    pageSize: pageSizeHistoryLoans,
+    setPageSize: setPageSizeHistoryLoans,
+    totalPages: totalPagesHistoryLoans,
+    paginatedItems: paginatedHistoryLoans,
+  } = usePagination(filteredHistoryLoans, { initialPageSize: 10 });
 
   // Aggregate stats
   const totalPhysicalUnits = useMemo(() => assets.reduce((sum, a) => sum + (Number(a.quantity) || 1), 0), [assets]);
@@ -309,11 +471,30 @@ const AssetsPage: React.FC = () => {
   const totalInUseUnits = Math.max(0, totalPhysicalUnits - totalAvailableUnits);
   const totalBookValue = useMemo(() => assets.reduce((sum, a) => sum + Number(a.purchase_price || 0), 0), [assets]);
 
-  // History of loans for selected detailAsset
+  // History of loans for selected detailAsset (prioritize direct relational loans from GET /assets/:id)
   const assetLoanHistory = useMemo(() => {
     if (!detailAsset) return [];
+    if (detailAsset.loans && detailAsset.loans.length > 0) {
+      return detailAsset.loans;
+    }
     return loans.filter((l) => l.asset_id === detailAsset.id || l.asset_code === detailAsset.asset_code);
   }, [loans, detailAsset]);
+
+  // Handler to open detail modal and fetch live relational record from PostgreSQL
+  const openDetailModal = async (asset: Asset) => {
+    setDetailAsset(asset);
+    setIsLoadingDetail(true);
+    try {
+      const res = await api.assets.getById(asset.id);
+      if (res && res.asset) {
+        setDetailAsset(res.asset);
+      }
+    } catch (err: any) {
+      console.error('Failed to load asset detail from DB:', err);
+    } finally {
+      setIsLoadingDetail(false);
+    }
+  };
 
   // --------------------------------------------------------------------------
   // Handlers: Add Asset
@@ -426,6 +607,7 @@ const AssetsPage: React.FC = () => {
   const openBorrowModal = (asset: Asset) => {
     setBorrowingAsset(asset);
     setLoanMode('PINJAM');
+    setSelectedMemberId('');
     setBorrowerName('');
     setBorrowerPhone('');
     setLoanPurpose('');
@@ -478,6 +660,7 @@ const AssetsPage: React.FC = () => {
         assetId: borrowingAsset.id,
         borrowerName: borrowerName.trim(),
         borrowerPhone: borrowerPhone.trim() || null,
+        borrowerMemberId: selectedMemberId || null,
         loanPurpose: loanPurpose.trim(),
         loanType: loanMode,
         rentalFee: loanMode === 'SEWA' ? rentalFee : 0,
@@ -929,7 +1112,7 @@ const AssetsPage: React.FC = () => {
                       <tr
                         key={a.id}
                         style={{ cursor: 'pointer', transition: 'background-color 0.15s ease' }}
-                        onClick={() => setDetailAsset(a)}
+                        onClick={() => openDetailModal(a)}
                         title="Klik untuk melihat detail spesifikasi & riwayat peminjaman aset ini"
                       >
                         <td style={{ whiteSpace: 'nowrap' }}>
@@ -1136,7 +1319,7 @@ const AssetsPage: React.FC = () => {
                                 gap: 4,
                               }}
                               title="Lihat rincian lengkap & riwayat peminjaman aset"
-                              onClick={() => setDetailAsset(a)}
+                              onClick={() => openDetailModal(a)}
                             >
                               <Eye size={12} color="var(--gmh-brand)" /> Detail
                             </button>
@@ -1223,11 +1406,11 @@ const AssetsPage: React.FC = () => {
 
             {/* Filter and Search */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <div style={{ position: 'relative', width: 220 }}>
+              <div style={{ position: 'relative', width: 230 }}>
                 <Search size={14} style={{ position: 'absolute', left: 10, top: 10, color: 'var(--gmh-text-muted)' }} />
                 <input
                   type="text"
-                  placeholder="Cari no. tiket, nama, hp..."
+                  placeholder="Cari kode, nama aset, peminjam..."
                   value={searchRequest}
                   onChange={(e) => setSearchRequest(e.target.value)}
                   className="form-input"
@@ -1239,13 +1422,53 @@ const AssetsPage: React.FC = () => {
                 className="form-select"
                 value={filterRequestStatus}
                 onChange={(e) => setFilterRequestStatus(e.target.value as any)}
-                style={{ fontSize: 12.5, height: 34, width: 180 }}
+                style={{ fontSize: 12.5, height: 34, width: 175 }}
               >
                 <option value="ALL">Semua Status Permohonan</option>
                 <option value="PENDING">Menunggu Review ({pendingRequests.length})</option>
                 <option value="APPROVED">Disetujui (Siap Ambil)</option>
                 <option value="REJECTED">Ditolak</option>
               </select>
+
+              {/* Filter Tanggal Dipinjam */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8fafc', padding: '3px 8px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                <Calendar size={13} color="var(--gmh-text-muted)" />
+                <span style={{ fontSize: 11.5, color: '#64748b', fontWeight: 500 }}>Pinjam:</span>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={filterRequestDateFrom}
+                  onChange={(e) => setFilterRequestDateFrom(e.target.value)}
+                  title="Tanggal Pinjam Dari"
+                  style={{ fontSize: 11.5, height: 28, padding: '2px 6px', width: 125 }}
+                />
+                <span style={{ fontSize: 11.5, color: '#94a3b8' }}>-</span>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={filterRequestDateTo}
+                  onChange={(e) => setFilterRequestDateTo(e.target.value)}
+                  title="Tanggal Pinjam Sampai"
+                  style={{ fontSize: 11.5, height: 28, padding: '2px 6px', width: 125 }}
+                />
+              </div>
+
+              {(searchRequest || filterRequestStatus !== 'ALL' || filterRequestDateFrom || filterRequestDateTo) && (
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  style={{ height: 34, fontSize: 11.5, padding: '4px 9px', display: 'flex', alignItems: 'center', gap: 4 }}
+                  onClick={() => {
+                    setSearchRequest('');
+                    setFilterRequestStatus('ALL');
+                    setFilterRequestDateFrom('');
+                    setFilterRequestDateTo('');
+                  }}
+                  title="Reset Filter"
+                >
+                  <RotateCcw size={12} /> Reset
+                </button>
+              )}
             </div>
           </div>
 
@@ -1276,7 +1499,7 @@ const AssetsPage: React.FC = () => {
                     </td>
                   </tr>
                 ) : (
-                  filteredRequests.map((req) => {
+                  paginatedRequests.map((req) => {
                     const isRent = req.loan_type === 'SEWA';
                     const isPending = req.status === 'PENDING';
                     const isApproved = req.status === 'APPROVED';
@@ -1557,6 +1780,16 @@ const AssetsPage: React.FC = () => {
               </tbody>
             </table>
           </div>
+
+          <Pagination
+            currentPage={pageRequests}
+            totalPages={totalPagesRequests}
+            totalItems={filteredRequests.length}
+            pageSize={pageSizeRequests}
+            onPageChange={setPageRequests}
+            onPageSizeChange={setPageSizeRequests}
+            itemName="permohonan"
+          />
         </div>
       )}
 
@@ -1565,9 +1798,78 @@ const AssetsPage: React.FC = () => {
       {/* ==================================================================== */}
       {activeTab === 'active_loans' && (
         <div className="card">
-          <div className="card-header">
+          <div
+            className="card-header"
+            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}
+          >
             <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <ArrowRightLeft size={17} color="#ea580c" /> Daftar Sirkulasi Aset Sedang Berjalan (Dipinjam / Disewa)
+            </div>
+
+            {/* Search and Filters */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ position: 'relative', width: 230 }}>
+                <Search size={14} style={{ position: 'absolute', left: 10, top: 10, color: 'var(--gmh-text-muted)' }} />
+                <input
+                  type="text"
+                  placeholder="Cari kode, nama aset, peminjam..."
+                  value={searchActiveLoan}
+                  onChange={(e) => setSearchActiveLoan(e.target.value)}
+                  className="form-input"
+                  style={{ paddingLeft: 32, fontSize: 12.5, height: 34 }}
+                />
+              </div>
+
+              <select
+                className="form-select"
+                value={filterActiveType}
+                onChange={(e) => setFilterActiveType(e.target.value as any)}
+                style={{ fontSize: 12.5, height: 34, width: 160 }}
+              >
+                <option value="ALL">Semua Transaksi</option>
+                <option value="PINJAM">Pinjam (Bebas Biaya)</option>
+                <option value="SEWA">Sewa (Berbayar)</option>
+              </select>
+
+              {/* Filter Tanggal Dipinjam */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8fafc', padding: '3px 8px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                <Calendar size={13} color="var(--gmh-text-muted)" />
+                <span style={{ fontSize: 11.5, color: '#64748b', fontWeight: 500 }}>Pinjam:</span>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={filterActiveDateFrom}
+                  onChange={(e) => setFilterActiveDateFrom(e.target.value)}
+                  title="Tanggal Pinjam Dari"
+                  style={{ fontSize: 11.5, height: 28, padding: '2px 6px', width: 125 }}
+                />
+                <span style={{ fontSize: 11.5, color: '#94a3b8' }}>-</span>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={filterActiveDateTo}
+                  onChange={(e) => setFilterActiveDateTo(e.target.value)}
+                  title="Tanggal Pinjam Sampai"
+                  style={{ fontSize: 11.5, height: 28, padding: '2px 6px', width: 125 }}
+                />
+              </div>
+
+              {(searchActiveLoan || filterActiveType !== 'ALL' || filterActiveDateFrom || filterActiveDateTo) && (
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  style={{ height: 34, fontSize: 11.5, padding: '4px 9px', display: 'flex', alignItems: 'center', gap: 4 }}
+                  onClick={() => {
+                    setSearchActiveLoan('');
+                    setFilterActiveType('ALL');
+                    setFilterActiveDateFrom('');
+                    setFilterActiveDateTo('');
+                  }}
+                  title="Reset Filter"
+                >
+                  <RotateCcw size={12} /> Reset
+                </button>
+              )}
             </div>
           </div>
 
@@ -1593,14 +1895,16 @@ const AssetsPage: React.FC = () => {
                       Memuat sirkulasi peminjaman aset...
                     </td>
                   </tr>
-                ) : activeLoans.length === 0 ? (
+                ) : filteredActiveLoans.length === 0 ? (
                   <tr>
                     <td colSpan={9} style={{ textAlign: 'center', padding: 36, color: 'var(--gmh-text-muted)' }}>
-                      Saat ini tidak ada aset atau fasilitas yang sedang dipinjam atau disewa. Seluruh unit tersedia di gudang!
+                      {activeLoans.length === 0
+                        ? 'Saat ini tidak ada aset atau fasilitas yang sedang dipinjam atau disewa. Seluruh unit tersedia di gudang!'
+                        : 'Tidak ada peminjaman aktif yang sesuai dengan kriteria pencarian / filter tanggal.'}
                     </td>
                   </tr>
                 ) : (
-                  activeLoans.map((l) => {
+                  paginatedActiveLoans.map((l) => {
                     const isRent = l.loan_type === 'SEWA';
                     const dueDate = new Date(l.expected_return_at);
                     const today = new Date();
@@ -1660,10 +1964,33 @@ const AssetsPage: React.FC = () => {
                           )}
                         </td>
                         <td>
-                          <div style={{ fontWeight: 600, fontSize: 13, color: '#0f172a' }}>{l.borrower_name}</div>
-                          {l.borrower_phone && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: 600, fontSize: 13, color: '#0f172a' }}>{l.borrower_name}</span>
+                            {l.member_number && (
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  padding: '1px 6px',
+                                  borderRadius: 4,
+                                  background: '#ecfdf5',
+                                  color: '#065f46',
+                                  border: '1px solid #a7f3d0',
+                                }}
+                                title="Relasi Anggota: Terdaftar di Database Members"
+                              >
+                                {l.member_number}
+                              </span>
+                            )}
+                          </div>
+                          {(l.borrower_phone || l.member_phone) && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#0369a1', marginTop: 2 }}>
-                              <Phone size={11} /> {l.borrower_phone}
+                              <Phone size={11} /> {l.borrower_phone || l.member_phone}
+                            </div>
+                          )}
+                          {l.approver_name && (
+                            <div style={{ fontSize: 10, color: '#0369a1', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <ShieldCheck size={11} color="#0284c7" /> Otorisasi: <strong>{l.approver_name}</strong>
                             </div>
                           )}
                         </td>
@@ -1754,6 +2081,16 @@ const AssetsPage: React.FC = () => {
               </tbody>
             </table>
           </div>
+
+          <Pagination
+            currentPage={pageActiveLoans}
+            totalPages={totalPagesActiveLoans}
+            totalItems={filteredActiveLoans.length}
+            pageSize={pageSizeActiveLoans}
+            onPageChange={setPageActiveLoans}
+            onPageSizeChange={setPageSizeActiveLoans}
+            itemName="peminjaman aktif"
+          />
         </div>
       )}
 
@@ -1762,9 +2099,79 @@ const AssetsPage: React.FC = () => {
       {/* ==================================================================== */}
       {activeTab === 'history' && (
         <div className="card">
-          <div className="card-header">
+          <div
+            className="card-header"
+            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}
+          >
             <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Clock size={17} color="var(--gmh-green-dark)" /> Riwayat Pengembalian & Catatan Kondisi Selesai Pinjam/Sewa
+              <Clock size={17} color="var(--gmh-green-dark)" /> Riwayat Pengembalian & Catatan Selesai Pinjam/Sewa
+            </div>
+
+            {/* Search and Filters */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ position: 'relative', width: 230 }}>
+                <Search size={14} style={{ position: 'absolute', left: 10, top: 10, color: 'var(--gmh-text-muted)' }} />
+                <input
+                  type="text"
+                  placeholder="Cari kode, nama aset, peminjam..."
+                  value={searchHistoryLoan}
+                  onChange={(e) => setSearchHistoryLoan(e.target.value)}
+                  className="form-input"
+                  style={{ paddingLeft: 32, fontSize: 12.5, height: 34 }}
+                />
+              </div>
+
+              <select
+                className="form-select"
+                value={filterHistoryCondition}
+                onChange={(e) => setFilterHistoryCondition(e.target.value as any)}
+                style={{ fontSize: 12.5, height: 34, width: 155 }}
+              >
+                <option value="ALL">Semua Kondisi</option>
+                <option value="GOOD">Kondisi Baik</option>
+                <option value="FAIR">Kondisi Cukup</option>
+                <option value="DAMAGED">Kondisi Rusak</option>
+              </select>
+
+              {/* Filter Tanggal Dipinjam */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8fafc', padding: '3px 8px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                <Calendar size={13} color="var(--gmh-text-muted)" />
+                <span style={{ fontSize: 11.5, color: '#64748b', fontWeight: 500 }}>Pinjam:</span>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={filterHistoryDateFrom}
+                  onChange={(e) => setFilterHistoryDateFrom(e.target.value)}
+                  title="Tanggal Pinjam Dari"
+                  style={{ fontSize: 11.5, height: 28, padding: '2px 6px', width: 125 }}
+                />
+                <span style={{ fontSize: 11.5, color: '#94a3b8' }}>-</span>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={filterHistoryDateTo}
+                  onChange={(e) => setFilterHistoryDateTo(e.target.value)}
+                  title="Tanggal Pinjam Sampai"
+                  style={{ fontSize: 11.5, height: 28, padding: '2px 6px', width: 125 }}
+                />
+              </div>
+
+              {(searchHistoryLoan || filterHistoryCondition !== 'ALL' || filterHistoryDateFrom || filterHistoryDateTo) && (
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  style={{ height: 34, fontSize: 11.5, padding: '4px 9px', display: 'flex', alignItems: 'center', gap: 4 }}
+                  onClick={() => {
+                    setSearchHistoryLoan('');
+                    setFilterHistoryCondition('ALL');
+                    setFilterHistoryDateFrom('');
+                    setFilterHistoryDateTo('');
+                  }}
+                  title="Reset Filter"
+                >
+                  <RotateCcw size={12} /> Reset
+                </button>
+              )}
             </div>
           </div>
 
@@ -1790,14 +2197,16 @@ const AssetsPage: React.FC = () => {
                       Memuat riwayat pengembalian aset...
                     </td>
                   </tr>
-                ) : historyLoans.length === 0 ? (
+                ) : filteredHistoryLoans.length === 0 ? (
                   <tr>
                     <td colSpan={9} style={{ textAlign: 'center', padding: 36, color: 'var(--gmh-text-muted)' }}>
-                      Belum ada riwayat pengembalian aset yang tercatat.
+                      {historyLoans.length === 0
+                        ? 'Belum ada riwayat pengembalian aset yang tercatat.'
+                        : 'Tidak ada riwayat pengembalian yang sesuai dengan kriteria pencarian / filter tanggal.'}
                     </td>
                   </tr>
                 ) : (
-                  historyLoans.map((l) => (
+                  paginatedHistoryLoans.map((l) => (
                     <tr key={l.id}>
                       <td>
                         <div style={{ fontWeight: 650, fontSize: 13.5, color: '#0f172a' }}>{l.asset_name}</div>
@@ -1823,9 +2232,32 @@ const AssetsPage: React.FC = () => {
                         </span>
                       </td>
                       <td>
-                        <div style={{ fontWeight: 600, fontSize: 13, color: '#0f172a' }}>{l.borrower_name}</div>
-                        {l.borrower_phone && (
-                          <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>{l.borrower_phone}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 600, fontSize: 13, color: '#0f172a' }}>{l.borrower_name}</span>
+                          {l.member_number && (
+                            <span
+                              style={{
+                                fontSize: 10,
+                                fontWeight: 700,
+                                padding: '1px 6px',
+                                borderRadius: 4,
+                                background: '#ecfdf5',
+                                color: '#065f46',
+                                border: '1px solid #a7f3d0',
+                              }}
+                              title="Relasi Anggota: Terdaftar di Database Members"
+                            >
+                              {l.member_number}
+                            </span>
+                          )}
+                        </div>
+                        {(l.borrower_phone || l.member_phone) && (
+                          <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>{l.borrower_phone || l.member_phone}</div>
+                        )}
+                        {l.approver_name && (
+                          <div style={{ fontSize: 10, color: '#0369a1', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <ShieldCheck size={11} color="#0284c7" /> Otorisasi: <strong>{l.approver_name}</strong>
+                          </div>
                         )}
                       </td>
                       <td style={{ fontSize: 12.5, color: '#0f172a' }}>{l.loan_purpose}</td>
@@ -1888,6 +2320,16 @@ const AssetsPage: React.FC = () => {
               </tbody>
             </table>
           </div>
+
+          <Pagination
+            currentPage={pageHistoryLoans}
+            totalPages={totalPagesHistoryLoans}
+            totalItems={filteredHistoryLoans.length}
+            pageSize={pageSizeHistoryLoans}
+            onPageChange={setPageHistoryLoans}
+            onPageSizeChange={setPageSizeHistoryLoans}
+            itemName="riwayat pengembalian"
+          />
         </div>
       )}
 
@@ -1990,6 +2432,25 @@ const AssetsPage: React.FC = () => {
 
             {/* Modal Body */}
             <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 18 }}>
+              {isLoadingDetail && (
+                <div
+                  style={{
+                    background: '#f0f9ff',
+                    border: '1px solid #bae6fd',
+                    padding: '8px 14px',
+                    borderRadius: 6,
+                    fontSize: 12,
+                    color: '#0369a1',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}
+                >
+                  <RefreshCw size={13} className="spin" />
+                  <span>Menghubungkan & memuat relasi data aset dari PostgreSQL...</span>
+                </div>
+              )}
+
               {/* 4 Metrics Cards Grid */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: 12 }}>
                 {/* Stok Unit */}
@@ -2217,12 +2678,35 @@ const AssetsPage: React.FC = () => {
                                 </div>
                               </td>
                               <td>
-                                <div style={{ fontWeight: 600, color: '#0f172a' }}>{lh.borrower_name}</div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                  <span style={{ fontWeight: 600, color: '#0f172a' }}>{lh.borrower_name}</span>
+                                  {lh.member_number && (
+                                    <span
+                                      style={{
+                                        fontSize: 10,
+                                        fontWeight: 700,
+                                        padding: '1px 6px',
+                                        borderRadius: 4,
+                                        background: '#ecfdf5',
+                                        color: '#065f46',
+                                        border: '1px solid #a7f3d0',
+                                      }}
+                                      title="Relasi Anggota: Terdaftar di Database Members"
+                                    >
+                                      {lh.member_number}
+                                    </span>
+                                  )}
+                                </div>
                                 {lh.borrower_institution && (
                                   <div style={{ fontSize: 11, color: '#475569' }}>{lh.borrower_institution}</div>
                                 )}
-                                {lh.borrower_phone && (
-                                  <div style={{ fontSize: 10.5, color: '#64748b' }}>{lh.borrower_phone}</div>
+                                {(lh.borrower_phone || lh.member_phone) && (
+                                  <div style={{ fontSize: 10.5, color: '#64748b', marginTop: 1 }}>{lh.borrower_phone || lh.member_phone}</div>
+                                )}
+                                {lh.approver_name && (
+                                  <div style={{ fontSize: 10, color: '#0369a1', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <ShieldCheck size={11} color="#0284c7" /> Disetujui: <strong>{lh.approver_name}</strong>
+                                  </div>
                                 )}
                               </td>
                               <td style={{ whiteSpace: 'nowrap' }}>
@@ -2503,9 +2987,11 @@ const AssetsPage: React.FC = () => {
                       value={addCondition}
                       onChange={(e) => setAddCondition(e.target.value as any)}
                     >
-                      <option value="GOOD">Baik (Siap Pakai)</option>
-                      <option value="FAIR">Cukup (Perlu Pemeliharaan Ringan)</option>
-                      <option value="DAMAGED">Rusak (Perlu Perbaikan)</option>
+                      {conditionOptions.map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {c.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -2524,14 +3010,18 @@ const AssetsPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="form-label">Lokasi Penempatan Ruangan</label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: Aula Serbaguna Lt. 2 / Ruang Musik"
+                  <label className="form-label">Lokasi Penempatan Ruangan (Database Lookups)</label>
+                  <select
+                    className="form-select"
                     value={addRoom}
                     onChange={(e) => setAddRoom(e.target.value)}
-                    className="form-input"
-                  />
+                  >
+                    {locationOptions.map((loc) => (
+                      <option key={loc.id} value={loc.label}>
+                        {loc.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div
@@ -2695,9 +3185,11 @@ const AssetsPage: React.FC = () => {
                       value={editCondition}
                       onChange={(e) => setEditCondition(e.target.value as any)}
                     >
-                      <option value="GOOD">Baik (Bisa Digunakan)</option>
-                      <option value="FAIR">Cukup (Perlu Pemeliharaan Ringan)</option>
-                      <option value="DAMAGED">Rusak (Perlu Perbaikan / Servis)</option>
+                      {conditionOptions.map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {c.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -2715,13 +3207,18 @@ const AssetsPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="form-label">Lokasi Penempatan Ruangan</label>
-                  <input
-                    type="text"
+                  <label className="form-label">Lokasi Penempatan Ruangan (Database Lookups)</label>
+                  <select
+                    className="form-select"
                     value={editRoom}
                     onChange={(e) => setEditRoom(e.target.value)}
-                    className="form-input"
-                  />
+                  >
+                    {locationOptions.map((loc) => (
+                      <option key={loc.id} value={loc.label}>
+                        {loc.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div
@@ -2863,6 +3360,37 @@ const AssetsPage: React.FC = () => {
                         Untuk pihak eksternal, resepsi, seminar umum, atau acara komersial alumni.
                       </div>
                     </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="form-label" style={{ fontWeight: 600 }}>
+                    Relasi Anggota Yayasan GMH PA KMK (Database Members)
+                  </label>
+                  <select
+                    className="form-select"
+                    value={selectedMemberId}
+                    onChange={(e) => {
+                      const mId = e.target.value;
+                      setSelectedMemberId(mId);
+                      if (mId) {
+                        const m = membersList.find((mem) => mem.id === mId);
+                        if (m) {
+                          setBorrowerName(m.full_name);
+                          if (m.phone_number) setBorrowerPhone(m.phone_number);
+                        }
+                      }
+                    }}
+                  >
+                    <option value="">-- Non-Anggota / Pemohon Eksternal (Input Manual di Bawah) --</option>
+                    {membersList.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.full_name} ({m.member_number || 'Anggota'}) {m.phone_number ? `• ${m.phone_number}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <div style={{ fontSize: 11, color: '#0369a1', marginTop: 3 }}>
+                    ✓ Memilih anggota akan langsung mengikat relasi database <code>borrower_member_id</code> ke tabel anggota.
                   </div>
                 </div>
 

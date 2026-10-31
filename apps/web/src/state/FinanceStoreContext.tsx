@@ -483,12 +483,10 @@ export const FinanceStoreProvider: React.FC<{ children: React.ReactNode }> = ({
           };
         });
 
-        // Merge: keep rich mock items if not present in backend
-        setTransactions((prev) => {
-          const apiCodes = new Set(mappedTrx.map((m) => m.code));
-          const nonApi = prev.filter((p) => !apiCodes.has(p.code));
-          return [...mappedTrx, ...nonApi];
-        });
+        // Use live database transactions from PostgreSQL backend
+        if (mappedTrx.length > 0) {
+          setTransactions(mappedTrx);
+        }
       }
     } catch (err) {
       console.warn('API finance refresh fallback to cached store:', err);

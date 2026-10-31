@@ -836,7 +836,7 @@ const MembersPage: React.FC = () => {
           {/* Export Dropdown / Buttons */}
           <div style={{ display: 'flex', gap: 6 }}>
             <button
-              className="btn btn-outline btn-sm"
+              className="btn btn-secondary btn-sm"
               onClick={() => exportToCSV(true)}
               title="Ekspor data yang sedang tampil sesuai filter pencarian"
               style={{ display: 'flex', alignItems: 'center', gap: 6 }}
@@ -844,7 +844,7 @@ const MembersPage: React.FC = () => {
               <Download size={14} /> Export Terfilter ({filtered.length})
             </button>
             <button
-              className="btn btn-outline btn-sm"
+              className="btn btn-secondary btn-sm"
               onClick={() => exportToCSV(false)}
               title="Ekspor seluruh database anggota ke file Excel/CSV"
               style={{ display: 'flex', alignItems: 'center', gap: 6 }}
@@ -856,7 +856,7 @@ const MembersPage: React.FC = () => {
           {isSuperAdminOrAdmin && (
             <>
               <button
-                className="btn btn-outline btn-sm"
+                className="btn btn-secondary btn-sm"
                 id="btn-bulk-import"
                 onClick={() => {
                   setBulkStep('UPLOAD');
@@ -1192,12 +1192,12 @@ const MembersPage: React.FC = () => {
                       <code
                         style={{
                           fontSize: 12,
-                          background: 'var(--gmh-green-pale)',
-                          color: 'var(--gmh-green-dark)',
+                          background: 'var(--gmh-surface-2)',
+                          color: 'var(--gmh-text)',
                           padding: '3px 8px',
                           borderRadius: 4,
-                          fontWeight: 700,
-                          border: '1px solid var(--gmh-green-light)',
+                          fontWeight: 600,
+                          border: '1px solid var(--gmh-border)',
                         }}
                       >
                         {m.nia && m.nia !== '-' ? m.nia : (m.name.toLowerCase().includes('josua') ? 'GMH-2026-00010' : '-')}
@@ -1341,11 +1341,12 @@ const MembersPage: React.FC = () => {
                     <code
                       style={{
                         fontSize: 12,
-                        background: 'var(--gmh-green-pale)',
-                        color: 'var(--gmh-green-dark)',
+                        background: 'var(--gmh-surface-2)',
+                        color: 'var(--gmh-text)',
                         padding: '2px 8px',
                         borderRadius: 4,
-                        fontWeight: 700,
+                        fontWeight: 600,
+                        border: '1px solid var(--gmh-border)',
                       }}
                     >
                       {selectedMember.nia || '-'}

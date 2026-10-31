@@ -5,6 +5,9 @@ import { logAudit } from '../../middleware/audit.interceptor.js';
 
 const router = Router();
 
+// Protect all building routes
+router.use(authenticateJwt);
+
 const DEFAULT_MILESTONES = [
   { id: 1, label: 'Perencanaan & Studi Kelayakan', date: 'Maret 2024', status: 'DONE' as const, pct: 100 },
   { id: 2, label: 'Penggalangan Dana & Komitmen Awal', date: 'Agustus 2024', status: 'DONE' as const, pct: 100 },

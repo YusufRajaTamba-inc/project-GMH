@@ -62,13 +62,6 @@ export async function seedDatabase() {
       roleId: 'KOORDINATOR_DEPARTEMEN',
       phone: '08126000006',
     },
-    {
-      username: 'alumni.yusuf',
-      email: 'yusuf.panjaitan@gmail.com',
-      fullName: 'Yusuf Panjaitan, S.T.',
-      roleId: 'ANGGOTA_ALUMNI',
-      phone: '08126000007',
-    },
   ];
 
   for (const u of usersToSeed) {

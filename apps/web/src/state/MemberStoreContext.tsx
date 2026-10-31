@@ -77,115 +77,12 @@ interface MemberStoreContextValue {
   rejectRegistration: (regId: string, reason?: string) => void;
 }
 
-const INITIAL_MEMBERS: Member[] = [
-  { id: '1', nia: 'GMH-2026-00001', name: 'Yusuf Panjaitan', nik: '1271012304950001', faculty: 'Fakultas Teknik', major: 'Teknik Informatika', entryYear: 2016, city: 'Medan', phone: '081234567890', email: 'yusuf.panjaitan@gmail.com', profession: 'Software Engineer', company: 'Tech Solusindo', ktb: 'KTB Paulus 2016', maritalStatus: 'Menikah', weddingDate: '2023-08-12', status: 'ACTIVE', type: 'ALUMNI' },
-  { id: '2', nia: 'GMH-2026-00002', name: 'Mariana Hutabarat', nik: '1271025510970002', faculty: 'Fakultas MIPA', major: 'Biologi', entryYear: 2018, city: 'Jakarta', phone: '081298765432', email: 'mariana.h@gmail.com', profession: 'Peneliti Lingkungan', company: 'Balai Riset Hayati', ktb: 'KTB Ester 2018', maritalStatus: 'Lajang', status: 'ACTIVE', type: 'ALUMNI' },
-  { id: '3', nia: 'GMH-2026-00003', name: 'Jekson Simanjuntak', nik: '1271031102940003', faculty: 'Fakultas Kedokteran', major: 'Kedokteran Umum', entryYear: 2015, city: 'Surabaya', phone: '081377889900', email: 'dr.jekson@gmail.com', profession: 'Dokter Spesialis', company: 'RS Siloam', ktb: 'KTB Timotius 2015', maritalStatus: 'Menikah', weddingDate: '2022-11-20', status: 'ACTIVE', type: 'ALUMNI' },
-  { id: '4', nia: 'GMH-2026-00004', name: 'Debora Sinaga', nik: '1271044406980004', faculty: 'Fakultas Hukum', major: 'Ilmu Hukum', entryYear: 2019, city: 'Bandung', phone: '081222334455', email: 'debora.law@gmail.com', profession: 'Legal Corporate', company: 'Kantor Advokat Sinaga', ktb: 'KTB Rut 2019', maritalStatus: 'Lajang', status: 'ACTIVE', type: 'ALUMNI' },
-  { id: '5', nia: 'GMH-2026-00005', name: 'Antonius Saragih', nik: '1271050908960005', faculty: 'Fakultas Pertanian', major: 'Agroteknologi', entryYear: 2017, city: 'Medan', phone: '081333445566', email: 'anton.saragih@gmail.com', profession: 'Wirausaha Agribisnis', company: 'CV Tani Makmur Berkat', ktb: 'KTB Barnabas 2017', maritalStatus: 'Menikah', weddingDate: '2024-05-18', status: 'ACTIVE', type: 'ALUMNI' },
-  { id: '6', nia: 'GMH-2026-00006', name: 'Grace Silalahi', nik: '1271066703990006', faculty: 'Fakultas Ekonomi & Bisnis', major: 'Akuntansi', entryYear: 2020, city: 'Medan', phone: '081288990011', email: 'grace.silalahi@gmhpakmk.org', profession: 'Staf Administrasi & Keuangan', company: 'Yayasan Global Mission House', ktb: 'KTB Maria 2020', maritalStatus: 'Lajang', status: 'ACTIVE', type: 'STAF_YAYASAN' },
-  { id: '7', nia: 'GMH-2026-00007', name: 'Ronald Manullang', nik: '1271071501930007', faculty: 'Fakultas Teknik', major: 'Teknik Sipil', entryYear: 2014, city: 'Jakarta', phone: '081311223344', email: 'ronald.m@construction.com', profession: 'Konsultan Struktur', company: 'PT Panca Mitra Karya', ktb: 'KTB Petrus 2014', maritalStatus: 'Menikah', weddingDate: '2021-02-14', status: 'MUTATED', type: 'ALUMNI' },
-];
-
-const INITIAL_REGISTRATIONS: Registration[] = [
-  {
-    id: '1',
-    ticket: 'REG-GMH-202610-0031',
-    name: 'Samuel Ginting',
-    nik: '1271081909990008',
-    gender: 'Laki-laki',
-    faculty: 'Fakultas Teknik',
-    major: 'Teknik Elektro',
-    entryYear: 2020,
-    wa: '081234567890',
-    email: 'samuel.ginting@email.com',
-    city: 'Medan',
-    address: 'Jl. Dr. Mansyur No. 45, Medan',
-    profession: 'Network Engineer',
-    company: 'PT Telekomunikasi',
-    ktb: 'KTB Yohanes 2020',
-    maritalStatus: 'Lajang',
-    submittedAt: '2026-10-29',
-    status: 'PENDING',
-  },
-  {
-    id: '2',
-    ticket: 'REG-GMH-202610-0032',
-    name: 'Tiara Damanik',
-    nik: '1271095512000009',
-    gender: 'Perempuan',
-    faculty: 'Fakultas MIPA',
-    major: 'Matematika',
-    entryYear: 2021,
-    wa: '082233445566',
-    email: 'tiara.damanik@email.com',
-    city: 'Pematang Siantar',
-    address: 'Jl. Sutomo No. 12, Pematang Siantar',
-    profession: 'Guru Matematika',
-    company: 'SMA Swasta Kalam Kudus',
-    ktb: 'KTB Hana 2021',
-    maritalStatus: 'Lajang',
-    submittedAt: '2026-10-28',
-    status: 'PENDING',
-  },
-  {
-    id: '3',
-    ticket: 'REG-GMH-202610-0033',
-    name: 'Bintang Purba',
-    nik: '1271100204980010',
-    gender: 'Laki-laki',
-    faculty: 'Fakultas Hukum',
-    major: 'Ilmu Hukum',
-    entryYear: 2019,
-    wa: '085544332211',
-    email: 'bintang.purba@email.com',
-    city: 'Jakarta',
-    address: 'Jl. Tebet Barat Dalam No. 8, Jakarta Selatan',
-    profession: 'Associate Lawyer',
-    company: 'Purba & Partners Law Office',
-    ktb: 'KTB Daniel 2019',
-    maritalStatus: 'Menikah',
-    weddingDate: '2025-06-21',
-    partnerName: 'dr. Sonya Sibarani',
-    childrenCount: 0,
-    submittedAt: '2026-10-27',
-    status: 'PENDING',
-  },
-  {
-    id: '4',
-    ticket: 'REG-GMH-202610-0028',
-    name: 'Melisa Simbolon',
-    faculty: 'Fakultas Ekonomi & Bisnis',
-    major: 'Manajemen',
-    entryYear: 2018,
-    wa: '081122334455',
-    email: 'melisa@email.com',
-    city: 'Balige',
-    submittedAt: '2026-10-25',
-    status: 'APPROVED',
-  },
-  {
-    id: '5',
-    ticket: 'REG-GMH-202610-0029',
-    name: 'Halomoan Sihotang',
-    faculty: 'Fakultas Pertanian',
-    major: 'Ilmu Tanah',
-    entryYear: 2017,
-    wa: '089988776655',
-    email: 'halo@email.com',
-    city: 'Dolok Sanggul',
-    submittedAt: '2026-10-24',
-    status: 'REJECTED',
-    rejectionReason: 'Format nomor NIK dan stambuk tidak sesuai verifikasi data alumni USU.',
-  },
-];
-
 const MemberStoreContext = createContext<MemberStoreContextValue>({
-  members: INITIAL_MEMBERS,
-  registrations: INITIAL_REGISTRATIONS,
+  members: [],
+  registrations: [],
   isLoading: false,
   refreshFromApi: async () => {},
-  addMember: () => INITIAL_MEMBERS[0],
+  addMember: () => ({} as Member),
   addBulkMembers: () => 0,
   updateMember: () => {},
   deleteMember: () => {},
@@ -194,46 +91,11 @@ const MemberStoreContext = createContext<MemberStoreContextValue>({
   rejectRegistration: () => {},
 });
 
-const STORAGE_KEY = 'gmh_member_store_v1';
+const STORAGE_KEY = 'gmh_member_store_v2';
 
 export const MemberStoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [members, setMembers] = useState<Member[]>(() => {
-    try {
-      const saved = localStorage.getItem(`${STORAGE_KEY}_members`);
-      if (saved) {
-        const parsed: Member[] = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // Auto-heal any member with missing / dash / undefined NIA
-          return parsed.map((m, idx) => {
-            if (!m.nia || m.nia === '-' || m.nia === 'undefined' || m.nia === null) {
-              if (m.name && m.name.toLowerCase().includes('josua')) {
-                return { ...m, nia: 'GMH-2026-00010' };
-              }
-              const matchInit = INITIAL_MEMBERS.find((im) => im.name === m.name);
-              if (matchInit?.nia) return { ...m, nia: matchInit.nia };
-              const year = new Date().getFullYear();
-              const seq = String(idx + 1).padStart(5, '0');
-              return { ...m, nia: `GMH-${year}-${seq}` };
-            }
-            return m;
-          });
-        }
-      }
-      return INITIAL_MEMBERS;
-    } catch {
-      return INITIAL_MEMBERS;
-    }
-  });
-
-  const [registrations, setRegistrations] = useState<Registration[]>(() => {
-    try {
-      const saved = localStorage.getItem(`${STORAGE_KEY}_registrations`);
-      return saved ? JSON.parse(saved) : INITIAL_REGISTRATIONS;
-    } catch {
-      return INITIAL_REGISTRATIONS;
-    }
-  });
-
+  const [members, setMembers] = useState<Member[]>([]);
+  const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   // Sync state to local storage

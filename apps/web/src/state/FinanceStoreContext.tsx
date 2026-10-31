@@ -78,160 +78,12 @@ interface FinanceStoreContextValue {
   };
 }
 
-const INITIAL_TRANSACTIONS: FinancialTransaction[] = [
-  {
-    id: 'trx-op-0',
-    code: 'TX-GMH-202610-000',
-    date: '2026-10-01',
-    desc: 'Saldo Awal & Pencairan Dana Kas Operasional Kantor Yayasan Bulan Oktober 2026',
-    category: 'Drop Kas Operasional',
-    party: 'Bendahara Umum Yayasan',
-    amount: 15000000,
-    type: 'CREDIT',
-    account: 'KAS_OPERASIONAL',
-    source: 'OPERASIONAL',
-    status: 'Approved',
-    notes: 'Alokasi dana kas operasional kantor yayasan',
-    recordedBy: 'Bendahara Yayasan',
-  },
-  {
-    id: 'trx-don-1',
-    code: 'TX-DON-1793151474646',
-    date: '2026-10-27',
-    desc: '[Autoposting Fundraising CRM] Donasi masuk dari Mitra: Rina Purnamasari. Channel: BCA Angelina Meilia Manalu. Notes: Tanpa catatan tambahan',
-    category: 'Donasi Kemitraan',
-    party: 'Rina Purnamasari',
-    amount: 200001,
-    type: 'CREDIT',
-    account: 'KAS_BANK',
-    source: 'DONASI',
-    status: 'Approved',
-    notes: 'Donasi rutin bulanan mitra pelayanan',
-    recordedBy: 'Sistem CRM',
-  },
-  {
-    id: 'trx-don-2',
-    code: 'TX-DON-1793151388106',
-    date: '2026-10-25',
-    desc: '[Autoposting Fundraising CRM] Donasi masuk dari Mitra: Cindy Elisabeth. Channel: BCA Angelina Meilia Manalu. Notes: Tanpa catatan tambahan',
-    category: 'Donasi Kemitraan',
-    party: 'Cindy Elisabeth',
-    amount: 500000,
-    type: 'CREDIT',
-    account: 'KAS_BANK',
-    source: 'DONASI',
-    status: 'Approved',
-    notes: 'Persembahan kasih alumni untuk program kemitraan',
-    recordedBy: 'Sistem CRM',
-  },
-  {
-    id: 'trx-op-1',
-    code: 'TX-GMH-202610-003',
-    date: '2026-10-24',
-    desc: 'Langganan Internet Fiber Optic Kantor Sekretariat GMH (Indihome 100 Mbps)',
-    category: 'Operasional Kantor',
-    party: 'PT Telkom Indonesia',
-    amount: 850000,
-    type: 'DEBIT',
-    account: 'KAS_OPERASIONAL',
-    source: 'OPERASIONAL',
-    status: 'Approved',
-    notes: 'Tagihan internet rutin bulanan sekretariat yayasan',
-    recordedBy: 'Admin Keuangan',
-  },
-  {
-    id: 'trx-op-2',
-    code: 'TX-GMH-202610-002',
-    date: '2026-10-20',
-    desc: 'Pembelian ATK, kertas kop surat yayasan F4, map arsip, dan toner printer kantor',
-    category: 'Operasional Kantor',
-    party: 'Toko ATK Gramedia USU',
-    amount: 1250000,
-    type: 'DEBIT',
-    account: 'KAS_OPERASIONAL',
-    source: 'OPERASIONAL',
-    status: 'Approved',
-    notes: 'Belanja perlengkapan administrasi kantor GMH',
-    recordedBy: 'Staff Admin',
-  },
-  {
-    id: 'trx-bld-1',
-    code: 'TX-GMH-202610-001',
-    date: '2026-10-14',
-    desc: 'Tahap 3 dari 5 komitmen pembangunan Rumah Persekutuan (Kel. Sinurat)',
-    category: 'Penerimaan Janji Iman',
-    party: 'Kel. Sinurat',
-    amount: 35000000,
-    type: 'CREDIT',
-    account: 'KAS_PEMBANGUNAN',
-    source: 'JANJI_IMAN',
-    status: 'Approved',
-    notes: 'Pembayaran angsuran komitmen pembangunan Rumah Persekutuan',
-    recordedBy: 'Bendahara Yayasan',
-  },
-  {
-    id: 'trx-op-3',
-    code: 'TX-GMH-202610-008',
-    date: '2026-10-10',
-    desc: 'Bantuan transportasi kurir & logistik pengiriman buku pembinaan mahasiswa daerah',
-    category: 'Operasional Kantor',
-    party: 'JNE Express Cabang Medan',
-    amount: 450000,
-    type: 'DEBIT',
-    account: 'KAS_OPERASIONAL',
-    source: 'OPERASIONAL',
-    status: 'Approved',
-    notes: 'Ongkos kirim paket bahan pemuridan',
-    recordedBy: 'Staff Admin',
-  },
-  {
-    id: 'trx-bld-jun-1',
-    code: 'KWT-GMH-202606-002',
-    date: '2026-06-15',
-    desc: 'Tahap 2 Komitmen Janji Iman - Pengecoran Struktur Lantai 1 (Kel. Sinurat)',
-    category: 'Penerimaan Komitmen Janji Iman Pembangunan',
-    party: 'Kel. Sinurat',
-    amount: 15000000,
-    type: 'CREDIT',
-    account: 'KAS_PEMBANGUNAN',
-    source: 'JANJI_IMAN',
-    status: 'Approved',
-    notes: 'Tahap 2 Komitmen Janji Iman - Pengecoran Struktur Lantai 1 (Kel. Sinurat)',
-    recordedBy: 'Staff Yayasan',
-  },
-  {
-    id: 'trx-bld-jun-2',
-    code: 'KWT-GMH-202606-011',
-    date: '2026-06-10',
-    desc: 'Angsuran Termin 1 Janji Iman Pembangunan (Jekson Simanjuntak)',
-    category: 'Penerimaan Komitmen Janji Iman Pembangunan',
-    party: 'Jekson Simanjuntak',
-    amount: 5000000,
-    type: 'CREDIT',
-    account: 'KAS_PEMBANGUNAN',
-    source: 'JANJI_IMAN',
-    status: 'Approved',
-    notes: 'Angsuran Termin 1 Janji Iman Pembangunan (Jekson Simanjuntak)',
-    recordedBy: 'Staff Yayasan',
-  },
-];
-
-export const INITIAL_BUDGETS: BudgetCategoryDef[] = [
-  { id: 'bgt-1', category: 'Operasional Kantor', budget: 5000000, notes: 'Belanja perlengkapan ATK, kurir, materai kantor', periodType: 'MONTHLY', period: '2026-10', periodName: 'Oktober 2026', status: 'ACTIVE' },
-  { id: 'bgt-3', category: 'Sewa Fasilitas & Kantor', budget: 4000000, notes: 'Sewa aula kegiatan & ruangan sekretariat', periodType: 'MONTHLY', period: '2026-10', periodName: 'Oktober 2026', status: 'ACTIVE' },
-  { id: 'bgt-4', category: 'Utilitas (Listrik, Air & Internet)', budget: 2000000, notes: 'PLN & Indihome fiber optic', periodType: 'MONTHLY', period: '2026-10', periodName: 'Oktober 2026', status: 'ACTIVE' },
-  { id: 'bgt-5', category: 'Konsumsi Persekutuan & Rapat', budget: 1500000, notes: 'Snack & makan rapat evaluasi pengurus', periodType: 'MONTHLY', period: '2026-10', periodName: 'Oktober 2026', status: 'ACTIVE' },
-  { id: 'bgt-6', category: 'Transport & Operasional Misi', budget: 2500000, notes: 'BBM & biaya akomodasi pelayanan misi', periodType: 'MONTHLY', period: '2026-10', periodName: 'Oktober 2026', status: 'ACTIVE' },
-  { id: 'bgt-7', category: 'Honorarium Pembicara Seminar', budget: 3000000, notes: 'Honorarium narasumber pembinaan alumni', periodType: 'MONTHLY', period: '2026-10', periodName: 'Oktober 2026', status: 'ACTIVE' },
-  { id: 'bgt-8', category: 'Pemeliharaan Gedung & Alat', budget: 2000000, notes: 'Servis printer, pendingin AC, sound system', periodType: 'ANNUAL', period: '2026', periodName: 'Tahun Anggaran 2026', status: 'ACTIVE' },
-];
-
 const FinanceStoreContext = createContext<FinanceStoreContextValue>({
-  transactions: INITIAL_TRANSACTIONS,
-  budgetCategories: INITIAL_BUDGETS,
+  transactions: [],
+  budgetCategories: [],
   isLoading: false,
   refreshFromApi: async () => {},
-  addTransaction: () => INITIAL_TRANSACTIONS[0],
+  addTransaction: () => ({} as FinancialTransaction),
   updateTransaction: () => {},
   deleteTransaction: () => {},
   bulkAddTransactions: () => {},
@@ -247,79 +99,13 @@ const FinanceStoreContext = createContext<FinanceStoreContextValue>({
   getMonthlyStats: () => ({ totalIn: 0, totalOut: 0, net: 0 }),
 });
 
-const STORAGE_KEY = 'gmh_finance_store_v4';
+const STORAGE_KEY = 'gmh_finance_store_v6';
 
 export const FinanceStoreProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [transactions, setTransactions] = useState<FinancialTransaction[]>(() => {
-    try {
-      const saved = localStorage.getItem(`${STORAGE_KEY}_transactions`);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed
-            .filter((item: any) => {
-              const cat = (item.category || item.account_name || '').toLowerCase();
-              const desc = (item.desc || item.notes || '').toLowerCase();
-              const src = (item.source || '').toUpperCase();
-              return src !== 'PAYROLL' && !cat.includes('gaji') && !desc.includes('pencairan gaji');
-            })
-            .map((item: any, idx: number) => ({
-              id: item.id || `trx-${Date.now()}-${idx}`,
-              code: item.code || item.transaction_code || item.transaction_number || `TX-KAS-${String(idx + 1).padStart(3, '0')}`,
-              date: item.date || (item.transaction_date ? item.transaction_date.split('T')[0] : '2026-10-28'),
-              desc: item.desc || item.notes || item.description || item.account_name || 'Transaksi Kas Yayasan',
-              category: item.category || item.account_name || item.category_name || 'Operasional Kantor',
-              party: item.party || 'Pihak Relasi',
-              amount: Number(item.amount) || 0,
-              type: (item.type === 'EXPENSE' || item.type === 'DEBIT') ? 'DEBIT' : 'CREDIT',
-              account: (item.account === 'KAS_PEMBANGUNAN' || item.account === 'KAS_BANK')
-                ? item.account
-                : (item.scope === 'OPERASIONAL' || item.coa_scope === 'OPERASIONAL_KANTOR')
-                ? 'KAS_OPERASIONAL'
-                : (item.account || 'KAS_OPERASIONAL'),
-              source: item.source || 'OPERASIONAL',
-              status: item.status || 'Approved',
-              notes: item.notes || '',
-              recordedBy: item.recordedBy || item.recorded_by_name || item.creator_name || 'Staff Yayasan',
-            }));
-        }
-      }
-      return INITIAL_TRANSACTIONS;
-    } catch {
-      return INITIAL_TRANSACTIONS;
-    }
-  });
-
-  const [budgetCategories, setBudgetCategories] = useState<BudgetCategoryDef[]>(() => {
-    try {
-      const saved = localStorage.getItem(`${STORAGE_KEY}_budgets`);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed
-            .filter((b: any) => {
-              const cat = (b.category || '').toLowerCase();
-              return !cat.includes('gaji') && !cat.includes('payroll');
-            })
-            .map((b: any) => ({
-              id: b.id || `bgt-${Date.now()}`,
-              category: b.category,
-              budget: Number(b.budget) || 0,
-              notes: b.notes,
-              periodType: (b.periodType as BudgetPeriodType) || (b.category?.toLowerCase().includes('gedung') ? 'ANNUAL' : 'MONTHLY'),
-              period: b.period || (b.category?.toLowerCase().includes('gedung') ? '2026' : '2026-10'),
-              periodName: b.periodName || (b.category?.toLowerCase().includes('gedung') ? 'Tahun Anggaran 2026' : 'Oktober 2026'),
-              status: (b.status as BudgetStatus) || 'ACTIVE',
-            }));
-        }
-      }
-      return INITIAL_BUDGETS;
-    } catch {
-      return INITIAL_BUDGETS;
-    }
-  });
+  const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
+  const [budgetCategories, setBudgetCategories] = useState<BudgetCategoryDef[]>([]);
 
   const [isLoading, setIsLoading] = useState(false);
 

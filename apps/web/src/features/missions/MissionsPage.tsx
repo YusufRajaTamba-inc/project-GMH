@@ -100,164 +100,7 @@ export interface MissionActivity {
   committees?: CommitteeItem[];
 }
 
-// Initial missionaries data for staff reference fallback
-const INITIAL_MISSIONARIES_STAFF: MissionaryPerson[] = [
-  { id: '1', name: 'Ev. Benyamin Tobing', member_id: '', pos: 'Pos Pelayanan Simalungun', region: 'Sumatera Utara', since: '2023-01', status: 'ACTIVE', contact: '0812-6011-8899' },
-  { id: '2', name: 'Ev. Ratna Napitupulu', member_id: '', pos: 'Pos Pelayanan Tobasa', region: 'Sumatera Utara', since: '2022-06', status: 'ACTIVE', contact: '0812-9876-5432' },
-  { id: '3', name: 'Ev. Samuel Manalu', member_id: '', pos: 'Pos Pelayanan Nias', region: 'Sumatera Utara', since: '2024-03', status: 'ACTIVE', contact: '0813-7788-9900' },
-  { id: '4', name: 'Ev. Evi Situmorang', member_id: '', pos: 'Pos Pelayanan Karo', region: 'Sumatera Utara', since: '2021-09', status: 'FURLOUGH', contact: '0812-2233-4455' },
-];
-
-const INITIAL_ACTIVITIES: MissionActivity[] = [
-  {
-    id: 'ACT-1793368552666',
-    title: 'Pelayanan Misi & Pekabar Injil Pos Simalungun',
-    theme: 'Membawa Terang Kasih Kristus ke Pelosok Daerah',
-    budget_estimate: 15000000,
-    coordinator: 'Ev. Benyamin Tobing (Kordinator Lapangan)',
-    location: 'Aula Desa & Pos Misi Simalungun',
-    event_date: '2026-10-30',
-    start_time: '09:00',
-    end_time: '16:00',
-    time_preview: 'Jumat, 30 Oktober 2026 (Pkl. 09:00 - 16:00 WIB)',
-    description: 'Pelayanan visitasi keluarga binaan, pembinaan kelompok pemuridan anak dan remaja, serta ibadah syukur di pos pelayanan Simalungun.',
-    media_drive_url: 'https://drive.google.com/drive/folders/gmh-misi-simalungun-2026',
-    document_drive_url: 'https://drive.google.com/drive/folders/gmh-surat-tugas-simalungun',
-    status: 'ON_PROGRESS',
-    cash_balance: 8500000,
-    transactions: [
-      {
-        id: 'trx-1',
-        date: '2026-10-25',
-        type: 'IN',
-        category: 'Subsidi Kas Yayasan',
-        description: 'Pencairan subsidi awal dari Kas Yayasan untuk operasional tim',
-        amount: 5000000,
-      },
-      {
-        id: 'trx-2',
-        date: '2026-10-28',
-        type: 'IN',
-        category: 'Donasi Mandiri Alumni',
-        description: 'Donasi spontan alumni cabang Siantar untuk bahan ajar anak',
-        amount: 4500000,
-      },
-      {
-        id: 'trx-3',
-        date: '2026-10-29',
-        type: 'OUT',
-        category: 'Transportasi & Logistik',
-        description: 'Sewa minibus operasional dan BBM perjalanan Medan - Simalungun',
-        amount: 1000000,
-      },
-    ],
-    rundown: [
-      { id: 'rd-1', time: '09:00 - 10:00', pic: 'Ev. Benyamin Tobing', note: 'Ibadah Pembuka & Doa Bersama Pengurus Pos' },
-      { id: 'rd-2', time: '10:00 - 12:30', pic: 'Tim Pemuridan Mahasiswa', note: 'Kelas KTB & Sekolah Minggu Gembira Adik Binaan' },
-      { id: 'rd-3', time: '12:30 - 13:30', pic: 'Sie Konsumsi Pos', note: 'Makan Siang Persekutuan Bersama Masyarakat' },
-      { id: 'rd-4', time: '13:30 - 16:00', pic: 'Seluruh Tim Pelayan', note: 'Kunjungan Doa ke Rumah Keluarga Binaan & Penutupan' },
-    ],
-    tasks: [
-      { id: 'tsk-1', task: 'Persiapan modul pembinaan dan bingkisan anak', pic: 'Angel (Logistik)', done: true },
-      { id: 'tsk-2', task: 'Konfirmasi kendaraan operasional & driver', pic: 'Yusuf (Transport)', done: true },
-      { id: 'tsk-3', task: 'Koordinasi konsumsi dengan ibu-ibu pos lokal', pic: 'Kordinator Konsumsi', done: false },
-    ],
-    committees: [
-      { id: 'com-1', role: 'Kordinator Lapangan', name: 'Ev. Benyamin Tobing', contact: '0812-6011-8899' },
-      { id: 'com-2', role: 'Sie Acara & Firman', name: 'Alumni PA KMK Medan', contact: 'acara@gmhpakmk.org' },
-      { id: 'com-3', role: 'Sie Logistik & Transport', name: 'Yusuf & Angel', contact: '0813-7722-1100' },
-    ],
-  },
-  {
-    id: 'ACT-1793368552777',
-    title: 'Kunjungan Pos Misi & Pembinaan Adik Binaan Tobasa',
-    theme: 'Tumbuh Berakar dalam Kasih dan Pelayanan Kerajaan Allah',
-    budget_estimate: 12000000,
-    coordinator: 'Ev. Ratna Napitupulu',
-    location: 'Pos Misi Tobasa & Balige',
-    event_date: '2026-11-14',
-    start_time: '08:30',
-    end_time: '15:00',
-    time_preview: 'Sabtu, 14 November 2026 (Pkl. 08:30 - 15:00 WIB)',
-    description: 'Pelatihan guru sekolah minggu pos pedesaan dan pembinaan kepemimpinan adik-adik binaan tingkat SMA/mahasiswa.',
-    media_drive_url: 'https://drive.google.com/drive/folders/gmh-misi-tobasa-2026',
-    document_drive_url: '',
-    status: 'ON_PROGRESS',
-    cash_balance: 6200000,
-    transactions: [
-      {
-        id: 'trx-1',
-        date: '2026-10-26',
-        type: 'IN',
-        category: 'Subsidi Kas Yayasan',
-        description: 'Subsidi termin 1 untuk konsumsi pelatihan',
-        amount: 4000000,
-      },
-      {
-        id: 'trx-2',
-        date: '2026-10-28',
-        type: 'IN',
-        category: 'Persembahan Kasih Alumni',
-        description: 'Dukungan alumni KMK wilayah Toba',
-        amount: 2200000,
-      },
-    ],
-    rundown: [
-      { id: 'rd-1', time: '08:30 - 09:30', pic: 'Ev. Ratna Napitupulu', note: 'Registrasi & Sarapan Bersama' },
-      { id: 'rd-2', time: '09:30 - 12:00', pic: 'Tim Pembina Alumni', note: 'Sesi 1: Karakter Pemimpin Kristiani' },
-      { id: 'rd-3', time: '13:00 - 15:00', pic: 'Tim Doa GMH', note: 'Sesi 2 & Ibadah Peneguhan Adik Binaan' },
-    ],
-    tasks: [
-      { id: 'tsk-1', task: 'Pencetakan materi modul pembinaan 50 buku', pic: 'Tim Media', done: false },
-      { id: 'tsk-2', task: 'Penyusunan sertifikat kehadiran peserta', pic: 'Sekretariat', done: false },
-    ],
-    committees: [
-      { id: 'com-1', role: 'Penanggung Jawab', name: 'Ev. Ratna Napitupulu', contact: '0852-9900-1122' },
-      { id: 'com-2', role: 'Pemateri / Fasilitator', name: 'BPH GMH PA KMK', contact: 'bph@gmhpakmk.org' },
-    ],
-  },
-  {
-    id: 'ACT-1793368552888',
-    title: 'Misi Penginjilan Medis & Bantuan Sosial Nias',
-    theme: 'Kasih yang Nyata bagi Kepulauan Nias',
-    budget_estimate: 28000000,
-    coordinator: 'Ev. Samuel Manalu & Dokter Alumni',
-    location: 'Pos Pelayanan Gunungsitoli & Nias Selatan',
-    event_date: '2026-12-07',
-    start_time: '08:00',
-    end_time: '17:00',
-    time_preview: 'Senin - Rabu, 7-9 Desember 2026 (Pkl. 08:00 - 17:00 WIB)',
-    description: 'Pengobatan gratis, penyuluhan kesehatan, pembagian sembako adik binaan, dan kebaktian kebangunan rohani keluarga misi.',
-    media_drive_url: 'https://drive.google.com/drive/folders/gmh-misi-nias-2026',
-    document_drive_url: 'https://drive.google.com/drive/folders/gmh-proposal-misi-nias',
-    status: 'PLANNING',
-    cash_balance: 18000000,
-    transactions: [
-      {
-        id: 'trx-1',
-        date: '2026-10-20',
-        type: 'IN',
-        category: 'Donasi Khusus Misi Nias',
-        description: 'Donasi alumni kedokteran PA KMK USU untuk paket obat-obatan',
-        amount: 18000000,
-      },
-    ],
-    rundown: [
-      { id: 'rd-1', time: '08:00 - 12:00', pic: 'Tim Medis Alumni', note: 'Pelayanan Pemeriksaan Kesehatan & Pengobatan Gratis' },
-      { id: 'rd-2', time: '13:00 - 17:00', pic: 'Ev. Samuel Manalu', note: 'Pembagian Bingkisan Kasih & Doa Pelayanan' },
-    ],
-    tasks: [
-      { id: 'tsk-1', task: 'Pengadaan paket obat generik dan vitamin', pic: 'dr. E. Simamora', done: true },
-      { id: 'tsk-2', task: 'Tiket kapal penyeberangan Sibolga - Gunungsitoli', pic: 'Sie Transportasi', done: false },
-    ],
-    committees: [
-      { id: 'com-1', role: 'Kordinator Wilayah Nias', name: 'Ev. Samuel Manalu', contact: '0821-3344-5566' },
-      { id: 'com-2', role: 'Koordinator Medis', name: 'dr. E. Simamora (Alumni FK USU)', contact: '0811-9988-7766' },
-    ],
-  },
-];
-
-// Indonesian Day and Month Name Formatter
+// Dynamic time preview formatter
 const generateTimePreview = (dateStr: string, start: string, end: string) => {
   if (!dateStr) return '';
   try {
@@ -282,8 +125,8 @@ const generateTimePreview = (dateStr: string, start: string, end: string) => {
 export const MissionsPage: React.FC = () => {
   // Navigation View: 'list' (Daftar Kegiatan Misi) or 'dashboard' (Dashboard Terpadu)
   const [viewMode, setViewMode] = useState<'list' | 'dashboard'>('list');
-  const [activities, setActivities] = useState<MissionActivity[]>(INITIAL_ACTIVITIES);
-  const [selectedActivityId, setSelectedActivityId] = useState<string>('ACT-1793368552666');
+  const [activities, setActivities] = useState<MissionActivity[]>([]);
+  const [selectedActivityId, setSelectedActivityId] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
@@ -358,13 +201,7 @@ export const MissionsPage: React.FC = () => {
   const [showCommitteeDropdown, setShowCommitteeDropdown] = useState(false);
 
   // Dynamic Missionaries State (Personil Pekabar Injil)
-  const [missionaries, setMissionaries] = useState<MissionaryPerson[]>(() => {
-    try {
-      const saved = localStorage.getItem('gmh_missionaries_staff');
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return INITIAL_MISSIONARIES_STAFF;
-  });
+  const [missionaries, setMissionaries] = useState<MissionaryPerson[]>([]);
   const [showMissionaryModal, setShowMissionaryModal] = useState(false);
   const [editingMissionary, setEditingMissionary] = useState<MissionaryPerson | null>(null);
   const [formMissionary, setFormMissionary] = useState({
@@ -382,9 +219,6 @@ export const MissionsPage: React.FC = () => {
 
   const saveMissionaries = (list: MissionaryPerson[]) => {
     setMissionaries(list);
-    try {
-      localStorage.setItem('gmh_missionaries_staff', JSON.stringify(list));
-    } catch {}
   };
 
   const filteredCommitteeMembers = useMemo(() => {
@@ -418,26 +252,54 @@ export const MissionsPage: React.FC = () => {
     setTimeout(() => setToastMsg(null), 3500);
   };
 
-  // Fetch activities from API with fallback
+  // Fetch activities from API
   const fetchActivities = async () => {
     setIsLoading(true);
     try {
       const res = await api.missions.getAll().catch(() => null);
-      if (res?.activities && Array.isArray(res.activities) && res.activities.length > 0) {
-        setActivities(res.activities);
-        if (!selectedActivityId || !res.activities.find((a: any) => a.id === selectedActivityId)) {
-          setSelectedActivityId(res.activities[0].id);
+      const list = res?.activities || res?.data || [];
+      if (Array.isArray(list)) {
+        setActivities(list);
+        if (list.length > 0) {
+          if (!selectedActivityId || !list.find((a: any) => a.id === selectedActivityId)) {
+            setSelectedActivityId(list[0].id);
+          }
+        } else {
+          setSelectedActivityId('');
         }
       }
     } catch (err) {
-      console.warn('Gagal memuat kegiatan misi dari API, menggunakan memori lokal:', err);
+      console.warn('Gagal memuat kegiatan misi dari API:', err);
+      setActivities([]);
+      setSelectedActivityId('');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const fetchMissionaries = async () => {
+    try {
+      const res = await api.organization.getStaff({ department_id: 'PELAYANAN_MISI' }).catch(() => null);
+      const staff = res?.staff || [];
+      if (Array.isArray(staff) && staff.length > 0) {
+        const mapped: MissionaryPerson[] = staff.map((s: any) => ({
+          id: s.id,
+          name: s.member_name || s.full_name || 'Misionaris',
+          member_id: s.member_id || '',
+          pos: s.position_title || 'Pos Pelayanan Misi',
+          region: 'Sumatera Utara',
+          since: s.joined_date ? s.joined_date.slice(0, 7) : '2023-01',
+          status: s.is_active ? 'ACTIVE' : 'FURLOUGH',
+          contact: s.phone_number || '',
+        }));
+        setMissionaries(mapped);
+      }
+    } catch {}
+  };
+
   useEffect(() => {
     fetchActivities();
+    fetchMissionaries();
   }, []);
 
   // Filtered Activities with month, year, search, and status

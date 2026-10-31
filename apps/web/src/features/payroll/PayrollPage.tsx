@@ -20,13 +20,6 @@ interface StaffPayroll {
   deduction: number;
 }
 
-const INITIAL_PAYROLL: StaffPayroll[] = [
-  { id: '1', name: 'Pdt. Andi Simanjuntak', role: 'Direktur Eksekutif Yayasan', base: 8000000, mission: 0, transport: 1000000, deduction: 500000 },
-  { id: '2', name: 'Grace Silalahi', role: 'Staff Administrasi & Keuangan', base: 4500000, mission: 0, transport: 500000, deduction: 0 },
-  { id: '3', name: 'Ev. Benyamin Tobing', role: 'Pekabar Injil Pos Simalungun', base: 3500000, mission: 1000000, transport: 750000, deduction: 0 },
-  { id: '4', name: 'Ev. Ratna Napitupulu', role: 'Pekabar Injil Pos Tobasa', base: 3500000, mission: 1000000, transport: 750000, deduction: 200000 },
-];
-
 const PayrollPage: React.FC = () => {
   const { user, isModuleAllowed } = useAuth();
   const { addTransaction } = useFinanceStore();
@@ -67,13 +60,13 @@ const PayrollPage: React.FC = () => {
           transport: 500000,
           deduction: 0,
         }));
-        setPayrollData(mapped.length > 0 ? mapped : INITIAL_PAYROLL);
+        setPayrollData(mapped);
       } else {
-        setPayrollData(INITIAL_PAYROLL);
+        setPayrollData([]);
       }
     } catch (err: any) {
       console.warn('Gagal memuat staf payroll:', err);
-      setPayrollData(INITIAL_PAYROLL);
+      setPayrollData([]);
     } finally {
       setIsLoading(false);
     }

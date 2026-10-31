@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { db } from '../../config/db.js';
 import { authenticateJwt } from '../../middleware/auth.middleware.js';
 import { logAudit } from '../../middleware/audit.interceptor.js';
+import { parsePagination, formatPaginationMeta } from '../../utils/pagination.js';
 
 const router = Router();
 
@@ -12,25 +13,52 @@ router.use(authenticateJwt);
 router.get('/', authenticateJwt, async (req: Request, res: Response): Promise<void> => {
   try {
     const { status, search } = req.query;
-    let query = `SELECT * FROM mission_activities WHERE 1=1`;
+    const { page, limit, offset } = parsePagination(req, { defaultLimit: 10, maxLimit: 100 });
+    // Backward compatibility: paginate only when the client explicitly asks for it.
+    const wantsPagination = req.query.page !== undefined || req.query.limit !== undefined;
+
+    const whereConditions: string[] = [];
     const params: any[] = [];
 
     if (status) {
       params.push(status);
-      query += ` AND status = $${params.length}`;
+      whereConditions.push(`status = $${params.length}`);
     }
     if (search) {
       params.push(`%${search}%`);
-      query += ` AND (title ILIKE $${params.length} OR coordinator ILIKE $${params.length} OR location ILIKE $${params.length} OR theme ILIKE $${params.length})`;
+      whereConditions.push(
+        `(title ILIKE $${params.length} OR coordinator ILIKE $${params.length} OR location ILIKE $${params.length} OR theme ILIKE $${params.length})`
+      );
     }
 
-    query += ` ORDER BY event_date DESC, created_at DESC`;
-    const result = await db.query(query, params);
+    const whereClause = whereConditions.length > 0 ? ` WHERE ${whereConditions.join(' AND ')}` : '';
+
+    const countRes = await db.query(
+      `SELECT COUNT(*)::int as total FROM mission_activities${whereClause}`,
+      [...params]
+    );
+    const total = countRes.rows[0]?.total || 0;
+
+    let dataQuery = `SELECT * FROM mission_activities${whereClause} ORDER BY event_date DESC, created_at DESC`;
+    const dataParams = [...params];
+
+    if (wantsPagination) {
+      dataParams.push(limit);
+      dataQuery += ` LIMIT $${dataParams.length}`;
+      dataParams.push(offset);
+      dataQuery += ` OFFSET $${dataParams.length}`;
+    }
+
+    const result = await db.query(dataQuery, dataParams);
+    const pagination = formatPaginationMeta(result.rows, total, page, limit);
 
     res.status(200).json({
       success: true,
       count: result.rows.length,
+      total,
       activities: result.rows,
+      data: result.rows,
+      pagination,
     });
   } catch (err: any) {
     res.status(500).json({ success: false, message: 'Gagal mengambil daftar kegiatan misi.', error: err.message });

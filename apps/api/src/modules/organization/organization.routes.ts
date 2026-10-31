@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../../config/db.js';
 import { authenticateJwt } from '../../middleware/auth.middleware.js';
+import { parsePagination, formatPaginationMeta } from '../../utils/pagination.js';
 
 const router = Router();
 
@@ -74,8 +75,43 @@ router.get('/committees', authenticateJwt, async (req: Request, res: Response): 
     const year = req.query.year ? Number(req.query.year) : null;
     const status = String(req.query.status || 'ALL');
     const memberId = String(req.query.member_id || '');
+    const { page, limit, offset } = parsePagination(req, { defaultLimit: 10, maxLimit: 100 });
+    // Backward compatibility: paginate only when the client explicitly asks for it.
+    const wantsPagination = req.query.page !== undefined || req.query.limit !== undefined;
 
-    let query = `
+    const whereConditions: string[] = [];
+    const params: any[] = [];
+
+    if (search) {
+      params.push(`%${search}%`);
+      whereConditions.push(
+        `(cr.committee_name ILIKE $${params.length} OR cr.role_title ILIKE $${params.length} OR m.full_name ILIKE $${params.length})`
+      );
+    }
+    if (year) {
+      params.push(year);
+      whereConditions.push(`cr.event_year = $${params.length}`);
+    }
+    if (status !== 'ALL') {
+      params.push(status);
+      whereConditions.push(`cr.status = $${params.length}`);
+    }
+    if (memberId) {
+      params.push(memberId);
+      whereConditions.push(`cr.member_id = $${params.length}`);
+    }
+
+    const whereClause = whereConditions.length > 0 ? ` WHERE ${whereConditions.join(' AND ')}` : '';
+
+    const countRes = await db.query(
+      `SELECT COUNT(*)::int as total
+       FROM committee_records cr
+       JOIN members m ON cr.member_id = m.id${whereClause}`,
+      [...params]
+    );
+    const total = countRes.rows[0]?.total || 0;
+
+    let dataQuery = `
       SELECT 
         cr.id,
         cr.member_id,
@@ -98,35 +134,28 @@ router.get('/committees', authenticateJwt, async (req: Request, res: Response): 
       FROM committee_records cr
       JOIN members m ON cr.member_id = m.id
       LEFT JOIN alumni_profiles ap ON m.id = ap.member_id
-      WHERE 1=1
+      ${whereClause}
+      ORDER BY cr.created_at DESC
     `;
-    const params: any[] = [];
+    const dataParams = [...params];
 
-    if (search) {
-      params.push(`%${search}%`);
-      query += ` AND (cr.committee_name ILIKE $${params.length} OR cr.role_title ILIKE $${params.length} OR m.full_name ILIKE $${params.length})`;
-    }
-    if (year) {
-      params.push(year);
-      query += ` AND cr.event_year = $${params.length}`;
-    }
-    if (status !== 'ALL') {
-      params.push(status);
-      query += ` AND cr.status = $${params.length}`;
-    }
-    if (memberId) {
-      params.push(memberId);
-      query += ` AND cr.member_id = $${params.length}`;
+    if (wantsPagination) {
+      dataParams.push(limit);
+      dataQuery += ` LIMIT $${dataParams.length}`;
+      dataParams.push(offset);
+      dataQuery += ` OFFSET $${dataParams.length}`;
     }
 
-    // Explicit user request: ordered by created_at DESC
-    query += ` ORDER BY cr.created_at DESC`;
+    const result = await db.query(dataQuery, dataParams);
+    const pagination = formatPaginationMeta(result.rows, total, page, limit);
 
-    const result = await db.query(query, params);
     res.status(200).json({
       success: true,
       count: result.rows.length,
+      total,
       committees: result.rows,
+      data: result.rows,
+      pagination,
     });
   } catch (err: any) {
     res.status(500).json({ success: false, message: 'Gagal memuat riwayat kepanitiaan.', error: err.message });

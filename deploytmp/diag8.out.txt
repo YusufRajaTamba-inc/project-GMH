@@ -1,0 +1,147 @@
+﻿
+===== row counts =====
+           t            | c  
+------------------------+----
+ members                | 15
+ users                  |  6
+ pledges                |  6
+ financial_transactions | 13
+ building_projects      |  2
+ committee_records      | 15
+ org_position_tenures   | 21
+ mission_activities     |  4
+ foundation_programs    |  6
+ member_registrations   |  4
+ assets                 |  4
+ prayer_requests        |  4
+ staff_members          |  6
+ audit_logs             | 22
+(14 rows)
+
+
+===== triggers =====
+ERROR:  column reference "oid" is ambiguous
+LINE 1: select tgname, relname, pg_get_triggerdef(oid) from pg_trigg...
+                                                  ^
+
+===== users member link =====
+  column_name   
+----------------
+ birth_date
+ created_at
+ email
+ full_name
+ id
+ is_active
+ last_login_at
+ password_hash
+ phone_number
+ position_title
+ role_id
+ updated_at
+ username
+(13 rows)
+
+
+===== org tables ddl =====
+         tbl          |                conname                |                           pg_get_constraintdef                           
+----------------------+---------------------------------------+--------------------------------------------------------------------------
+ staff_members        | staff_members_pkey                    | PRIMARY KEY (id)
+ staff_members        | staff_members_member_id_key           | UNIQUE (member_id)
+ staff_members        | staff_members_member_id_fkey          | FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE RESTRICT
+ staff_members        | staff_members_department_id_fkey      | FOREIGN KEY (department_id) REFERENCES departments(id)
+ committee_records    | committee_records_pkey                | PRIMARY KEY (id)
+ committee_records    | committee_records_member_id_fkey      | FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE
+ org_positions        | org_positions_pkey                    | PRIMARY KEY (id)
+ org_positions        | org_positions_position_code_key       | UNIQUE (position_code)
+ org_position_tenures | org_position_tenures_pkey             | PRIMARY KEY (id)
+ org_position_tenures | org_position_tenures_position_id_fkey | FOREIGN KEY (position_id) REFERENCES org_positions(id) ON DELETE CASCADE
+ org_position_tenures | org_position_tenures_member_id_fkey   | FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE
+(11 rows)
+
+
+===== audit recent =====
+ id | action  |      entity_name       |              entity_id               |         created_at         
+----+---------+------------------------+--------------------------------------+----------------------------
+ 22 | INSERT  | financial_transactions | d7a201bd-98f0-433b-8816-6aab25332019 | 2026-10-31 15:54:21.049827
+ 21 | UPDATE  | foundation_programs    | 032b61a2-2907-4728-9cb8-3e8f407be857 | 2026-10-31 15:49:28.852356
+ 20 | APPROVE | member_registrations   | 9626b12c-f472-41e6-8ee2-39a9057fe58d | 2026-10-31 15:41:47.482543
+ 19 | UPDATE  | building_projects      | a0000000-0000-0000-0000-000000000001 | 2026-10-31 15:40:40.716652
+ 18 | UPDATE  | building_projects      | a0000000-0000-0000-0000-000000000001 | 2026-10-31 15:40:33.575666
+ 17 | UPDATE  | building_projects      | a0000000-0000-0000-0000-000000000001 | 2026-10-31 15:40:10.828908
+ 16 | UPDATE  | mission_activities     | ACT-1793368552888                    | 2026-10-31 15:10:20.681415
+ 15 | UPDATE  | mission_activities     | ACT-1793368552888                    | 2026-10-31 15:10:10.669012
+ 14 | LOGIN   | users                  | e579fd4b-3473-4762-83ec-fb28bcfc754d | 2026-10-31 15:07:58.233807
+ 13 | LOGIN   | users                  | e579fd4b-3473-4762-83ec-fb28bcfc754d | 2026-10-31 15:07:28.759854
+ 12 | LOGIN   | users                  | e579fd4b-3473-4762-83ec-fb28bcfc754d | 2026-10-31 15:07:04.50327
+ 11 | LOGIN   | users                  | e579fd4b-3473-4762-83ec-fb28bcfc754d | 2026-10-31 15:06:51.601193
+ 10 | LOGIN   | users                  | e579fd4b-3473-4762-83ec-fb28bcfc754d | 2026-10-31 14:57:28.26343
+  9 | LOGIN   | users                  | e579fd4b-3473-4762-83ec-fb28bcfc754d | 2026-10-31 14:47:13.664911
+  8 | LOGIN   | users                  | e579fd4b-3473-4762-83ec-fb28bcfc754d | 2026-10-31 14:43:35.617069
+  7 | LOGIN   | users                  | e579fd4b-3473-4762-83ec-fb28bcfc754d | 2026-10-31 14:43:28.791502
+  6 | LOGIN   | users                  | e579fd4b-3473-4762-83ec-fb28bcfc754d | 2026-10-31 14:43:20.508886
+  5 | LOGIN   | users                  | e579fd4b-3473-4762-83ec-fb28bcfc754d | 2026-10-31 14:41:43.390216
+  4 | LOGIN   | users                  | e579fd4b-3473-4762-83ec-fb28bcfc754d | 2026-10-31 14:38:10.7504
+  3 | LOGIN   | users                  | e579fd4b-3473-4762-83ec-fb28bcfc754d | 2026-10-31 14:37:06.785755
+(20 rows)
+
+
+===== seed trx present =====
+  transaction_code  | transaction_date | transaction_type |   amount    |     scope     |                                                                   notes                                                                   
+--------------------+------------------+------------------+-------------+---------------+-------------------------------------------------------------------------------------------------------------------------------------------
+ TX-GMH-202610-002  | 2026-10-18       | EXPENSE          |  1250000.00 | OPERASIONAL   | Pembelian ATK, kertas kop surat yayasan F4, map arsip, dan toner printer kantor
+ TX-GMH-202610-001  | 2026-10-15       | INCOME           | 35000000.00 | YAYASAN_PUSAT | Tahap 3 dari 5 komitmen pembangunan Rumah Persekutuan (Kel. Sinurat)
+ TX-GMH-202610-003  | 2026-10-20       | EXPENSE          |   850000.00 | OPERASIONAL   | Langganan Internet Fiber Optic Kantor Sekretariat GMH (Indihome 100 Mbps)
+ TX-GMH-202610-004  | 2026-10-25       | INCOME           |   500000.00 | OPERASIONAL   | Donasi kemitraan rutin alumni: dr. Jekson Simanjuntak
+ TX-GMH-202610-005  | 2026-10-27       | INCOME           |  1500000.00 | OPERASIONAL   | Persembahan kasih alumni: Yusuf Panjaitan
+ TX-GMH-202610-006  | 2026-10-28       | EXPENSE          |   450000.00 | OPERASIONAL   | Konsumsi persekutuan pengurus & doa evaluasi bulanan kantor
+ KWT-GMH-202610-001 | 2026-10-14       | INCOME           | 35000000.00 | YAYASAN_PUSAT | Penerimaan Janji Iman - Keluarga Sinurat (Tahap 3 dari 5 komitmen pembangunan Rumah Persekutuan)
+ KWT-GMH-202610-002 | 2026-10-20       | INCOME           | 12000000.00 | YAYASAN_PUSAT | Penerimaan Janji Iman - Yusuf Raja Tamba Panjaitan (Komitmen janji iman alumni angkatan 2021)
+ KWT-GMH-202610-003 | 2026-10-22       | INCOME           |  5000000.00 | YAYASAN_PUSAT | Penerimaan Janji Iman - dr. Jekson Simanjuntak, Sp.A (Angsuran 1/3 pembangunan Rumah Persekutuan)
+ KWT-GMH-202610-004 | 2026-10-25       | INCOME           |  7500000.00 | YAYASAN_PUSAT | Penerimaan Janji Iman - Mariana Hutabarat, S.E. (Dukungan sound system & audio visual)
+ KWT-GMH-202610-005 | 2026-10-10       | INCOME           | 25000000.00 | YAYASAN_PUSAT | Penerimaan Janji Iman - Pdt. Dr. J. Sirait & Kel. (Pelunasan Janji Iman Pembangunan Rumah Persekutuan)
+ KWT-GMH-202610-006 | 2026-10-18       | INCOME           |  3000000.00 | YAYASAN_PUSAT | Penerimaan Donasi - Debora Sinaga, S.Ked (Persembahan syukur wisuda & donasi adik asuh)
+ TX-GMH-202610-0007 | 2026-10-31       | EXPENSE          | 34000000.00 | YAYASAN_PUSAT | Pembayaran Beban Gaji Staf Yayasan & Honorarium Misi — Periode Oktober 2026 - Total 6 penerima gaji. Diproses oleh Super Admin IT Yayasan
+(13 rows)
+
+
+===== all projects =====
+                  id                  |               project_name               |   category    | target_budget | current_funds | progress_percentage |   status    | start_date |                                                                                                                        milestones                                                                                                                         
+--------------------------------------+------------------------------------------+---------------+---------------+---------------+---------------------+-------------+------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ b0000000-0000-0000-0000-000000000001 | Pembangunan Rumah Persekutuan GMH        | INFRASTRUKTUR | 1500000000.00 |  650000000.00 |                  45 | ON_PROGRESS | 2024-01-15 | []
+ a0000000-0000-0000-0000-000000000001 | Pembangunan Rumah Persekutuan GMH PA KMK | INFRASTRUKTUR | 1800000000.00 | 1224000000.00 |                 100 | ON_PROGRESS |            | [{"id": 1, "pct": 100, "date": "Jadwal Target: Kuartal 1", "label": "Tahap 1: Perencanaan & Persiapan", "status": "DONE"}, {"id": 2, "pct": 100, "date": "Jadwal Target: Kuartal 2", "label": "Tahap 2: Penggalangan Komitmen Donasi", "status": "DONE"}]
+(2 rows)
+
+
+===== committees =====
+                  id                  |              committee_name               |             role_title              |              member_id               
+--------------------------------------+-------------------------------------------+-------------------------------------+--------------------------------------
+ 82fdf9f7-41c1-4253-8f74-d35bf8a06d74 | Panitia Aksi Pelayanan Misi Pedesaan 2026 | Koordinator Lapangan Pos Simalungun | 3ce38994-848f-4aac-ad59-0db482f963e0
+ 3f2930af-ffe8-41f4-bdaa-cf19c021fbf8 | Panitia Aksi Pelayanan Misi Pedesaan 2026 | Koordinator Lapangan Pos Simalungun | 3ce38994-848f-4aac-ad59-0db482f963e0
+ 76706b94-fe7b-4a91-9e2a-9d0a0eb2c2fe | Panitia Aksi Pelayanan Misi Pedesaan 2026 | Koordinator Lapangan Pos Simalungun | 3ce38994-848f-4aac-ad59-0db482f963e0
+ 5467a3bc-1a1b-40a0-a2cf-82fd3fe20736 | Panitia Pembangunan Rumah Persekutuan GMH | Bendahara Panitia Pembangunan       | b5362e8f-3e3c-4c4d-9bc9-5c84f753a4eb
+ 2b3fb4ee-968c-4158-9691-ae73067574bb | Panitia Pembangunan Rumah Persekutuan GMH | Ketua Pelaksana Pembangunan         | 19f51ebd-9bc3-4e00-8eba-bf331f108e78
+ 99bd732f-0b18-4334-ad0b-93cce01fb2b6 | Panitia Pembangunan Rumah Persekutuan GMH | Bendahara Panitia Pembangunan       | b5362e8f-3e3c-4c4d-9bc9-5c84f753a4eb
+ bf46b5dd-6b0d-45a0-b073-2d19b03c6551 | Panitia Pembangunan Rumah Persekutuan GMH | Ketua Pelaksana Pembangunan         | 19f51ebd-9bc3-4e00-8eba-bf331f108e78
+ 667bdfa5-e2d3-459e-961e-305d3fa4746a | Panitia Pembangunan Rumah Persekutuan GMH | Ketua Pelaksana Pembangunan         | 19f51ebd-9bc3-4e00-8eba-bf331f108e78
+ 106200bb-3777-47dc-bba4-5d3259af517a | Panitia Pembangunan Rumah Persekutuan GMH | Bendahara Panitia Pembangunan       | b5362e8f-3e3c-4c4d-9bc9-5c84f753a4eb
+ 0ce4862d-2099-430a-8a35-7a7cbd568938 | Panitia Retret Akbar Alumni PA KMK 2026   | Koordinator Sie Acara & Doa         | e00de55b-00f7-4173-849a-bb7794d74531
+ 7ce4075e-a9ac-40f7-b1cc-607ff4962c58 | Panitia Retret Akbar Alumni PA KMK 2026   | Koordinator Sie Acara & Doa         | e00de55b-00f7-4173-849a-bb7794d74531
+ 69193c27-c276-4dc1-9691-20714e751c33 | Panitia Retret Akbar Alumni PA KMK 2026   | Ketua Panitia Pelaksana             | b02add5f-c42c-4025-b9b0-e2547ffd7fb5
+ dd96e74b-c375-4a22-993c-c88ad500b4e6 | Panitia Retret Akbar Alumni PA KMK 2026   | Ketua Panitia Pelaksana             | b02add5f-c42c-4025-b9b0-e2547ffd7fb5
+ fcec671d-384a-4904-b50f-bcccefbc0329 | Panitia Retret Akbar Alumni PA KMK 2026   | Ketua Panitia Pelaksana             | b02add5f-c42c-4025-b9b0-e2547ffd7fb5
+ f8b94bf4-ba0a-4390-9e05-ed1dd2f7de26 | Panitia Retret Akbar Alumni PA KMK 2026   | Koordinator Sie Acara & Doa         | e00de55b-00f7-4173-849a-bb7794d74531
+(15 rows)
+
+
+===== tenures =====
+ERROR:  column "is_active" does not exist
+LINE 1: select id, member_id, position_id, start_date, is_active fro...
+                                                       ^
+ssh : bash: line 13: $'\r': command not found
+At line:1 char:62
++ ... r`n","`n" | ssh -i deploytmp\k.pem -o StrictHostKeyChecking=no yusuf2 ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (bash: line 13: $'\r': command not found:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

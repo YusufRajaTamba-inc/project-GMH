@@ -490,7 +490,8 @@ CREATE TABLE IF NOT EXISTS committee_records (
     status VARCHAR(50) DEFAULT 'ACTIVE',
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_committee_member_role UNIQUE (member_id, committee_name, role_title)
 );
 
 CREATE TABLE IF NOT EXISTS org_positions (
@@ -516,7 +517,8 @@ CREATE TABLE IF NOT EXISTS org_position_tenures (
     decree_number VARCHAR(100),
     notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_org_position_tenure UNIQUE (position_id, member_id, period)
 );
 
 CREATE TABLE IF NOT EXISTS division_members (

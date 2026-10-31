@@ -63,6 +63,67 @@ export async function initDatabase() {
     ALTER TABLE pledges ADD COLUMN IF NOT EXISTS notes TEXT;
   `);
 
+  // Idempotent constraint migrations: hapus duplikasi hasil seed berulang,
+  // lalu kunci dengan UNIQUE agar seed berikutnya tidak menambah baris kembar.
+  console.log('[Migration] Deduplicating seeded rows and applying unique constraints...');
+  await db.query(`
+    -- org_position_tenures: hapus tenure kembar (position_id, member_id, period)
+    DELETE FROM org_position_tenures a
+    USING org_position_tenures b
+    WHERE a.id > b.id
+      AND a.position_id = b.position_id
+      AND a.member_id = b.member_id
+      AND a.period = b.period;
+
+    -- committee_records: hapus catatan kepanitiaan kembar (member_id, committee_name, role_title)
+    DELETE FROM committee_records a
+    USING committee_records b
+    WHERE a.id > b.id
+      AND a.member_id = b.member_id
+      AND a.committee_name = b.committee_name
+      AND a.role_title = b.role_title;
+  `);
+
+  await db.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'uq_org_position_tenure'
+      ) THEN
+        ALTER TABLE org_position_tenures
+          ADD CONSTRAINT uq_org_position_tenure UNIQUE (position_id, member_id, period);
+      END IF;
+
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'uq_committee_member_role'
+      ) THEN
+        ALTER TABLE committee_records
+          ADD CONSTRAINT uq_committee_member_role UNIQUE (member_id, committee_name, role_title);
+      END IF;
+    END $$;
+  `);
+
+  // Konsistensi identitas proyek: backend & frontend memakai ID a000...,
+  // sedangkan seed lama membuat b000... Salin data b000 ke a000 lalu hapus b000.
+  await db.query(`
+    INSERT INTO building_projects (
+      id, project_name, category, target_budget, current_funds, start_date,
+      target_completion_date, progress_percentage, status, description, pic_name, milestones
+    )
+    SELECT
+      'a0000000-0000-0000-0000-000000000001', project_name, category, target_budget, current_funds,
+      start_date, target_completion_date, progress_percentage, status, description, pic_name, milestones
+    FROM building_projects
+    WHERE id = 'b0000000-0000-0000-0000-000000000001'
+    ON CONFLICT (id) DO NOTHING;
+
+    -- Pindahkan pledge & transaksi yang menunjuk ke b000 agar ikut konsisten
+    UPDATE pledges SET building_project_id = 'a0000000-0000-0000-0000-000000000001'
+    WHERE building_project_id = 'b0000000-0000-0000-0000-000000000001';
+
+    DELETE FROM building_projects WHERE id = 'b0000000-0000-0000-0000-000000000001';
+  `);
+
   console.log('[Migration] Database tables, columns, and indexes verified successfully!');
 }
 

@@ -442,7 +442,11 @@ export async function seedDatabase() {
       await db.query(
         `INSERT INTO org_position_tenures (position_id, member_id, period, start_date, end_date, is_current, decree_number)
          VALUES ($1, $2, '2024 - 2029', '2024-01-01', '2029-12-31', TRUE, 'SK-GMH-01/I/2024')
-         ON CONFLICT DO NOTHING`,
+         ON CONFLICT (position_id, member_id, period) DO UPDATE
+         SET is_current = TRUE,
+             start_date = EXCLUDED.start_date,
+             end_date = EXCLUDED.end_date,
+             decree_number = EXCLUDED.decree_number`,
         [positionId, memberId]
       );
     }
@@ -504,7 +508,12 @@ export async function seedDatabase() {
       const memberId = memRes.rows[0].id;
       await db.query(
         `INSERT INTO committee_records (member_id, committee_name, role_title, event_year, period, status, description)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         ON CONFLICT (member_id, committee_name, role_title) DO UPDATE
+         SET event_year = EXCLUDED.event_year,
+             period = EXCLUDED.period,
+             status = EXCLUDED.status,
+             description = EXCLUDED.description`,
         [memberId, c.name, c.role, c.year, c.period, c.status, c.desc]
       );
     }
@@ -682,25 +691,94 @@ export async function seedDatabase() {
     ALTER TABLE pledges ADD COLUMN IF NOT EXISTS notes TEXT;
   `);
 
-  const bpRes = await db.query(`
-    INSERT INTO building_projects (
-      id, project_name, target_budget, current_funds, start_date, target_completion_date, progress_percentage, status, description
-    ) VALUES (
-      'b0000000-0000-0000-0000-000000000001',
-      'Pembangunan Rumah Persekutuan GMH',
-      1500000000.00,
-      650000000.00,
-      '2024-01-15',
-      '2027-12-31',
-      45,
-      'ON_PROGRESS',
-      'Pembangunan gedung pusat persekutuan dan pembinaan mahasiswa/alumni GMH PA KMK USU'
-    )
-    ON CONFLICT (id) DO UPDATE 
-    SET project_name = EXCLUDED.project_name, target_budget = EXCLUDED.target_budget, current_funds = EXCLUDED.current_funds
-    RETURNING id
-  `);
-  const bpId = bpRes.rows[0]?.id || 'b0000000-0000-0000-0000-000000000001';
+  // 3 proyek yayasan dengan ID yang sama dengan frontend (a000...) agar data
+  // proyek tidak lagi "berdiri sendiri" antara backend dan frontend.
+  const buildingProjectSeeds = [
+    {
+      id: 'a0000000-0000-0000-0000-000000000001',
+      project_name: 'Pembangunan Rumah Persekutuan GMH PA KMK',
+      category: 'INFRASTRUKTUR',
+      target_budget: 1800000000.00,
+      start_date: '2024-01-15',
+      target_completion_date: '2026-12-31',
+      progress_percentage: 78,
+      status: 'ON_PROGRESS',
+      description: 'Pusat pembinaan mahasiswa, asrama pembinaan rohani, ruang ibadah & doa terpadu, serta kantor sekretariat Yayasan GMH PA KMK USU.',
+      pic_name: 'Ir. P. Simanjuntak (Panitia Pembangunan)',
+      milestones: [
+        { id: 1, label: 'Peletakan Batu Pertama', date: 'Jadwal Target: Maret 2024', status: 'DONE', pct: 100 },
+        { id: 2, label: 'Fondasi & Struktur Bawah', date: 'Jadwal Target: Agustus 2024', status: 'DONE', pct: 100 },
+        { id: 3, label: 'Struktur Kolom & Balok Lt.1', date: 'Jadwal Target: Februari 2025', status: 'DONE', pct: 100 },
+        { id: 4, label: 'Atap & Dinding Eksterior', date: 'Jadwal Target: Agustus 2025', status: 'DONE', pct: 100 },
+        { id: 5, label: 'Finishing Interior & MEP', date: 'Jadwal Target: April 2026', status: 'IN_PROGRESS', pct: 65 },
+        { id: 6, label: 'Furnitur & Peresmian Gedung', date: 'Jadwal Target: Desember 2026', status: 'PENDING', pct: 0 },
+      ],
+    },
+    {
+      id: 'a0000000-0000-0000-0000-000000000002',
+      project_name: 'Renovasi & Audio Visual Ruang Doa Kampus',
+      category: 'FASILITAS',
+      target_budget: 150000000.00,
+      start_date: '2026-01-10',
+      target_completion_date: '2026-11-30',
+      progress_percentage: 75,
+      status: 'ON_PROGRESS',
+      description: 'Renovasi tata ruang akustik, instalasi peredam suara, dan sistem audio visual live streaming persekutuan doa kampus USU.',
+      pic_name: 'Departemen Sarana & Prasarana GMH',
+      milestones: [
+        { id: 1, label: 'Pengukuran & Desain Akustik Ruangan', date: 'Jadwal Target: Januari 2026', status: 'DONE', pct: 100 },
+        { id: 2, label: 'Pemasangan Karpet & Panel Insulasi Akustik', date: 'Jadwal Target: Maret 2026', status: 'DONE', pct: 100 },
+        { id: 3, label: 'Pengadaan Mixer Digital, Mic & Sound System', date: 'Jadwal Target: Mei 2026', status: 'DONE', pct: 100 },
+        { id: 4, label: 'Instalasi Kamera PTZ & Uji Live Streaming', date: 'Jadwal Target: Juli 2026', status: 'IN_PROGRESS', pct: 70 },
+        { id: 5, label: 'Serah Terima & Ibadah Doa Syukur Bersama', date: 'Jadwal Target: November 2026', status: 'PENDING', pct: 0 },
+      ],
+    },
+    {
+      id: 'a0000000-0000-0000-0000-000000000003',
+      project_name: 'Pengadaan Mobil Operasional Pelayanan Misi Daerah',
+      category: 'MISI',
+      target_budget: 350000000.00,
+      start_date: '2026-02-01',
+      target_completion_date: '2027-02-28',
+      progress_percentage: 60,
+      status: 'ON_PROGRESS',
+      description: 'Pengadaan unit armada minibus operasional untuk mobilisasi tim penginjilan, pembinaan adik binaan, dan kunjungan pos misi daerah Sumatera Utara.',
+      pic_name: 'Koordinator Pelayanan Misi Daerah',
+      milestones: [
+        { id: 1, label: 'Survei Kebutuhan Spesifikasi Armada Minibus', date: 'Jadwal Target: Februari 2026', status: 'DONE', pct: 100 },
+        { id: 2, label: 'Penggalangan Komitmen Donatur & Alumni', date: 'Jadwal Target: Mei 2026', status: 'DONE', pct: 100 },
+        { id: 3, label: 'Pemesanan Unit & Karoseri Interior Pelayanan', date: 'Jadwal Target: Agustus 2026', status: 'IN_PROGRESS', pct: 60 },
+        { id: 4, label: 'Pelunasan & Pengurusan STNK/BPKB Plat Yayasan', date: 'Jadwal Target: Desember 2026', status: 'PENDING', pct: 0 },
+        { id: 5, label: 'Dedikasi Kendaraan & Pelayanan Misi Perdana', date: 'Jadwal Target: Februari 2027', status: 'PENDING', pct: 0 },
+      ],
+    },
+  ];
+
+  for (const bp of buildingProjectSeeds) {
+    await db.query(
+      `INSERT INTO building_projects (
+        id, project_name, category, target_budget, current_funds, start_date,
+        target_completion_date, progress_percentage, status, description, pic_name, milestones
+      ) VALUES ($1, $2, $3, $4, 0, $5, $6, $7, $8, $9, $10, $11)
+      ON CONFLICT (id) DO UPDATE
+      SET project_name = EXCLUDED.project_name,
+          category = EXCLUDED.category,
+          target_budget = EXCLUDED.target_budget,
+          start_date = EXCLUDED.start_date,
+          target_completion_date = EXCLUDED.target_completion_date,
+          progress_percentage = EXCLUDED.progress_percentage,
+          status = EXCLUDED.status,
+          description = EXCLUDED.description,
+          pic_name = EXCLUDED.pic_name,
+          milestones = EXCLUDED.milestones`,
+      [
+        bp.id, bp.project_name, bp.category, bp.target_budget, bp.start_date,
+        bp.target_completion_date, bp.progress_percentage, bp.status, bp.description,
+        bp.pic_name, JSON.stringify(bp.milestones),
+      ]
+    );
+  }
+  const bpId = 'a0000000-0000-0000-0000-000000000001';
 
   const yusufMem = await db.query(`SELECT id FROM members WHERE full_name ILIKE '%Yusuf Panjaitan%' LIMIT 1`);
   const jeksonMem = await db.query(`SELECT id FROM members WHERE full_name ILIKE '%Jekson Simanjuntak%' LIMIT 1`);
@@ -832,18 +910,6 @@ export async function seedDatabase() {
       notes: 'Penerimaan Janji Iman - Keluarga Sinurat (Tahap 3 dari 5 komitmen pembangunan Rumah Persekutuan)',
     },
     {
-      code: 'TX-GMH-202610-001',
-      date: '2026-10-14',
-      type: 'INCOME',
-      coa: '4-2010',
-      amt: 35000000.00,
-      method: 'BANK_TRANSFER',
-      scope: 'YAYASAN_PUSAT',
-      pledgeId: sinuratPledgeId,
-      memberId: null,
-      notes: 'Tahap 3 dari 5 komitmen pembangunan Rumah Persekutuan (Kel. Sinurat)',
-    },
-    {
       code: 'KWT-GMH-202610-002',
       date: '2026-10-20',
       type: 'INCOME',
@@ -971,7 +1037,7 @@ export async function seedDatabase() {
         transaction_code, transaction_date, transaction_type, account_id,
         amount, payment_method, scope, notes, recorded_by, pledge_id, donor_member_id
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-      ON CONFLICT (transaction_code) DO UPDATE 
+      ON CONFLICT (transaction_code) DO UPDATE
       SET pledge_id = EXCLUDED.pledge_id,
           donor_member_id = EXCLUDED.donor_member_id,
           amount = EXCLUDED.amount,
@@ -981,6 +1047,55 @@ export async function seedDatabase() {
     );
   }
   console.log('[Seeder] Financial transactions seeded.');
+
+  // Rekonsiliasi: hapus transaksi duplikat dari seed lama (TX-GMH-202610-001
+  // menggandakan penerimaan Sinurat yang sama dengan KWT-GMH-202610-001).
+  await db.query(
+    `DELETE FROM financial_transactions
+     WHERE transaction_code = 'TX-GMH-202610-001'
+       AND EXISTS (
+         SELECT 1 FROM financial_transactions d
+         WHERE d.transaction_code = 'KWT-GMH-202610-001'
+           AND d.pledge_id = financial_transactions.pledge_id
+           AND d.amount = financial_transactions.amount
+       )`
+  );
+
+  // Turunkan angka turunan (current_funds & fulfilled_amount) dari transaksi riil
+  // supaya tidak lagi ada selisih antara hardcoded seed dan pembukuan.
+  await db.query(`
+    UPDATE pledges p
+    SET fulfilled_amount = COALESCE(tx.total, 0)
+    FROM (
+      SELECT pledge_id, SUM(amount) AS total
+      FROM financial_transactions
+      WHERE transaction_type = 'INCOME' AND pledge_id IS NOT NULL
+      GROUP BY pledge_id
+    ) tx
+    WHERE tx.pledge_id = p.id;
+  `);
+
+  await db.query(`
+    UPDATE building_projects b
+    SET current_funds = COALESCE(tx.total, 0)
+    FROM (
+      SELECT p.building_project_id, SUM(t.amount) AS total
+      FROM financial_transactions t
+      JOIN pledges p ON p.id = t.pledge_id
+      WHERE t.transaction_type = 'INCOME'
+        AND p.building_project_id IS NOT NULL
+      GROUP BY p.building_project_id
+    ) tx
+    WHERE tx.building_project_id = b.id;
+  `);
+
+  // Selaraskan progress_percentage proyek dengan progres pendanaan riil.
+  await db.query(`
+    UPDATE building_projects
+    SET progress_percentage = LEAST(100, GREATEST(0, ROUND(current_funds * 100.0 / NULLIF(target_budget, 0))))
+    WHERE target_budget > 0 AND current_funds > 0;
+  `);
+  console.log('[Seeder] Financial figures reconciled from actual transactions.');
 
   // 10. Seed Sample Pending Registrations
   await db.query(

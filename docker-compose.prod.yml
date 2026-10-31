@@ -1,4 +1,4 @@
-﻿services:
+services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -14,6 +14,7 @@
       timeout: 5s
       retries: 5
     networks: [internal]
+
   api:
     build:
       context: .
@@ -24,11 +25,20 @@
       PORT: 4000
       DATABASE_URL: postgres://${POSTGRES_USER:-gmh}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-foundationos}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       ALLOWED_ORIGIN: ${ALLOWED_ORIGIN:?Set ALLOWED_ORIGIN in .env}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
     depends_on:
       postgres:
         condition: service_healthy
     networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
   web:
     build:
       context: .
@@ -36,13 +46,31 @@
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
     restart: unless-stopped
-    depends_on: [api]
+    depends_on:
+      api:
+        condition: service_healthy
     ports:
       - "80:80"
-      - "443:443"
     networks: [internal]
+
+  # Jalankan sekali: membuat skema tabel dari schema.sql
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    profiles: ["migrate"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER:-gmh}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-foundationos}
+    command: ["node", "apps/api/dist/database/init.js"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [internal]
+
 volumes:
   postgres_data:
+
 networks:
   internal:
     driver: bridge

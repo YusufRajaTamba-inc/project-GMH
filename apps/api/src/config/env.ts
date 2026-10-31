@@ -38,4 +38,9 @@ export const ENV = {
   CORS_ORIGIN: resolvedOrigins,
   ALLOWED_ORIGIN: resolvedOrigins,
   IS_PRODUCTION: isProduction,
+  // Cookie JWT hanya boleh dikirim lewat HTTPS. Set COOKIE_SECURE=false
+  // sementara bila aplikasi belum memakai TLS (mis. uji coba lewat IP).
+  COOKIE_SECURE: process.env.COOKIE_SECURE
+    ? process.env.COOKIE_SECURE === 'true'
+    : isProduction,
 };

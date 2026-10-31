@@ -11,7 +11,7 @@ import { getSignedRolePermissions } from './auth.permissions.js';
 // ============================================================
 const COOKIE_OPTIONS = {
   httpOnly: true,                              // Tidak bisa diakses oleh JavaScript (anti-XSS)
-  secure: ENV.NODE_ENV === 'production',       // HTTPS only di production
+  secure: ENV.COOKIE_SECURE,                   // HTTPS only; dapat dimatikan sementara untuk staging via IP
   sameSite: 'strict' as const,                // Anti-CSRF
   maxAge: 7 * 24 * 60 * 60 * 1000,           // 7 hari (ms)
   path: '/',

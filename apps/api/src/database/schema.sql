@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL,
     full_name VARCHAR(150) NOT NULL,
     role_id VARCHAR(50) NOT NULL REFERENCES roles(id) ON UPDATE CASCADE,
+    position_title VARCHAR(100),
+    birth_date DATE,
     is_active BOOLEAN DEFAULT TRUE,
     last_login_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -343,14 +345,25 @@ CREATE TABLE IF NOT EXISTS assets (
 CREATE TABLE IF NOT EXISTS asset_loans (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     asset_id UUID NOT NULL REFERENCES assets(id),
-    borrower_member_id UUID NOT NULL REFERENCES members(id),
-    loan_purpose VARCHAR(200) NOT NULL,         -- 'Persekutuan Wilayah Alumni / Pembinaan Mahasiswa'
+    borrower_member_id UUID REFERENCES members(id) ON DELETE SET NULL,
+    borrower_name VARCHAR(150),
+    borrower_phone VARCHAR(50),
+    borrower_email VARCHAR(120),
+    borrower_institution VARCHAR(200),
+    loan_purpose VARCHAR(200) NOT NULL,
+    loan_type VARCHAR(50) DEFAULT 'INTERNAL',
+    rental_fee NUMERIC(15,2) DEFAULT 0,
+    quantity_borrowed INT DEFAULT 1,
+    notes TEXT,
+    request_code VARCHAR(50),
     borrowed_at TIMESTAMP NOT NULL,
     expected_return_at TIMESTAMP NOT NULL,
     actual_return_at TIMESTAMP,
     condition_on_return VARCHAR(30),
     approved_by UUID REFERENCES users(id),
-    status VARCHAR(20) DEFAULT 'BORROWED'       -- 'BORROWED', 'RETURNED', 'OVERDUE'
+    status VARCHAR(30) DEFAULT 'PENDING',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 10. MODUL SEKRETARIAT & PERSURATAN YAYASAN
@@ -404,4 +417,86 @@ CREATE TABLE IF NOT EXISTS role_permissions (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_role_permission UNIQUE (role_id, module_key)
 );
+
+-- 12. KEGIATAN PELAYANAN MISI
+CREATE TABLE IF NOT EXISTS mission_activities (
+    id VARCHAR(50) PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    theme VARCHAR(255),
+    budget_estimate NUMERIC(15, 2) DEFAULT 0,
+    coordinator VARCHAR(150),
+    location VARCHAR(255),
+    event_date DATE,
+    start_time TIME,
+    end_time TIME,
+    time_preview VARCHAR(100),
+    description TEXT,
+    media_drive_url TEXT,
+    document_drive_url TEXT,
+    status VARCHAR(50) DEFAULT 'ON_PROGRESS',
+    cash_balance NUMERIC(15, 2) DEFAULT 0,
+    transactions JSONB DEFAULT '[]'::jsonb,
+    rundown JSONB DEFAULT '[]'::jsonb,
+    tasks JSONB DEFAULT '[]'::jsonb,
+    committees JSONB DEFAULT '[]'::jsonb,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 13. KEPANITIAAN & JABATAN STRUKTUR ORGANISASI
+CREATE TABLE IF NOT EXISTS committee_records (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+    committee_name VARCHAR(200) NOT NULL,
+    role_title VARCHAR(150) NOT NULL,
+    event_year INT,
+    period VARCHAR(100),
+    start_date DATE,
+    end_date DATE,
+    status VARCHAR(50) DEFAULT 'ACTIVE',
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS org_positions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    position_code VARCHAR(50) UNIQUE NOT NULL,
+    title VARCHAR(150) NOT NULL,
+    category VARCHAR(50) DEFAULT 'PENGURUS_HARIAN',
+    function_description TEXT,
+    hierarchy_order INT DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS org_position_tenures (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    position_id UUID NOT NULL REFERENCES org_positions(id) ON DELETE CASCADE,
+    member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+    period VARCHAR(100) NOT NULL,
+    start_date DATE,
+    end_date DATE,
+    is_current BOOLEAN DEFAULT TRUE,
+    decree_number VARCHAR(100),
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS division_members (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    department_id VARCHAR(50) NOT NULL REFERENCES departments(id) ON DELETE CASCADE,
+    member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+    role_title VARCHAR(150) NOT NULL,
+    period VARCHAR(100) DEFAULT '2024 - Sekarang',
+    start_date DATE,
+    end_date DATE,
+    status VARCHAR(50) DEFAULT 'ACTIVE',
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 

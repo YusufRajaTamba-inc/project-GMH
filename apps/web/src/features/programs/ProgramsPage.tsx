@@ -2721,66 +2721,88 @@ const ProgramsPage: React.FC = () => {
             id="program-official-print-report"
             className="print-only"
             style={{
-              padding: '4mm 0',
               color: '#0f172a',
               fontFamily: "'Inter', sans-serif",
               lineHeight: 1.45,
             }}
           >
-            {/* 1. KOP SURAT FORMAL YAYASAN */}
+            {/* ========================================================================= */}
+            {/* LEMBAR 1: INFORMASI PROGRAM & REKAPITULASI KAS MANDIRI                   */}
+            {/* ========================================================================= */}
             <div
+              className="pdf-page"
               style={{
+                width: 794,
+                minHeight: 1120,
+                boxSizing: 'border-box',
+                padding: '24px 32px',
+                backgroundColor: '#ffffff',
                 display: 'flex',
-                alignItems: 'center',
+                flexDirection: 'column',
                 justifyContent: 'space-between',
-                paddingBottom: 12,
-                borderBottom: '3px double #0f172a',
-                marginBottom: 18,
+                pageBreakAfter: 'always',
+                breakAfter: 'page',
+                marginBottom: 20,
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                <img
-                  src="/logo-yayasan.png"
-                  alt="Logo Yayasan GMH"
+              <div>
+                {/* 1. KOP SURAT FORMAL YAYASAN (HALAMAN 1) */}
+                <div
                   style={{
-                    width: 56,
-                    height: 56,
-                    objectFit: 'contain',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    paddingBottom: 10,
+                    borderBottom: '3px double #0f172a',
+                    marginBottom: 16,
                   }}
-                />
-                <div>
-                  <div
-                    style={{
-                      fontSize: 15.5,
-                      fontWeight: 900,
-                      letterSpacing: 0.5,
-                      textTransform: 'uppercase',
-                      color: '#1b4332',
-                    }}
-                  >
-                    YAYASAN GLOBAL MISSION HOUSE (GMH PA KMK)
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <img
+                      src="/logo-yayasan.png"
+                      alt="Logo Yayasan GMH"
+                      style={{
+                        width: 52,
+                        height: 52,
+                        objectFit: 'contain',
+                      }}
+                    />
+                    <div>
+                      <div
+                        style={{
+                          fontSize: 15,
+                          fontWeight: 900,
+                          letterSpacing: 0.5,
+                          textTransform: 'uppercase',
+                          color: '#1b4332',
+                        }}
+                      >
+                        YAYASAN GLOBAL MISSION HOUSE (GMH PA KMK)
+                      </div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#334155', letterSpacing: 0.3 }}>
+                        BADAN PENGURUS PELAYANAN PROGRAM &amp; PERSEKUTUAN ALUMNI
+                      </div>
+                      <div style={{ fontSize: 9.5, color: '#64748b', marginTop: 2 }}>
+                        Sekretariat: Jl. PA KMK No. 12, Medan • Email: info@gmhpakmk.org • Website: www.gmhpakmk.org
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ fontSize: 11.5, fontWeight: 700, color: '#334155', letterSpacing: 0.3 }}>
-                    BADAN PENGURUS PELAYANAN PROGRAM &amp; PERSEKUTUAN ALUMNI
-                  </div>
-                  <div style={{ fontSize: 9.5, color: '#64748b', marginTop: 2 }}>
-                    Sekretariat: Jl. PA KMK No. 12, Medan • Email: info@gmhpakmk.org • Website: www.gmhpakmk.org
-                  </div>
-                </div>
-              </div>
 
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 9, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
-                  KODE DOKUMEN LPJ
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 8.5, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                      KODE DOKUMEN LPJ
+                    </div>
+                    <div style={{ fontSize: 10.5, fontWeight: 700, fontFamily: 'monospace' }}>
+                      LPJ/GMH-PROG/{activeProgram.id.slice(0, 12)}
+                    </div>
+                    <div style={{ fontSize: 8.5, color: '#64748b', marginTop: 2 }}>
+                      Tgl Cetak: {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </div>
+                    <div style={{ fontSize: 8.5, fontWeight: 700, color: '#047857', marginTop: 2 }}>
+                      Halaman 1 dari 2
+                    </div>
+                  </div>
                 </div>
-                <div style={{ fontSize: 11, fontWeight: 700, fontFamily: 'monospace' }}>
-                  LPJ/GMH-PROG/{activeProgram.id.slice(0, 12)}
-                </div>
-                <div style={{ fontSize: 9, color: '#64748b', marginTop: 2 }}>
-                  Tgl Cetak: {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-                </div>
-              </div>
-            </div>
 
             {/* 2. JUDUL DOKUMEN RESMI */}
             <div style={{ textAlign: 'center', marginBottom: 20 }}>
@@ -3019,8 +3041,122 @@ const ProgramsPage: React.FC = () => {
                 </tfoot>
               </table>
             </div>
+          </div>
 
-            {/* 6. RUNDOWN ACARA */}
+          {/* FOOTER HALAMAN 1 */}
+          <div
+            style={{
+              marginTop: 'auto',
+              paddingTop: 10,
+              borderTop: '1px solid #cbd5e1',
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: 8.5,
+              color: '#64748b',
+            }}
+          >
+            <span>Yayasan Global Mission House (GMH PA KMK) • Sistem Informasi Manajemen Terpadu</span>
+            <span>Dokumen Resmi LPJ • Halaman 1 dari 2</span>
+          </div>
+        </div>
+
+        {/* ========================================================================= */}
+        {/* LEMBAR 2: RUNDOWN, TUGAS, SUSUNAN PANITIA & LEMBAR PENGESAHAN            */}
+        {/* ========================================================================= */}
+        <div
+          className="pdf-page"
+          style={{
+            width: 794,
+            minHeight: 1120,
+            boxSizing: 'border-box',
+            padding: '24px 32px',
+            backgroundColor: '#ffffff',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            pageBreakAfter: 'always',
+            breakAfter: 'page',
+          }}
+        >
+          <div>
+            {/* 1. KOP SURAT FORMAL YAYASAN (HALAMAN 2) */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingBottom: 10,
+                borderBottom: '3px double #0f172a',
+                marginBottom: 16,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <img
+                  src="/logo-yayasan.png"
+                  alt="Logo Yayasan GMH"
+                  style={{
+                    width: 52,
+                    height: 52,
+                    objectFit: 'contain',
+                  }}
+                />
+                <div>
+                  <div
+                    style={{
+                      fontSize: 15,
+                      fontWeight: 900,
+                      letterSpacing: 0.5,
+                      textTransform: 'uppercase',
+                      color: '#1b4332',
+                    }}
+                  >
+                    YAYASAN GLOBAL MISSION HOUSE (GMH PA KMK)
+                  </div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#334155', letterSpacing: 0.3 }}>
+                    BADAN PENGURUS PELAYANAN PROGRAM &amp; PERSEKUTUAN ALUMNI
+                  </div>
+                  <div style={{ fontSize: 9.5, color: '#64748b', marginTop: 2 }}>
+                    Sekretariat: Jl. PA KMK No. 12, Medan • Email: info@gmhpakmk.org • Website: www.gmhpakmk.org
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 8.5, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                  KODE DOKUMEN LPJ
+                </div>
+                <div style={{ fontSize: 10.5, fontWeight: 700, fontFamily: 'monospace' }}>
+                  LPJ/GMH-PROG/{activeProgram.id.slice(0, 12)}
+                </div>
+                <div style={{ fontSize: 8.5, color: '#64748b', marginTop: 2 }}>
+                  Tgl Cetak: {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </div>
+                <div style={{ fontSize: 8.5, fontWeight: 700, color: '#047857', marginTop: 2 }}>
+                  Halaman 2 dari 2
+                </div>
+              </div>
+            </div>
+
+            {/* SUB-HEADER LAMPIRAN */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: '#f8fafc',
+                padding: '6px 12px',
+                borderRadius: 4,
+                border: '1px solid #e2e8f0',
+                marginBottom: 14,
+              }}
+            >
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#1e293b' }}>
+                LAMPIRAN RESMI LPJ: {activeProgram.program_title.toUpperCase()}
+              </div>
+              <div style={{ fontSize: 9, color: '#64748b' }}>
+                Lembar Pelaksanaan Agenda, Checklist Tugas &amp; Pengesahan
+              </div>
+            </div>
             <div style={{ marginBottom: 18, pageBreakInside: 'avoid' }}>
               <div
                 style={{
@@ -3211,26 +3347,23 @@ const ProgramsPage: React.FC = () => {
               }}
             >
               <table
-                className="print-avoid-break"
                 style={{
                   width: '100%',
-                  fontSize: 10.5,
-                  pageBreakInside: 'avoid',
-                  breakInside: 'avoid',
+                  fontSize: 10,
                 }}
               >
                 <tbody>
                   <tr>
                     {/* Kolom Kiri: Pelaksana Teknis / Pembuat Laporan */}
-                    <td style={{ width: '50%', textAlign: 'center', verticalAlign: 'top', paddingBottom: 85 }}>
+                    <td style={{ width: '50%', textAlign: 'center', verticalAlign: 'top', paddingBottom: 65 }}>
                       <div style={{ fontWeight: 600, color: '#334155', lineHeight: 1.5 }}>
                         Kordinator / Panitia Program,
                       </div>
                     </td>
 
                     {/* Kolom Kanan: Pengesah / Pimpinan Yayasan */}
-                    <td style={{ width: '50%', textAlign: 'center', verticalAlign: 'top', paddingBottom: 85 }}>
-                      <div style={{ color: '#475569', marginBottom: 6 }}>
+                    <td style={{ width: '50%', textAlign: 'center', verticalAlign: 'top', paddingBottom: 65 }}>
+                      <div style={{ color: '#475569', marginBottom: 4 }}>
                         Medan, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                       </div>
                       <div style={{ fontWeight: 600, color: '#334155', lineHeight: 1.5 }}>
@@ -3259,6 +3392,24 @@ const ProgramsPage: React.FC = () => {
               </table>
             </div>
           </div>
+
+          {/* FOOTER HALAMAN 2 */}
+          <div
+            style={{
+              marginTop: 'auto',
+              paddingTop: 10,
+              borderTop: '1px solid #cbd5e1',
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: 8.5,
+              color: '#64748b',
+            }}
+          >
+            <span>Yayasan Global Mission House (GMH PA KMK) • Sistem Informasi Manajemen Terpadu</span>
+            <span>Dokumen Resmi LPJ • Halaman 2 dari 2</span>
+          </div>
+        </div>
+      </div>
         );
       })()}
     </div>

@@ -1139,6 +1139,21 @@ select.select-sm {
     display: block !important;
   }
 
+  .pdf-page {
+    box-sizing: border-box !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    min-height: 100vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justifyContent: space-between !important;
+  }
+
+  .pdf-page:last-child {
+    page-break-after: auto !important;
+    break-after: auto !important;
+  }
+
   .signature-section,
   .print-avoid-break,
   .print-avoid-break table,

@@ -94,7 +94,7 @@ export const api = {
 
   // 4. Finance & Donations (Flow 3)
   finance: {
-    getTransactions: (params?: { scope?: string; type?: string; accountId?: string }) => {
+    getTransactions: (params?: { scope?: string; type?: string; accountId?: string; limit?: string | number }) => {
       const query = new URLSearchParams(params as any).toString();
       return request(`/finance/transactions${query ? `?${query}` : ''}`);
     },
@@ -164,6 +164,9 @@ export const api = {
   dashboard: {
     getSummary: () => request('/dashboard/summary'),
   },
+  reports: {
+    getConsolidated: (year: number) => request(`/reports/consolidated?year=${year}`),
+  },
   building: {
     getProject: () => request('/building/project'),
     getProjects: (params?: { category?: string; status?: string; search?: string }) => {
@@ -229,8 +232,40 @@ export const api = {
       request('/prayer/public/submit', { method: 'POST', body: JSON.stringify(data) }),
   },
   assets: {
-    getAll: () => request('/assets'),
+    getAll: (params?: { search?: string; condition?: string; type?: string }) => {
+      const query = new URLSearchParams(params as any).toString();
+      return request(`/assets${query ? `?${query}` : ''}`);
+    },
     create: (data: any) => request('/assets', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: any) => request(`/assets/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: (id: string) => request(`/assets/${id}`, { method: 'DELETE' }),
+    getLoans: (params?: { status?: string; loanType?: string }) => {
+      const query = new URLSearchParams(params as any).toString();
+      return request(`/assets/loans${query ? `?${query}` : ''}`);
+    },
+    createLoan: (data: any) => request('/assets/loans', { method: 'POST', body: JSON.stringify(data) }),
+    returnLoan: (id: string, data: { actualReturnAt?: string; conditionOnReturn?: string; notes?: string }) =>
+      request(`/assets/loans/${id}/return`, { method: 'PUT', body: JSON.stringify(data) }),
+    getAvailable: () => request('/assets/public/available'),
+    publicRequest: (data: any) => request('/assets/public/request', { method: 'POST', body: JSON.stringify(data) }),
+    trackRequest: (query: string) => request(`/assets/public/track/${encodeURIComponent(query)}`),
+    approveLoan: (id: string, data?: { approvalNotes?: string }) =>
+      request(`/assets/loans/${id}/approve`, { method: 'PUT', body: JSON.stringify(data || {}) }),
+    rejectLoan: (id: string, data: { rejectionReason: string }) =>
+      request(`/assets/loans/${id}/reject`, { method: 'PUT', body: JSON.stringify(data) }),
+    handoverLoan: (id: string) => request(`/assets/loans/${id}/handover`, { method: 'PUT' }),
+  },
+  users: {
+    getAll: (params?: { search?: string; roleId?: string; status?: string }) => {
+      const query = new URLSearchParams(params as any).toString();
+      return request(`/users${query ? `?${query}` : ''}`);
+    },
+    getRoles: () => request('/users/roles'),
+    getById: (id: string) => request(`/users/${id}`),
+    create: (data: any) => request('/users', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: any) => request(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    toggleStatus: (id: string) => request(`/users/${id}/toggle-status`, { method: 'PATCH' }),
+    delete: (id: string) => request(`/users/${id}`, { method: 'DELETE' }),
   },
 };
 

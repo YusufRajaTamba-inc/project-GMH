@@ -18,6 +18,8 @@ import programsRoutes from './modules/programs/programs.routes.js';
 import missionsRoutes from './modules/missions/missions.routes.js';
 import prayerRoutes from './modules/prayer/prayer.routes.js';
 import assetsRoutes from './modules/assets/assets.routes.js';
+import reportsRoutes from './modules/reports/reports.routes.js';
+import usersRoutes from './modules/users/users.routes.js';
 
 const app = express();
 
@@ -38,9 +40,9 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
 // P1-B: CORS Strict — hanya izinkan origin yang terdaftar
 app.use(cors({
   origin: (origin, callback) => {
-    // Izinkan request tanpa origin (mobile app, curl, Postman)
+    // Izinkan request tanpa origin (curl, Postman, health check monitor)
     if (!origin) return callback(null, true);
-    if (ENV.CORS_ORIGIN.includes(origin)) {
+    if (ENV.ALLOWED_ORIGIN.includes(origin)) {
       return callback(null, true);
     }
     callback(new Error(`CORS: Origin '${origin}' tidak diizinkan.`));
@@ -91,6 +93,8 @@ app.use('/api/v1/programs', programsRoutes);
 app.use('/api/v1/missions', missionsRoutes);
 app.use('/api/v1/prayer', prayerRoutes);
 app.use('/api/v1/assets', assetsRoutes);
+app.use('/api/v1/reports', reportsRoutes);
+app.use('/api/v1/users', usersRoutes);
 
 // Root greeting
 app.get('/', (_req: Request, res: Response) => {
@@ -123,7 +127,15 @@ app.listen(ENV.PORT, async () => {
   console.log(`🚀 GMH Backend API running on http://localhost:${ENV.PORT}`);
   console.log(`📑 Environment: ${ENV.NODE_ENV}`);
   console.log(`📦 Database Target: ${ENV.DATABASE_URL.replace(/:[^:@]+@/, ':****@')}`);
+  console.log(`🌐 Allowed Origins: ${ENV.ALLOWED_ORIGIN.join(', ') || '(kosong)'}`);
   console.log(`=======================================================`);
+
+  // Keamanan: bypass autentikasi development tidak boleh aktif di production
+  if (ENV.IS_PRODUCTION && process.env.DEV_AUTH_BYPASS === 'true') {
+    console.error('❌ FATAL: DEV_AUTH_BYPASS=true tidak diperbolehkan pada NODE_ENV=production.');
+    process.exit(1);
+  }
+
   await db.testConnection();
 });
 

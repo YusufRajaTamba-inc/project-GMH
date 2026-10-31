@@ -184,6 +184,36 @@ const INITIAL_TRANSACTIONS: FinancialTransaction[] = [
     notes: 'Ongkos kirim paket bahan pemuridan',
     recordedBy: 'Staff Admin',
   },
+  {
+    id: 'trx-bld-jun-1',
+    code: 'KWT-GMH-202606-002',
+    date: '2026-06-15',
+    desc: 'Tahap 2 Komitmen Janji Iman - Pengecoran Struktur Lantai 1 (Kel. Sinurat)',
+    category: 'Penerimaan Komitmen Janji Iman Pembangunan',
+    party: 'Kel. Sinurat',
+    amount: 15000000,
+    type: 'CREDIT',
+    account: 'KAS_PEMBANGUNAN',
+    source: 'JANJI_IMAN',
+    status: 'Approved',
+    notes: 'Tahap 2 Komitmen Janji Iman - Pengecoran Struktur Lantai 1 (Kel. Sinurat)',
+    recordedBy: 'Staff Yayasan',
+  },
+  {
+    id: 'trx-bld-jun-2',
+    code: 'KWT-GMH-202606-011',
+    date: '2026-06-10',
+    desc: 'Angsuran Termin 1 Janji Iman Pembangunan (Jekson Simanjuntak)',
+    category: 'Penerimaan Komitmen Janji Iman Pembangunan',
+    party: 'Jekson Simanjuntak',
+    amount: 5000000,
+    type: 'CREDIT',
+    account: 'KAS_PEMBANGUNAN',
+    source: 'JANJI_IMAN',
+    status: 'Approved',
+    notes: 'Angsuran Termin 1 Janji Iman Pembangunan (Jekson Simanjuntak)',
+    recordedBy: 'Staff Yayasan',
+  },
 ];
 
 export const INITIAL_BUDGETS: BudgetCategoryDef[] = [
@@ -217,7 +247,7 @@ const FinanceStoreContext = createContext<FinanceStoreContextValue>({
   getMonthlyStats: () => ({ totalIn: 0, totalOut: 0, net: 0 }),
 });
 
-const STORAGE_KEY = 'gmh_finance_store_v3';
+const STORAGE_KEY = 'gmh_finance_store_v4';
 
 export const FinanceStoreProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -398,7 +428,7 @@ export const FinanceStoreProvider: React.FC<{ children: React.ReactNode }> = ({
   const refreshFromApi = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await api.finance.getTransactions().catch(() => null);
+      const res = await api.finance.getTransactions({ limit: 'all' }).catch(() => null);
       if (res?.transactions && Array.isArray(res.transactions) && res.transactions.length > 0) {
         const mappedTrx: FinancialTransaction[] = res.transactions
           .filter((row: any) => {
@@ -413,13 +443,26 @@ export const FinanceStoreProvider: React.FC<{ children: React.ReactNode }> = ({
             else if (row.notes?.includes('Internet')) partyGuess = 'PT Telkom Indonesia';
             else if (row.notes?.includes('ATK')) partyGuess = 'Toko ATK Gramedia USU';
 
+            let dateStr = '2026-10-28';
+            if (row.transaction_date) {
+              const d = new Date(row.transaction_date);
+              if (!isNaN(d.getTime())) {
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                dateStr = `${year}-${month}-${day}`;
+              } else {
+                dateStr = String(row.transaction_date).split('T')[0];
+              }
+            }
+
           return {
             id: row.id || `trx-${idx}`,
             code: row.transaction_code || row.transaction_number || `TX-KAS-${String(idx + 1).padStart(3, '0')}`,
-            date: row.transaction_date ? row.transaction_date.split('T')[0] : '2026-10-28',
+            date: dateStr,
             desc: row.notes || row.description || row.account_name || 'Transaksi Kas Yayasan',
             category: row.account_name || row.category_name || 'Operasional Kantor',
-            party: row.party || partyGuess,
+            party: row.donor_name || row.party || partyGuess,
             amount: Number(row.amount) || 0,
             type: (row.transaction_type === 'EXPENSE' || row.transaction_type === 'DEBIT') ? 'DEBIT' : 'CREDIT',
             account: (row.scope === 'OPERASIONAL' || row.coa_scope === 'OPERASIONAL_KANTOR')

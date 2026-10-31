@@ -371,7 +371,8 @@ export const createPledge = async (req: Request, res: Response): Promise<void> =
     );
 
     const newPledge = pledgeRes.rows[0];
-    let initialReceipt = null;
+    let initialReceipt: { receiptNumber: string; donorName: string; category: string; amount: number; date: string; qrCodeValue: string } | null = null;
+    let initialTransactionId: string | null = null;
 
     // If initial payment > 0, record in financial_transactions
     if (initial > 0) {
@@ -402,6 +403,7 @@ export const createPledge = async (req: Request, res: Response): Promise<void> =
           newPledge.id,
         ]
       );
+      initialTransactionId = txRes.rows[0]?.id || null;
 
       if (buildingProjectId) {
         await client.query(
@@ -421,6 +423,23 @@ export const createPledge = async (req: Request, res: Response): Promise<void> =
     }
 
     await client.query('COMMIT');
+
+    await logAudit(req.user?.id || null, 'PLEDGE_CREATE', 'pledges', newPledge.id, null, {
+      donorName: finalDonorName,
+      totalAmount: total,
+      initialPayment: initial,
+      category: newPledge.category,
+      type: newPledge.pledge_type,
+    }, req.ip, req.headers['user-agent']);
+
+    if (initial > 0) {
+      await logAudit(req.user?.id || null, 'DONATION_PAYMENT', 'financial_transactions', initialTransactionId, null, {
+        pledgeId: newPledge.id,
+        donorName: finalDonorName,
+        amount: initial,
+        paymentMethod: paymentMethod || 'BANK_TRANSFER',
+      }, req.ip, req.headers['user-agent']);
+    }
 
     res.status(201).json({
       success: true,
@@ -514,12 +533,14 @@ export const addPledgeInstallment = async (req: Request, res: Response): Promise
 
     await client.query('COMMIT');
 
-    await logAudit(req.user?.id || null, 'INSERT', 'financial_transactions', txRes.rows[0].id, null, {
+    await logAudit(req.user?.id || null, 'DONATION_INSTALLMENT', 'financial_transactions', txRes.rows[0].id, null, {
       receiptNumber,
+      pledgeId: id,
       donorName: pledge.donor_name,
       amount: paymentAmount,
-      pledgeId: id,
-    });
+      paymentMethod: paymentMethod || 'BANK_TRANSFER',
+      pledgeStatus: updateRes.rows[0]?.status,
+    }, req.ip, req.headers['user-agent']);
 
     res.status(201).json({
       success: true,
@@ -666,11 +687,14 @@ export const recordDonationPayment = async (req: Request, res: Response): Promis
 
     await client.query('COMMIT');
 
-    await logAudit(req.user?.id || null, 'INSERT', 'financial_transactions', txRes.rows[0].id, null, {
+    await logAudit(req.user?.id || null, 'DONATION_PAYMENT', 'financial_transactions', txRes.rows[0].id, null, {
       receiptNumber,
       donorName,
       amount: paymentAmount,
-    });
+      pledgeId: pledgeId || null,
+      category: category || null,
+      type: type || null,
+    }, req.ip, req.headers['user-agent']);
 
     res.status(201).json({
       success: true,
@@ -808,7 +832,9 @@ export const getFinanceAuditLogs = async (req: Request, res: Response): Promise<
               COALESCE(u.role_id, 'SYSTEM') as operator_role
        FROM audit_logs a
        LEFT JOIN users u ON a.user_id = u.id
-       WHERE a.entity_name IN ('financial_transactions', 'chart_of_accounts', 'finance_budget')
+       WHERE a.entity_name IN ('financial_transactions', 'chart_of_accounts', 'finance_budget', 'pledges', 'mission_activities', 'foundation_programs')
+           OR (a.new_values IS NOT NULL AND a.new_values::text ILIKE '%TX-%')
+           OR (a.old_values IS NOT NULL AND a.old_values::text ILIKE '%TX-%')
           OR (a.new_values IS NOT NULL AND a.new_values::text ILIKE '%TX-%')
           OR (a.old_values IS NOT NULL AND a.old_values::text ILIKE '%TX-%')
        ORDER BY a.created_at DESC

@@ -724,17 +724,34 @@ const FinanceOperationalPage: React.FC = () => {
     return getPeriodDetails(periodKey, customStartDate, customEndDate);
   }, [periodKey, customStartDate, customEndDate]);
 
-  // Extract all distinct year-months from transactions
+  // Current active year-month in YYYY-MM
+  const currentMonthKey = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }, []);
+
+  // Extract all distinct year-months from transactions + full current year
   const distinctTransactionPeriods = useMemo(() => {
     const set = new Set<string>();
-    set.add('2026-10');
+    // Always include full 12 months for 2026 so every month is selectable in dropdown
+    for (let m = 12; m >= 1; m--) {
+      set.add(`2026-${String(m).padStart(2, '0')}`);
+    }
+    // Also include months from transactions (e.g. past or future years)
     transactions.forEach((t) => {
       if (t && t.date && t.date.length >= 7) {
-        set.add(t.date.slice(0, 7));
+        const ym = t.date.slice(0, 7);
+        if (/^\d{4}-\d{2}$/.test(ym)) {
+          set.add(ym);
+        }
       }
     });
+    // Ensure active periodKey is in the list if it's a calendar month
+    if (periodKey && /^\d{4}-\d{2}$/.test(periodKey.replace('MONTH:', ''))) {
+      set.add(periodKey.replace('MONTH:', ''));
+    }
     return Array.from(set).sort().reverse();
-  }, [transactions]);
+  }, [transactions, periodKey]);
 
   // Period Navigation Handlers
   const handlePrevMonth = () => {
@@ -751,7 +768,7 @@ const FinanceOperationalPage: React.FC = () => {
       setPeriodKey(`YEAR:${y - 1}`);
       return;
     }
-    const ym = periodKey.includes('-') && !periodKey.startsWith('CYCLE:') ? periodKey.replace('MONTH:', '') : '2026-10';
+    const ym = periodKey.includes('-') && !periodKey.startsWith('CYCLE:') ? periodKey.replace('MONTH:', '') : currentMonthKey;
     const [y, m] = ym.split('-').map(Number);
     const prevM = m === 1 ? 12 : m - 1;
     const prevY = m === 1 ? y - 1 : y;
@@ -772,7 +789,7 @@ const FinanceOperationalPage: React.FC = () => {
       setPeriodKey(`YEAR:${y + 1}`);
       return;
     }
-    const ym = periodKey.includes('-') && !periodKey.startsWith('CYCLE:') ? periodKey.replace('MONTH:', '') : '2026-10';
+    const ym = periodKey.includes('-') && !periodKey.startsWith('CYCLE:') ? periodKey.replace('MONTH:', '') : currentMonthKey;
     const [y, m] = ym.split('-').map(Number);
     const nextM = m === 12 ? 1 : m + 1;
     const nextY = m === 12 ? y + 1 : y;
@@ -784,21 +801,42 @@ const FinanceOperationalPage: React.FC = () => {
     return transactions.filter((t) => t && activePeriod.matchFn(t.date || ''));
   }, [transactions, activePeriod]);
 
-  // Financial stats for the active period (specifically for Kas Operasional)
+  // Financial stats for the active period (consolidated across yayasan + operational breakdown)
   const periodStats = useMemo(() => {
-    const opTrx = periodTransactions.filter((t) => t.account === 'KAS_OPERASIONAL');
-    const totalIn = opTrx
+    // Consolidated all cash inflow and outflow in this period (matches Dashboard & Reports)
+    const totalIn = periodTransactions
       .filter((t) => t.type === 'CREDIT')
       .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-    const totalOut = opTrx
+    const totalOut = periodTransactions
       .filter((t) => t.type === 'DEBIT')
       .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    const net = totalIn - totalOut;
+
+    // Specific to Kas Operasional
+    const opTrx = periodTransactions.filter((t) => t.account === 'KAS_OPERASIONAL');
+    const opIn = opTrx
+      .filter((t) => t.type === 'CREDIT')
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    const opOut = opTrx
+      .filter((t) => t.type === 'DEBIT')
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+    // Specific to Kas Pembangunan
+    const bldTrx = periodTransactions.filter((t) => t.account === 'KAS_PEMBANGUNAN');
+    const bldIn = bldTrx
+      .filter((t) => t.type === 'CREDIT')
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
     return {
       totalIn,
       totalOut,
-      net: totalIn - totalOut,
+      net,
+      opIn,
+      opOut,
+      bldIn,
       count: periodTransactions.length,
       opCount: opTrx.length,
+      bldCount: bldTrx.length,
     };
   }, [periodTransactions]);
 
@@ -1128,25 +1166,25 @@ const FinanceOperationalPage: React.FC = () => {
                   {distinctTransactionPeriods.map((ym) => {
                     const [yr, mo] = ym.split('-');
                     const moName = MONTH_NAMES_MAP[mo] || mo;
-                    const isCurrent = ym === '2026-10';
+                    const isCurrent = ym === currentMonthKey;
                     return (
                       <option key={ym} value={ym}>
                         {isCurrent ? '⭐' : '📅'} {moName} {yr} {isCurrent ? '(Bulan Berjalan)' : ''}
                       </option>
                     );
                   })}
-                  {!distinctTransactionPeriods.includes('2026-11') && (
-                    <option value="2026-11">📅 November 2026</option>
-                  )}
-                  {!distinctTransactionPeriods.includes('2026-12') && (
-                    <option value="2026-12">📅 Desember 2026</option>
-                  )}
                 </optgroup>
 
                 <optgroup label="Siklus Cut-Off Kas (Tgl 16 - 15)">
+                  {periodKey.startsWith('CYCLE:') &&
+                    !['CYCLE:2026-10', 'CYCLE:2026-09', 'CYCLE:2026-08', 'CYCLE:2026-07', 'CYCLE:2026-06'].includes(periodKey) && (
+                      <option value={periodKey}>🔄 {activePeriod.label}</option>
+                    )}
                   <option value="CYCLE:2026-10">🔄 Siklus 16 Okt – 15 Nov 2026</option>
                   <option value="CYCLE:2026-09">🔄 Siklus 16 Sep – 15 Okt 2026</option>
                   <option value="CYCLE:2026-08">🔄 Siklus 16 Agu – 15 Sep 2026</option>
+                  <option value="CYCLE:2026-07">🔄 Siklus 16 Jul – 15 Agu 2026</option>
+                  <option value="CYCLE:2026-06">🔄 Siklus 16 Jun – 15 Jul 2026</option>
                 </optgroup>
 
                 <optgroup label="Tahun Anggaran">
@@ -1170,13 +1208,13 @@ const FinanceOperationalPage: React.FC = () => {
                 <ChevronRight size={15} />
               </button>
 
-              {periodKey !== '2026-10' && (
+              {periodKey !== currentMonthKey && (
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm"
                   style={{ fontSize: 11.5, color: 'var(--gmh-green-mid)', fontWeight: 600, padding: '4px 8px' }}
-                  onClick={() => setPeriodKey('2026-10')}
-                  title="Kembali ke bulan berjalan (Oktober 2026)"
+                  onClick={() => setPeriodKey(currentMonthKey)}
+                  title={`Kembali ke bulan berjalan (${MONTH_NAMES_MAP[currentMonthKey.split('-')[1]] || 'Oktober'} ${currentMonthKey.split('-')[0]})`}
                 >
                   ↺ Bulan Berjalan
                 </button>
@@ -1287,7 +1325,15 @@ const FinanceOperationalPage: React.FC = () => {
             {formatRupiah(opBalance)}
           </div>
           <div className="stat-card-meta">
-            Pemasukan Periode Ini: <strong>{formatRupiah(periodStats.totalIn)}</strong>
+            Pemasukan Kas Periode Ini:{' '}
+            <strong style={{ color: periodStats.totalIn > 0 ? '#059669' : undefined }}>
+              {formatRupiah(periodStats.totalIn)}
+            </strong>
+            {periodStats.bldIn > 0 && (
+              <span style={{ fontSize: 11, color: 'var(--gmh-text-muted)', marginLeft: 4 }}>
+                ({formatRupiah(periodStats.bldIn)} Pembangunan)
+              </span>
+            )}
           </div>
         </div>
 
@@ -1311,7 +1357,10 @@ const FinanceOperationalPage: React.FC = () => {
             {formatRupiah(periodStats.totalOut)}
           </div>
           <div className="stat-card-meta">
-            Arus Kas Bersih: <strong style={{ color: periodStats.net >= 0 ? '#059669' : '#b91c1c' }}>{formatRupiah(periodStats.net)}</strong>
+            Arus Kas Bersih:{' '}
+            <strong style={{ color: periodStats.net >= 0 ? '#059669' : '#b91c1c' }}>
+              {periodStats.net >= 0 ? '+' : ''}{formatRupiah(periodStats.net)}
+            </strong>
           </div>
         </div>
 
@@ -1334,6 +1383,11 @@ const FinanceOperationalPage: React.FC = () => {
           </div>
           <div className="stat-card-meta">
             Khusus Pembangunan: <strong>{formatRupiah(buildingBalance)}</strong>
+            {periodStats.bldIn > 0 && (
+              <span style={{ color: '#059669', marginLeft: 6, fontWeight: 600 }}>
+                (+{formatRupiah(periodStats.bldIn)} periode ini)
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -1512,6 +1566,41 @@ const FinanceOperationalPage: React.FC = () => {
                           <td>
                             <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--gmh-text)' }}>
                               {t.category}
+                            </div>
+                            <div style={{ marginTop: 3 }}>
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  fontWeight: 600,
+                                  padding: '1px 6px',
+                                  borderRadius: 4,
+                                  background:
+                                    t.account === 'KAS_PEMBANGUNAN'
+                                      ? '#fef3c7'
+                                      : t.account === 'KAS_BANK'
+                                      ? '#eff6ff'
+                                      : '#ecfdf5',
+                                  color:
+                                    t.account === 'KAS_PEMBANGUNAN'
+                                      ? '#92400e'
+                                      : t.account === 'KAS_BANK'
+                                      ? '#1e40af'
+                                      : '#065f46',
+                                  border: `1px solid ${
+                                    t.account === 'KAS_PEMBANGUNAN'
+                                      ? '#fde68a'
+                                      : t.account === 'KAS_BANK'
+                                      ? '#bfdbfe'
+                                      : '#a7f3d0'
+                                  }`,
+                                }}
+                              >
+                                {t.account === 'KAS_PEMBANGUNAN'
+                                  ? 'Kas Pembangunan'
+                                  : t.account === 'KAS_BANK'
+                                  ? 'Kas Bank'
+                                  : 'Kas Operasional'}
+                              </span>
                             </div>
                           </td>
 

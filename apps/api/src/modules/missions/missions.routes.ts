@@ -338,6 +338,16 @@ router.post('/:id/transactions', authenticateJwt, async (req: Request, res: Resp
       [JSON.stringify(updatedTransactions), newBalance, id]
     );
 
+    await logAudit(req.user?.id || null, 'MISSION_CASH_CREATE', 'mission_activities', id, null, {
+      transaction: newTrx, centralTxCode, cashBalance: updateRes.rows[0]?.cash_balance,
+    }, req.ip, req.headers['user-agent']);
+    if (centralTxCode) {
+      await logAudit(req.user?.id || null, 'INSERT', 'financial_transactions', centralTxCode, null, {
+        transaction_code: centralTxCode, amount: newTrx.amount, type: newTrx.type,
+        category: newTrx.category, description: newTrx.description, missionActivityId: id,
+      }, req.ip, req.headers['user-agent']);
+    }
+
     res.status(201).json({
       success: true,
       message: 'Transaksi kas kegiatan berhasil dicatat ke jurnal mandiri.',
@@ -364,10 +374,12 @@ router.delete('/:id/transactions/:trxId', authenticateJwt, async (req: Request, 
     const activity = check.rows[0];
     const existingTransactions = Array.isArray(activity.transactions) ? activity.transactions : [];
 
-    // Check if the deleted transaction was synced to central financial_transactions
     const targetTrx = existingTransactions.find((t: any) => t.id === trxId);
     if (targetTrx && targetTrx.central_tx_code) {
+      const centralTx = await db.query('SELECT * FROM financial_transactions WHERE transaction_code = $1', [targetTrx.central_tx_code]);
       await db.query('DELETE FROM financial_transactions WHERE transaction_code = $1', [targetTrx.central_tx_code]);
+      await logAudit(req.user?.id || null, 'DELETE', 'financial_transactions', centralTx.rows[0]?.id || targetTrx.central_tx_code,
+        centralTx.rows[0] || { transaction_code: targetTrx.central_tx_code }, null, req.ip, req.headers['user-agent']);
     }
 
     const transactions = existingTransactions.filter((t: any) => t.id !== trxId);
@@ -385,6 +397,17 @@ router.delete('/:id/transactions/:trxId', authenticateJwt, async (req: Request, 
        RETURNING *`,
       [JSON.stringify(transactions), newBalance, id]
     );
+
+    if (targetTrx) {
+      await logAudit(req.user?.id || null, 'MISSION_CASH_DELETE', 'mission_activities', id,
+        { transaction: targetTrx, centralTxCode: targetTrx.central_tx_code || null },
+        { cashBalance: updateRes.rows[0]?.cash_balance }, req.ip, req.headers['user-agent']);
+      if (targetTrx.central_tx_code) {
+        await logAudit(req.user?.id || null, 'DELETE', 'financial_transactions', targetTrx.central_tx_code,
+          { transaction_code: targetTrx.central_tx_code, amount: targetTrx.amount, description: targetTrx.description },
+          null, req.ip, req.headers['user-agent']);
+      }
+    }
 
     res.status(200).json({
       success: true,

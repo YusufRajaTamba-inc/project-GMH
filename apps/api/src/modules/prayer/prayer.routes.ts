@@ -78,14 +78,27 @@ router.get('/', authenticateJwt, async (req: Request, res: Response): Promise<vo
 router.put('/:id/status', authenticateJwt, async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { status, counselorNotes } = req.body;
-    const result = await db.query(
-      `UPDATE prayer_requests 
-       SET status = $1, counselor_notes = $2
-       WHERE id = $3
-       RETURNING *`,
-      [status, counselorNotes, id]
-    );
+    const { status, counselorNotes, answeredNotes } = req.body;
+    const noteVal = counselorNotes !== undefined ? counselorNotes : answeredNotes;
+
+    let query: string;
+    let params: any[];
+
+    if (noteVal !== undefined) {
+      query = `UPDATE prayer_requests 
+               SET status = $1, counselor_notes = $2
+               WHERE id = $3
+               RETURNING *`;
+      params = [status, noteVal && String(noteVal).trim() ? String(noteVal).trim() : null, id];
+    } else {
+      query = `UPDATE prayer_requests 
+               SET status = $1
+               WHERE id = $2
+               RETURNING *`;
+      params = [status, id];
+    }
+
+    const result = await db.query(query, params);
     res.status(200).json({ success: true, data: result.rows[0] });
   } catch (err: any) {
     res.status(500).json({ success: false, message: 'Gagal memperbarui status doa.', error: err.message });

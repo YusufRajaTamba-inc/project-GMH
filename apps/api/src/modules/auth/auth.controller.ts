@@ -110,9 +110,16 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+const COOKIE_CLEAR_OPTIONS = {
+  httpOnly: true,
+  secure: ENV.NODE_ENV === 'production',
+  sameSite: 'strict' as const,
+  path: '/',
+};
+
 // P1-A: Logout — hapus cookie sisi server
 export const logout = (_req: Request, res: Response): void => {
-  res.clearCookie('gmh_auth_token', { path: '/' });
+  res.clearCookie('gmh_auth_token', COOKIE_CLEAR_OPTIONS);
   res.status(200).json({ success: true, message: 'Logout berhasil.' });
 };
 
@@ -128,6 +135,11 @@ export const getRoles = async (_req: Request, res: Response): Promise<void> => {
 
 export const demoSwitchRole = async (req: Request, res: Response): Promise<void> => {
   try {
+    if (ENV.NODE_ENV === 'production') {
+      res.status(404).json({ success: false, message: 'Endpoint tidak ditemukan.' });
+      return;
+    }
+
     const { roleId } = req.body;
     const roleCheck = await db.query(`SELECT id, name FROM roles WHERE id = $1`, [roleId]);
     if (roleCheck.rows.length === 0) {
@@ -162,8 +174,6 @@ export const demoSwitchRole = async (req: Request, res: Response): Promise<void>
     res.status(200).json({
       success: true,
       message: `Beralih ke peran: ${role.name}`,
-      // token disertakan di demo switch agar kompatibel dengan mode demo offline
-      token,
       user: {
         id: user.id,
         username: user.username,

@@ -8,15 +8,15 @@ interface AuthContextValue {
   isLoading: boolean;
   setRole: (role: UserRole) => Promise<void>;
   login: (username: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const DEFAULT_USER: CurrentUser = {
-  id: '1',
-  name: 'Yusuf Siregar',
-  role: 'SUPER_ADMIN',
-  department: 'Sekretariat Yayasan',
-  initials: 'YS',
+  id: '',
+  name: 'Guest',
+  role: 'ANGGOTA_ALUMNI',
+  department: 'Belum masuk',
+  initials: 'GU',
 };
 
 const AuthContext = createContext<AuthContextValue>({
@@ -24,19 +24,21 @@ const AuthContext = createContext<AuthContextValue>({
   isLoading: false,
   setRole: async () => {},
   login: async () => false,
-  logout: () => {},
+  logout: async () => {},
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<CurrentUser>(DEFAULT_USER);
   const [isLoading, setIsLoading] = useState(false);
 
-  // P1-A: Init sesi — tidak bergantung localStorage, cukup panggil /auth/me
-  // Browser otomatis mengirim HttpOnly Cookie yang ada
+  // P1-A: Init sesi dengan memvalidasi cookie melalui /auth/me
   useEffect(() => {
+    let cancelled = false;
+
     const initAuth = async () => {
       try {
         const res = await api.auth.getMe();
+        if (cancelled) return;
         if (res?.user) {
           setUser({
             id: res.user.id,
@@ -50,30 +52,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               .toUpperCase()
               .slice(0, 2),
           });
-          return;
         }
       } catch {
-        // Sesi tidak ada atau kedaluwarsa, coba demo fallback
-      }
-
-      // Default demo login sebagai SUPER_ADMIN
-      try {
-        const switchRes = await api.auth.demoSwitch('SUPER_ADMIN');
-        if (switchRes.token) {
-          setUser({
-            id: switchRes.user.id,
-            name: switchRes.user.fullName,
-            role: switchRes.user.roleId,
-            department: switchRes.user.roleName || 'Super Administrator',
-            initials: 'SA',
-          });
-        }
-      } catch (err) {
-        console.warn('Backend API connection offline, running in offline demo mode:', err);
+        // Sesi tidak ada atau kedaluwarsa; tetap gunakan state default,
+        // jangan menerbitkan sesi demo otomatis.
+      } finally {
+        if (!cancelled) setIsLoading(false);
       }
     };
 
-    initAuth();
+    setIsLoading(true);
+    void initAuth();
+    return () => { cancelled = true; };
   }, []);
 
 
@@ -114,17 +104,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       const res = await api.auth.demoSwitch(normalizedRole);
-      if (res.token) {
+      if (res.success && res.user) {
         setUser({
           id: res.user.id,
           name: res.user.fullName || names[role] || 'User Yayasan',
-          role: role,
+          role,
           initials: initials[role] || 'GM',
           department: ROLE_LABELS[normalizedRole] || ROLE_LABELS[role] || 'Yayasan GMH',
         });
       }
     } catch {
-      // Fallback local update
+      // Fallback local update hanya untuk demo UI jika API tidak tersedia.
       setUser({
         id: '1',
         name: names[role] || 'User Yayasan',
@@ -161,8 +151,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const logout = () => {
-    api.auth.logout(); // P1-A: Hapus cookie di server
+  const logout = async () => {
+    await api.auth.logout();
     setUser(DEFAULT_USER);
   };
 

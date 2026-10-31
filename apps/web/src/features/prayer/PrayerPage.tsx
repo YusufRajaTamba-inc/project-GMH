@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, CheckCircle, RefreshCw, Plus, X, Save, Clock, Phone } from 'lucide-react';
+import { Heart, CheckCircle, RefreshCw, Plus, X, Save, Clock, Phone, Edit3, RotateCcw } from 'lucide-react';
 import { api } from '../../services/api';
 import { Pagination } from '../../components/common/Pagination';
 import { usePagination } from '../../utils/usePagination';
@@ -35,9 +35,14 @@ const PrayerPage: React.FC = () => {
   const { lookups, fieldLabels } = useDynamicConfig();
   const [prayers, setPrayers] = useState<PrayerRequest[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [tab, setTab] = useState<'PENDING' | 'PRAYING' | 'ALL'>('PENDING');
+  const [tab, setTab] = useState<'PENDING' | 'PRAYING' | 'ANSWERED' | 'ALL'>('PRAYING');
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  // Modal State untuk menandai / mengedit Jawaban Doa
+  const [answeringPrayer, setAnsweringPrayer] = useState<PrayerRequest | null>(null);
+  const [answeredNote, setAnsweredNote] = useState<string>('');
+  const [isSavingAnswer, setIsSavingAnswer] = useState<boolean>(false);
 
   // Form State for new prayer
   const [name, setName] = useState('');
@@ -86,6 +91,32 @@ const PrayerPage: React.FC = () => {
     }
   };
 
+  const handleOpenAnswerModal = (prayer: PrayerRequest) => {
+    setAnsweringPrayer(prayer);
+    setAnsweredNote(prayer.counselor_notes || '');
+  };
+
+  const handleSubmitAnswer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!answeringPrayer) return;
+
+    setIsSavingAnswer(true);
+    try {
+      await api.prayer.updateStatus(answeringPrayer.id, {
+        status: 'ANSWERED',
+        counselorNotes: answeredNote.trim(),
+      });
+      showToast('Permohonan doa berhasil ditandai sebagai Sudah Terjawab!');
+      setAnsweringPrayer(null);
+      setAnsweredNote('');
+      await fetchPrayers();
+    } catch (err: any) {
+      alert('Gagal memperbarui catatan jawaban doa: ' + err.message);
+    } finally {
+      setIsSavingAnswer(false);
+    }
+  };
+
   const handleCreatePrayer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!content.trim()) {
@@ -119,10 +150,12 @@ const PrayerPage: React.FC = () => {
 
   const pendingCount = prayers.filter((p) => p.status === 'NEW').length;
   const prayingCount = prayers.filter((p) => p.status === 'PRAYING').length;
+  const answeredCount = prayers.filter((p) => p.status === 'ANSWERED').length;
 
   const displayedPrayers = prayers.filter((p) => {
     if (tab === 'PENDING') return p.status === 'NEW';
     if (tab === 'PRAYING') return p.status === 'PRAYING';
+    if (tab === 'ANSWERED') return p.status === 'ANSWERED';
     return true;
   });
 
@@ -182,6 +215,12 @@ const PrayerPage: React.FC = () => {
           onClick={() => setTab('PRAYING')}
         >
           Sedang Didoakan ({prayingCount})
+        </button>
+        <button
+          className={`tab-btn ${tab === 'ANSWERED' ? 'active' : ''}`}
+          onClick={() => setTab('ANSWERED')}
+        >
+          Doa Terjawab ({answeredCount})
         </button>
         <button
           className={`tab-btn ${tab === 'ALL' ? 'active' : ''}`}
@@ -279,6 +318,45 @@ const PrayerPage: React.FC = () => {
                     "{p.prayer_content}"
                   </p>
 
+                  {/* Blok Kesaksian / Catatan Jawaban Doa */}
+                  {p.status === 'ANSWERED' && (
+                    <div
+                      style={{
+                        marginBottom: 16,
+                        padding: '12px 16px',
+                        borderRadius: 8,
+                        background: '#ecfdf5',
+                        border: '1px solid #a7f3d0',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 6,
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: '#065f46',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                        }}
+                      >
+                        <CheckCircle size={14} color="#059669" />
+                        Catatan / Kesaksian Jawaban Doa:
+                      </div>
+                      {p.counselor_notes ? (
+                        <div style={{ fontSize: 13, color: '#064e3b', fontStyle: 'italic', lineHeight: 1.55 }}>
+                          "{p.counselor_notes}"
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: 12, color: '#059669', opacity: 0.8, fontStyle: 'italic' }}>
+                          Belum ada catatan kesaksian jawaban doa (opsional).
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {p.status !== 'PRAYING' && p.status !== 'ANSWERED' && (
                       <button
@@ -293,11 +371,32 @@ const PrayerPage: React.FC = () => {
                     {p.status !== 'ANSWERED' && (
                       <button
                         className="btn btn-primary btn-sm"
-                        onClick={() => handleUpdateStatus(p.id, 'ANSWERED')}
+                        onClick={() => handleOpenAnswerModal(p)}
                         style={{ display: 'flex', alignItems: 'center', gap: 6 }}
                       >
                         <CheckCircle size={13} /> Tandai Sudah Terjawab
                       </button>
+                    )}
+
+                    {p.status === 'ANSWERED' && (
+                      <>
+                        <button
+                          className="btn btn-outline btn-sm"
+                          onClick={() => handleOpenAnswerModal(p)}
+                          style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                        >
+                          <Edit3 size={13} color="#059669" />
+                          {p.counselor_notes ? 'Ubah Catatan Jawaban Doa' : '+ Isi Catatan Jawaban Doa (Opsional)'}
+                        </button>
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => handleUpdateStatus(p.id, 'PRAYING')}
+                          style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--gmh-text-muted)' }}
+                          title="Kembalikan status doa ke Sedang Didoakan"
+                        >
+                          <RotateCcw size={13} /> Kembalikan ke Sedang Didoakan
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -438,6 +537,145 @@ const PrayerPage: React.FC = () => {
                   style={{ display: 'flex', alignItems: 'center', gap: 6 }}
                 >
                   <Save size={14} /> {isSubmitting ? 'Mengirim...' : 'Kirim Pokok Doa'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Tandai Sudah Terjawab dengan Field Opsional Catatan / Kesaksian */}
+      {answeringPrayer && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+          }}
+        >
+          <div className="card" style={{ width: '100%', maxWidth: 540 }}>
+            <div
+              className="card-header"
+              style={{
+                borderBottom: '1px solid var(--gmh-border)',
+                padding: '16px 20px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                <div
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    background: '#ecfdf5',
+                    color: '#059669',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <CheckCircle size={18} />
+                </div>
+                <div>
+                  <div className="card-title" style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
+                    {answeringPrayer.status === 'ANSWERED'
+                      ? 'Catatan Jawaban Doa'
+                      : 'Tandai Pokok Doa Sudah Terjawab'}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--gmh-text-muted)', marginTop: 2 }}>
+                    Perbarui status dan simpan kesaksian jawaban doa
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={() => setAnsweringPrayer(null)}
+                style={{ padding: '2px 8px' }}
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitAnswer}>
+              <div className="card-body" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 4 }}>
+                    Pokok Doa dari {answeringPrayer.is_anonymous ? 'Hamba Tuhan (Anonim)' : answeringPrayer.sender_name}:
+                  </div>
+                  <div style={{ fontSize: 13, color: 'var(--gmh-text)', fontStyle: 'italic', lineHeight: 1.55 }}>
+                    "{answeringPrayer.prayer_content}"
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <label className="form-label" style={{ fontWeight: 600, fontSize: 13, margin: 0 }}>
+                      Catatan / Kesaksian Jawaban Doa
+                    </label>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: '#059669',
+                        background: '#ecfdf5',
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        fontWeight: 600,
+                        border: '1px solid #a7f3d0',
+                      }}
+                    >
+                      Opsional
+                    </span>
+                  </div>
+                  <p style={{ fontSize: 12, color: 'var(--gmh-text-muted)', margin: '0 0 8px', lineHeight: 1.45 }}>
+                    Tuliskan catatan bagaimana doa terjawab, pemulihan, atau kesaksian syukur (opsional, dapat dikosongkan).
+                  </p>
+                  <textarea
+                    rows={4}
+                    placeholder="Contoh: Puji Tuhan doa telah dijawab. Saudara bersangkutan telah dimudahkan proses wawancaranya dan diterima bekerja di BUMN..."
+                    value={answeredNote}
+                    onChange={(e) => setAnsweredNote(e.target.value)}
+                    className="form-textarea"
+                    style={{ width: '100%', fontSize: 13 }}
+                    autoFocus
+                  />
+                </div>
+              </div>
+
+              <div
+                className="card-footer"
+                style={{
+                  borderTop: '1px solid var(--gmh-border)',
+                  padding: '14px 20px',
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: 10,
+                }}
+              >
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  onClick={() => setAnsweringPrayer(null)}
+                  disabled={isSavingAnswer}
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary btn-sm"
+                  disabled={isSavingAnswer}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  <CheckCircle size={14} />
+                  {isSavingAnswer ? 'Menyimpan...' : 'Simpan & Tandai Terjawab'}
                 </button>
               </div>
             </form>

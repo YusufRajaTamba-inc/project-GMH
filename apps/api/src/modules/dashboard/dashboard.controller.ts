@@ -3,29 +3,61 @@ import { db } from '../../config/db.js';
 
 export const getDashboardSummary = async (_req: Request, res: Response): Promise<void> => {
   try {
-    // 1. Member stats
-    const memCountRes = await db.query(
-      `SELECT 
-        COUNT(*)::int as total,
-        COUNT(CASE WHEN status = 'ACTIVE' THEN 1 END)::int as active,
-        COUNT(CASE WHEN member_type = 'ALUMNI' THEN 1 END)::int as alumni,
-        COUNT(CASE WHEN member_type = 'MAHASISWA' THEN 1 END)::int as students
-       FROM members`
-    );
+    // 1. Member stats and yearly registration history
+    const [memCountRes, memberGrowthRes] = await Promise.all([
+      db.query(
+        `SELECT
+          COUNT(*)::int AS total,
+          COUNT(*) FILTER (WHERE status = 'ACTIVE')::int AS active,
+          COUNT(*) FILTER (WHERE member_type = 'ALUMNI')::int AS alumni,
+          COUNT(*) FILTER (WHERE member_type = 'MAHASISWA')::int AS students
+         FROM members`
+      ),
+      db.query(
+        `SELECT EXTRACT(YEAR FROM created_at)::int AS year, COUNT(*)::int AS count
+         FROM members
+         WHERE created_at >= date_trunc('year', CURRENT_DATE) - INTERVAL '4 years'
+         GROUP BY EXTRACT(YEAR FROM created_at)
+         ORDER BY year`
+      ),
+    ]);
 
     // 2. Building project stats
     const bpRes = await db.query(
-      `SELECT target_budget, current_funds, progress_percentage FROM building_projects LIMIT 1`
+      `SELECT target_budget, current_funds,
+              CASE WHEN target_budget > 0 THEN ROUND(current_funds * 100 / target_budget)::int ELSE 0 END AS progress_percentage
+       FROM building_projects
+       ORDER BY start_date NULLS LAST
+       LIMIT 1`
     );
-    const bp = bpRes.rows[0] || { target_budget: 1800000000, current_funds: 1224000000, progress_percentage: 78 };
+    const bp = bpRes.rows[0] || { target_budget: 0, current_funds: 0, progress_percentage: 0 };
 
-    // 3. Operational Finance summary (current month)
-    const finRes = await db.query(
-      `SELECT 
-        SUM(CASE WHEN transaction_type = 'INCOME' THEN amount ELSE 0 END)::numeric as total_income,
-        SUM(CASE WHEN transaction_type = 'EXPENSE' THEN amount ELSE 0 END)::numeric as total_expense
-       FROM financial_transactions`
-    );
+    // 3. Current-month finance totals and monthly trend
+    const [finRes, financeTrendRes] = await Promise.all([
+      db.query(
+        `SELECT
+          COALESCE(SUM(amount) FILTER (WHERE transaction_type = 'INCOME'), 0)::numeric AS total_income,
+          COALESCE(SUM(amount) FILTER (WHERE transaction_type = 'EXPENSE'), 0)::numeric AS total_expense
+         FROM financial_transactions
+         WHERE transaction_date >= date_trunc('month', CURRENT_DATE)
+           AND transaction_date < date_trunc('month', CURRENT_DATE) + INTERVAL '1 month'`
+      ),
+      db.query(
+        `SELECT TO_CHAR(month_start, 'YYYY-MM') AS month,
+                COALESCE(SUM(amount) FILTER (WHERE transaction_type = 'INCOME'), 0)::numeric AS income,
+                COALESCE(SUM(amount) FILTER (WHERE transaction_type = 'EXPENSE'), 0)::numeric AS expense
+         FROM generate_series(
+           date_trunc('month', CURRENT_DATE) - INTERVAL '5 months',
+           date_trunc('month', CURRENT_DATE),
+           INTERVAL '1 month'
+         ) AS month_start
+         LEFT JOIN financial_transactions
+           ON transaction_date >= month_start
+          AND transaction_date < month_start + INTERVAL '1 month'
+         GROUP BY month_start
+         ORDER BY month_start`
+      ),
+    ]);
 
     // 4. Upcoming Birthdays (Current month)
     const bdayRes = await db.query(
@@ -71,13 +103,24 @@ export const getDashboardSummary = async (_req: Request, res: Response): Promise
       upcomingWeddingAnniversaries: annivRes.rows,
     };
 
+    const memberGrowth = Array.from({ length: 5 }, (_, index) => {
+      const year = new Date().getFullYear() - 4 + index;
+      const row = memberGrowthRes.rows.find((item: any) => Number(item.year) === year);
+      return { year, count: Number(row?.count ?? 0) };
+    });
+    const financeTrend = financeTrendRes.rows;
+
     res.status(200).json({
       success: true,
       stats,
       pastoralCare,
+      memberGrowth,
+      financeTrend,
       data: {
         stats,
         pastoralCare,
+        memberGrowth,
+        financeTrend,
       },
     });
   } catch (err: any) {

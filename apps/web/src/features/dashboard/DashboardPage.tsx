@@ -25,40 +25,17 @@ import { formatRupiah } from '../../utils/currency';
 
 interface DashboardData {
   stats?: {
-    members?: {
-      total: number;
-      active: number;
-      alumni: number;
-      students: number;
-    };
-    building?: {
-      target: number;
-      collected: number;
-      percentage: number;
-    };
-    finance?: {
-      income: number;
-      expense: number;
-      balance: number;
-    };
+    members?: { total: number; active: number; alumni: number; students: number };
+    building?: { target: number; collected: number; percentage: number };
+    finance?: { income: number; expense: number; balance: number };
     pendingRegistrations?: number;
   };
   pastoralCare?: {
-    upcomingBirthdays?: Array<{
-      id: string;
-      full_name: string;
-      member_number: string;
-      birth_date: string;
-      phone_number: string;
-    }>;
-    upcomingWeddingAnniversaries?: Array<{
-      id: string;
-      full_name: string;
-      member_number: string;
-      wedding_date: string;
-      phone_number: string;
-    }>;
+    upcomingBirthdays?: Array<{ id: string; full_name: string; member_number: string; birth_date: string; phone_number: string }>;
+    upcomingWeddingAnniversaries?: Array<{ id: string; full_name: string; member_number: string; wedding_date: string; phone_number: string }>;
   };
+  memberGrowth?: Array<{ year: number; count: number }>;
+  financeTrend?: Array<{ month: string; income: number; expense: number }>;
 }
 
 const formatRp = (val: number) => `Rp ${(val / 1_000_000).toFixed(0)}jt`;
@@ -88,34 +65,23 @@ const DashboardPage: React.FC = () => {
   const stats = data?.stats;
   const pastoralCare = data?.pastoralCare;
 
-  const totalMembers = stats?.members?.total || 0;
-  const alumniCount = stats?.members?.alumni || 0;
-  const studentCount = stats?.members?.students || 0;
+  const totalMembers = stats?.members?.total ?? 0;
+  const alumniCount = stats?.members?.alumni ?? 0;
+  const studentCount = stats?.members?.students ?? 0;
 
-  const buildingTarget = stats?.building?.target || 1800000000;
-  const buildingCollected = stats?.building?.collected || 1234000000;
-  const buildingPct = stats?.building?.percentage || Math.round((buildingCollected / buildingTarget) * 100);
+  const buildingTarget = stats?.building?.target ?? 0;
+  const buildingCollected = stats?.building?.collected ?? 0;
+  const buildingPct = stats?.building?.percentage ?? 0;
 
-  const income = stats?.finance?.income || 0;
-  const pendingReg = stats?.pendingRegistrations || 0;
-
-  // Real or dynamic trends
-  const donationTrend = [
-    { month: 'Mei', donasi: 12500000, kas: 8200000 },
-    { month: 'Jun', donasi: 18000000, kas: 9100000 },
-    { month: 'Jul', donasi: 15000000, kas: 7800000 },
-    { month: 'Agu', donasi: 22000000, kas: 11200000 },
-    { month: 'Sep', donasi: 19500000, kas: 8600000 },
-    { month: 'Okt', donasi: income > 0 ? income : 27000000, kas: 12400000 },
-  ];
-
-  const memberGrowth = [
-    { year: '2022', count: Math.max(10, totalMembers - 20) },
-    { year: '2023', count: Math.max(15, totalMembers - 15) },
-    { year: '2024', count: Math.max(20, totalMembers - 10) },
-    { year: '2025', count: Math.max(25, totalMembers - 5) },
-    { year: '2026', count: totalMembers },
-  ];
+  const income = stats?.finance?.income ?? 0;
+  const pendingReg = stats?.pendingRegistrations ?? 0;
+  const monthLabel = new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(new Date());
+  const donationTrend = (data?.financeTrend ?? []).map((item) => ({
+    month: new Intl.DateTimeFormat('id-ID', { month: 'short' }).format(new Date(`${item.month}-02T00:00:00`)),
+    donasi: Number(item.income),
+    kas: Number(item.expense),
+  }));
+  const memberGrowth = (data?.memberGrowth ?? []).map((item) => ({ year: String(item.year), count: Number(item.count) }));
 
   const upcomingBirthdays = pastoralCare?.upcomingBirthdays || [];
   const upcomingAnniversaries = pastoralCare?.upcomingWeddingAnniversaries || [];
@@ -145,72 +111,60 @@ const DashboardPage: React.FC = () => {
       {/* Stats Cards */}
       <div className="stats-grid">
         {/* Total Anggota & Alumni */}
-        <div
-          className="stat-card"
-          style={{ '--stat-color': 'var(--gmh-green)', '--stat-color-pale': 'var(--gmh-green-pale)' } as React.CSSProperties}
-        >
+        <div className="stat-card">
           <div className="stat-card-icon">
             <Users size={18} />
           </div>
           <div className="stat-card-label">Total Anggota & Alumni</div>
           <div className="stat-card-value">{totalMembers}</div>
           <div className="stat-card-meta">
-            <ArrowUpRight size={13} style={{ color: 'var(--gmh-success)' }} />
-            <span style={{ color: 'var(--gmh-success)' }}>
+            <ArrowUpRight size={13} style={{ color: 'var(--gmh-brand)' }} />
+            <span style={{ color: 'var(--gmh-text-muted)' }}>
               {alumniCount} Alumni · {studentCount} Mahasiswa
             </span>
           </div>
         </div>
 
         {/* Kas & Donasi Bulan Ini */}
-        <div
-          className="stat-card"
-          style={{ '--stat-color': 'var(--gmh-gold)', '--stat-color-pale': '#fef9ec' } as React.CSSProperties}
-        >
+        <div className="stat-card">
           <div className="stat-card-icon">
             <DollarSign size={18} />
           </div>
           <div className="stat-card-label">Penerimaan Kas & Donasi</div>
-          <div className="stat-card-value" style={{ fontSize: 20 }}>
+          <div className="stat-card-value" style={{ fontSize: 22 }}>
             {formatRupiah(income)}
           </div>
           <div className="stat-card-meta">
-            <span style={{ color: 'var(--gmh-success)' }}>Bulan Berjalan (Okt 2026)</span>
+            <span style={{ color: 'var(--gmh-text-muted)' }}>Bulan Berjalan ({monthLabel})</span>
           </div>
         </div>
 
         {/* Dana Rumah Persekutuan */}
-        <div
-          className="stat-card"
-          style={{ '--stat-color': '#7c3aed', '--stat-color-pale': '#f5f3ff' } as React.CSSProperties}
-        >
+        <div className="stat-card">
           <div className="stat-card-icon">
             <Building2 size={18} />
           </div>
           <div className="stat-card-label">Dana Rumah Persekutuan</div>
-          <div className="stat-card-value" style={{ fontSize: 20 }}>
+          <div className="stat-card-value" style={{ fontSize: 22 }}>
             {formatRupiah(buildingCollected)}
           </div>
           <div className="stat-card-meta">
-            <span style={{ color: '#7c3aed' }}>
+            <span style={{ color: 'var(--gmh-text-muted)' }}>
               {buildingPct}% dari target {formatRupiah(buildingTarget)}
             </span>
           </div>
         </div>
 
         {/* Pendaftaran Menunggu Verifikasi */}
-        <div
-          className="stat-card"
-          style={{ '--stat-color': 'var(--gmh-info)', '--stat-color-pale': '#eff6ff' } as React.CSSProperties}
-        >
+        <div className="stat-card">
           <div className="stat-card-icon">
             <Clock size={18} />
           </div>
           <div className="stat-card-label">Verifikasi Pendaftaran</div>
           <div className="stat-card-value">{pendingReg}</div>
           <div className="stat-card-meta">
-            <span style={{ color: pendingReg > 0 ? 'var(--gmh-warning)' : 'var(--gmh-success)' }}>
-              {pendingReg > 0 ? `${pendingReg} tiket perlu ditindak lanjuti` : 'Semua pendaftaran selesai diverifikasi'}
+            <span style={{ color: pendingReg > 0 ? 'var(--gmh-warning)' : 'var(--gmh-text-muted)' }}>
+              {pendingReg > 0 ? `${pendingReg} tiket menunggu verifikasi` : 'Semua pendaftaran selesai diverifikasi'}
             </span>
           </div>
         </div>

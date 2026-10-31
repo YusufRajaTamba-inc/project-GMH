@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
 
@@ -10,6 +10,7 @@ import MemberDetailPage from './features/members/MemberDetailPage';
 import RegistrationsPage from './features/registration/RegistrationsPage';
 import PublicRegistrationPage from './features/registration/PublicRegistrationPage';
 import VerifyReceiptPage from './features/finance/VerifyReceiptPage';
+import PublicAssetLoanPage from './features/assets/PublicAssetLoanPage';
 import FinanceOperationalPage from './features/finance/FinanceOperationalPage';
 import DonationsPage from './features/finance/DonationsPage';
 import BuildingProjectPage from './features/building/BuildingProjectPage';
@@ -21,6 +22,7 @@ import AssetsPage from './features/assets/AssetsPage';
 import ReportsPage from './features/reports/ReportsPage';
 import UtilityPage from './features/utility/UtilityPage';
 import MemberEditPage from './features/members/MemberEditPage';
+import UsersPage from './features/users/UsersPage';
 
 import { useAuth } from './state/AuthContext';
 import { canAccessPayroll } from './state/auth';
@@ -37,7 +39,12 @@ const PAGE_META: Record<string, { title: string; subtitle?: string }> = {
   '/programs': { title: 'Program & Persekutuan', subtitle: 'Jadwal program, seminar, dan persekutuan alumni' },
   '/prayer': { title: 'Permohonan Doa', subtitle: 'Kelola permohonan doa dari komunitas alumni' },
   '/assets': { title: 'Inventaris & Aset', subtitle: 'Katalog aset dan fasilitas Rumah Persekutuan' },
-  '/reports': { title: 'Laporan', subtitle: 'Laporan keuangan, demografi, dan statistik yayasan' },
+  '/reports': { title: 'Laporan', subtitle: 'Laporan keuangan, keanggotaan, dan demografi yayasan' },
+  '/reports/ringkasan': { title: 'Laporan · Ringkasan Eksekutif', subtitle: 'Ikhtisar dan arus kas yayasan' },
+  '/reports/keuangan': { title: 'Laporan · Keuangan', subtitle: 'Akun dan transaksi keuangan yayasan' },
+  '/reports/anggota': { title: 'Laporan · Keanggotaan & Demografi', subtitle: 'Statistik anggota, alumni, sebaran fakultas USU, dan domisili' },
+  '/reports/demografi': { title: 'Laporan · Keanggotaan & Demografi', subtitle: 'Statistik anggota, alumni, sebaran fakultas USU, dan domisili' },
+  '/users': { title: 'Data Pengguna', subtitle: 'Kelola data pengguna dan hak akses sistem' },
   '/utility': { title: 'Sistem Utility', subtitle: 'Konfigurasi label, dropdown, dan field dinamis' },
 };
 
@@ -48,6 +55,11 @@ const App: React.FC = () => {
   // Public self-registration route (accessible standalone without admin frame)
   if (location.pathname === '/register' || location.pathname === '/formulir-pendaftaran') {
     return <PublicRegistrationPage />;
+  }
+
+  // Public asset loan request & tracking route (accessible standalone without admin frame)
+  if (location.pathname === '/pinjam-aset' || location.pathname === '/loan-request' || location.pathname === '/formulir-pinjam') {
+    return <PublicAssetLoanPage />;
   }
 
   // Public receipt validation route (accessible standalone via QR scan)
@@ -89,7 +101,9 @@ const App: React.FC = () => {
             <Route path="/programs" element={<ProgramsPage />} />
             <Route path="/prayer" element={<PrayerPage />} />
             <Route path="/assets" element={<AssetsPage />} />
-            <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/reports" element={<Navigate to="/reports/ringkasan" replace />} />
+            <Route path="/reports/*" element={<ReportsPage />} />
+            <Route path="/users" element={<UsersPage />} />
             <Route path="/utility" element={<UtilityPage />} />
           </Routes>
         </main>

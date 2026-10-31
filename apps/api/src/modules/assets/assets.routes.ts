@@ -5,19 +5,214 @@ import { parsePagination, formatPaginationMeta } from '../../utils/pagination.js
 
 const router = Router();
 
+// ============================================================================
+// PUBLIC ENDPOINTS (Tanpa Token — Form Pinjaman Publik & Tracking Progres)
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// PUBLIC 1: GET /public/available — Daftar Aset yang Tersedia Dipinjam/Disewa
+// ----------------------------------------------------------------------------
+router.get('/public/available', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const query = `
+      SELECT 
+        a.id, 
+        a.asset_code, 
+        a.asset_name, 
+        a.asset_type, 
+        a.quantity, 
+        a.available_quantity, 
+        a.physical_condition, 
+        a.location_room, 
+        a.rental_price, 
+        a.is_borrowable,
+        a.notes,
+        sl.label as category_label
+      FROM assets a
+      LEFT JOIN system_lookups sl ON a.category_id = sl.id
+      WHERE a.is_borrowable = TRUE
+      ORDER BY a.asset_name ASC
+    `;
+    const result = await db.query(query);
+    res.status(200).json({
+      success: true,
+      count: result.rows.length,
+      assets: result.rows,
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: 'Gagal memuat katalog aset publik.', error: err.message });
+  }
+});
+
+// ----------------------------------------------------------------------------
+// PUBLIC 2: POST /public/request — Formulir Pengajuan Pinjaman/Sewa Aset
+// ----------------------------------------------------------------------------
+router.post('/public/request', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const {
+      assetId,
+      borrowerName,
+      borrowerPhone,
+      borrowerEmail,
+      borrowerInstitution,
+      loanPurpose,
+      loanType,
+      borrowedAt,
+      expectedReturnAt,
+      quantityBorrowed,
+      notes,
+    } = req.body;
+
+    if (!assetId || !borrowerName || !borrowerPhone || !loanPurpose || !borrowedAt || !expectedReturnAt) {
+      res.status(400).json({
+        success: false,
+        message: 'Aset, Nama Pemohon, No. WhatsApp/HP, Keperluan Acara, Tanggal Mulai, dan Tanggal Selesai wajib diisi.',
+      });
+      return;
+    }
+
+    const assetRes = await db.query('SELECT * FROM assets WHERE id = $1', [assetId]);
+    if (assetRes.rows.length === 0) {
+      res.status(404).json({ success: false, message: 'Aset yang dipilih tidak ditemukan.' });
+      return;
+    }
+
+    const asset = assetRes.rows[0];
+    if (!asset.is_borrowable) {
+      res.status(400).json({ success: false, message: 'Aset ini bertanda internal dan tidak dapat dipinjam/disewa.' });
+      return;
+    }
+
+    const qty = Math.max(1, parseInt(quantityBorrowed, 10) || 1);
+    const isRent = String(loanType).toUpperCase() === 'SEWA';
+    const type = isRent ? 'SEWA' : 'PINJAM';
+    const fee = isRent ? (parseFloat(asset.rental_price) * qty || 0) : 0;
+
+    // Generate Request Code: REQ-AST-YYYYMMDD-XXX
+    const todayStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const countRes = await db.query(
+      `SELECT COUNT(*)::int as today_count FROM asset_loans WHERE request_code LIKE $1`,
+      [`REQ-AST-${todayStr}-%`]
+    );
+    const seq = String((countRes.rows[0]?.today_count || 0) + 1).padStart(3, '0');
+    const requestCode = `REQ-AST-${todayStr}-${seq}`;
+
+    const insertRes = await db.query(
+      `INSERT INTO asset_loans (
+        asset_id, borrower_name, borrower_phone, borrower_email, borrower_institution,
+        loan_purpose, loan_type, rental_fee,
+        borrowed_at, expected_return_at, quantity_borrowed, notes, status, request_code
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'PENDING', $13)
+      RETURNING *`,
+      [
+        assetId,
+        borrowerName.trim(),
+        borrowerPhone.trim(),
+        borrowerEmail ? borrowerEmail.trim() : null,
+        borrowerInstitution ? borrowerInstitution.trim() : null,
+        loanPurpose.trim(),
+        type,
+        fee,
+        borrowedAt,
+        expectedReturnAt,
+        qty,
+        notes ? notes.trim() : null,
+        requestCode,
+      ]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: 'Permohonan pinjaman aset berhasil dikirim. Silakan simpan nomor tiket untuk melacak progres.',
+      requestCode,
+      loan: insertRes.rows[0],
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: 'Gagal mengirim permohonan pinjaman aset.', error: err.message });
+  }
+});
+
+// ----------------------------------------------------------------------------
+// PUBLIC 3: GET /public/track/:query — Lacak Progres Pengajuan Pinjaman
+// ----------------------------------------------------------------------------
+router.get('/public/track/:query', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const rawQuery = (req.params.query || '').trim();
+    if (!rawQuery) {
+      res.status(400).json({ success: false, message: 'Masukkan nomor kode tiket atau nomor WhatsApp pemohon.' });
+      return;
+    }
+
+    const cleanPhone = rawQuery.replace(/[^0-9]/g, '');
+
+    const query = `
+      SELECT 
+        al.*,
+        a.asset_code,
+        a.asset_name,
+        a.asset_type,
+        a.location_room,
+        a.rental_price,
+        sl.label as category_label
+      FROM asset_loans al
+      JOIN assets a ON al.asset_id = a.id
+      LEFT JOIN system_lookups sl ON a.category_id = sl.id
+      WHERE UPPER(al.request_code) = UPPER($1)
+         OR al.borrower_phone = $1
+         ${cleanPhone ? `OR al.borrower_phone LIKE '%' || $2 || '%'` : ''}
+      ORDER BY al.created_at DESC
+    `;
+
+    const params = cleanPhone ? [rawQuery, cleanPhone] : [rawQuery];
+    const result = await db.query(query, params);
+
+    res.status(200).json({
+      success: true,
+      count: result.rows.length,
+      requests: result.rows,
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: 'Gagal melacak permohonan aset.', error: err.message });
+  }
+});
+
+// ============================================================================
+// ADMIN / INTERNAL PROTECTED ROUTES
+// ============================================================================
 router.use(authenticateJwt);
 
+// ----------------------------------------------------------------------------
+// 1. GET / — Daftar Seluruh Aset & Inventaris
+// ----------------------------------------------------------------------------
 router.get('/', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { page, limit, offset, cursor } = parsePagination(req, { defaultLimit: 10, maxLimit: 100 });
+    const { page, limit, offset, cursor } = parsePagination(req, { defaultLimit: 50, maxLimit: 200 });
+    const { condition, type, search } = req.query;
 
-    let whereClause = '';
+    const whereConditions: string[] = [];
     const params: any[] = [];
 
     if (cursor) {
-      whereClause = ` WHERE a.asset_code > $1`;
       params.push(cursor);
+      whereConditions.push(`a.asset_code > $${params.length}`);
     }
+
+    if (search) {
+      params.push(`%${search}%`);
+      whereConditions.push(`(a.asset_name ILIKE $${params.length} OR a.asset_code ILIKE $${params.length} OR a.location_room ILIKE $${params.length})`);
+    }
+
+    if (condition) {
+      params.push(condition);
+      whereConditions.push(`a.physical_condition = $${params.length}`);
+    }
+
+    if (type) {
+      params.push(type);
+      whereConditions.push(`a.asset_type = $${params.length}`);
+    }
+
+    const whereClause = whereConditions.length > 0 ? ` WHERE ${whereConditions.join(' AND ')}` : '';
 
     const countRes = await db.query(`SELECT COUNT(*)::int as total FROM assets a ${whereClause}`, params);
     const total = countRes.rows[0]?.total || 0;
@@ -56,32 +251,590 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+// ----------------------------------------------------------------------------
+// 2. GET /loans — Daftar Transaksi Peminjaman & Penyewaan Aset
+// ----------------------------------------------------------------------------
+router.get('/loans', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { status, loanType } = req.query;
+    const whereConditions: string[] = [];
+    const params: any[] = [];
+
+    if (status) {
+      params.push(status);
+      whereConditions.push(`al.status = $${params.length}`);
+    }
+
+    if (loanType) {
+      params.push(loanType);
+      whereConditions.push(`al.loan_type = $${params.length}`);
+    }
+
+    const whereClause = whereConditions.length > 0 ? ` WHERE ${whereConditions.join(' AND ')}` : '';
+
+    const query = `
+      SELECT 
+        al.*,
+        a.asset_code,
+        a.asset_name,
+        a.asset_type,
+        a.location_room,
+        a.rental_price,
+        sl.label as category_label
+      FROM asset_loans al
+      JOIN assets a ON al.asset_id = a.id
+      LEFT JOIN system_lookups sl ON a.category_id = sl.id
+      ${whereClause}
+      ORDER BY al.borrowed_at DESC, al.created_at DESC
+    `;
+
+    const result = await db.query(query, params);
+    res.status(200).json({
+      success: true,
+      count: result.rows.length,
+      loans: result.rows,
+      data: result.rows,
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: 'Gagal mengambil data peminjaman & sewa aset.', error: err.message });
+  }
+});
+
+// ----------------------------------------------------------------------------
+// 3. POST /loans — Catat Peminjaman atau Penyewaan Baru (Kurangi Stok Tersedia)
+// ----------------------------------------------------------------------------
+router.post('/loans', async (req: Request, res: Response): Promise<void> => {
+  const client = await db.getClient();
+  try {
+    const {
+      assetId,
+      borrowerName,
+      borrowerPhone,
+      borrowerMemberId,
+      loanType,
+      rentalFee,
+      loanPurpose,
+      borrowedAt,
+      expectedReturnAt,
+      quantityBorrowed,
+      notes,
+    } = req.body;
+
+    if (!assetId || !borrowerName || !loanPurpose || !expectedReturnAt) {
+      res.status(400).json({
+        success: false,
+        message: 'Aset, Nama Peminjam/Penyewa, Tujuan Kegiatan, dan Batas Waktu Pengembalian wajib diisi.',
+      });
+      return;
+    }
+
+    const qty = Math.max(1, parseInt(quantityBorrowed, 10) || 1);
+
+    await client.query('BEGIN');
+
+    // Check asset exists and available
+    const assetRes = await client.query('SELECT * FROM assets WHERE id = $1 FOR UPDATE', [assetId]);
+    if (assetRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      res.status(404).json({ success: false, message: 'Aset tidak ditemukan.' });
+      return;
+    }
+
+    const asset = assetRes.rows[0];
+    if (!asset.is_borrowable) {
+      await client.query('ROLLBACK');
+      res.status(400).json({ success: false, message: 'Aset ini bertanda Internal Saja dan tidak dapat dipinjam/disewa.' });
+      return;
+    }
+
+    const available = parseInt(asset.available_quantity, 10) || 0;
+    if (available < qty) {
+      await client.query('ROLLBACK');
+      res.status(400).json({
+        success: false,
+        message: `Jumlah unit tersedia tidak mencukupi. Tersedia saat ini: ${available} unit.`,
+      });
+      return;
+    }
+
+    const isRent = String(loanType).toUpperCase() === 'SEWA';
+    const type = isRent ? 'SEWA' : 'PINJAM';
+    const fee = isRent ? (parseFloat(rentalFee) || parseFloat(asset.rental_price) || 0) : 0;
+
+    // Insert into asset_loans
+    const loanInsert = await client.query(
+      `INSERT INTO asset_loans (
+        asset_id, borrower_name, borrower_phone, borrower_member_id,
+        loan_purpose, loan_type, rental_fee,
+        borrowed_at, expected_return_at, quantity_borrowed, notes, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'ACTIVE')
+      RETURNING *`,
+      [
+        assetId,
+        borrowerName.trim(),
+        borrowerPhone ? borrowerPhone.trim() : null,
+        borrowerMemberId || null,
+        loanPurpose.trim(),
+        type,
+        fee,
+        borrowedAt || new Date().toISOString().split('T')[0],
+        expectedReturnAt,
+        qty,
+        notes ? notes.trim() : null,
+      ]
+    );
+
+    // Update asset available quantity & borrow status
+    const newAvailable = available - qty;
+    const newBorrowStatus = newAvailable <= 0 ? (isRent ? 'RENTED' : 'BORROWED') : 'AVAILABLE';
+
+    await client.query(
+      `UPDATE assets 
+       SET available_quantity = $1, borrow_status = $2, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3`,
+      [newAvailable, newBorrowStatus, assetId]
+    );
+
+    await client.query('COMMIT');
+
+    res.status(201).json({
+      success: true,
+      message: `Pencatatan ${type === 'SEWA' ? 'penyewaan' : 'peminjaman'} aset berhasil disimpan.`,
+      loan: loanInsert.rows[0],
+    });
+  } catch (err: any) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ success: false, message: 'Gagal mencatat peminjaman/sewa aset.', error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+// ----------------------------------------------------------------------------
+// 4. PUT /loans/:id/return — Pengembalian Aset / Selesai Sewa (Pulihkan Stok)
+// ----------------------------------------------------------------------------
+router.put('/loans/:id/return', async (req: Request, res: Response): Promise<void> => {
+  const client = await db.getClient();
+  try {
+    const { id } = req.params;
+    const { actualReturnAt, conditionOnReturn, notes } = req.body;
+
+    await client.query('BEGIN');
+
+    const loanRes = await client.query('SELECT * FROM asset_loans WHERE id = $1 FOR UPDATE', [id]);
+    if (loanRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      res.status(404).json({ success: false, message: 'Data transaksi peminjaman/sewa tidak ditemukan.' });
+      return;
+    }
+
+    const loan = loanRes.rows[0];
+    if (loan.status === 'RETURNED') {
+      await client.query('ROLLBACK');
+      res.status(400).json({ success: false, message: 'Aset ini sudah tercatat telah dikembalikan sebelumnya.' });
+      return;
+    }
+
+    const returnDate = actualReturnAt || new Date().toISOString().split('T')[0];
+    const returnCond = conditionOnReturn || 'GOOD';
+
+    // Update loan
+    const updatedLoanRes = await client.query(
+      `UPDATE asset_loans
+       SET status = 'RETURNED',
+           actual_return_at = $1,
+           condition_on_return = $2,
+           notes = COALESCE($3, notes),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $4
+       RETURNING *`,
+      [returnDate, returnCond, notes || null, id]
+    );
+
+    // Restore asset stock and update physical condition
+    const assetRes = await client.query('SELECT * FROM assets WHERE id = $1 FOR UPDATE', [loan.asset_id]);
+    if (assetRes.rows.length > 0) {
+      const asset = assetRes.rows[0];
+      const restoredAvailable = Math.min(
+        parseInt(asset.quantity, 10) || 1,
+        (parseInt(asset.available_quantity, 10) || 0) + (parseInt(loan.quantity_borrowed, 10) || 1)
+      );
+      const isFull = restoredAvailable >= (parseInt(asset.quantity, 10) || 1);
+      const newBorrowStatus = isFull ? 'AVAILABLE' : asset.borrow_status;
+
+      await client.query(
+        `UPDATE assets
+         SET available_quantity = $1,
+             physical_condition = $2,
+             borrow_status = $3,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $4`,
+        [restoredAvailable, returnCond, newBorrowStatus, loan.asset_id]
+      );
+    }
+
+    await client.query('COMMIT');
+
+    res.status(200).json({
+      success: true,
+      message: 'Aset berhasil dikembalikan ke inventaris yayasan.',
+      loan: updatedLoanRes.rows[0],
+    });
+  } catch (err: any) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ success: false, message: 'Gagal memproses pengembalian aset.', error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+// ----------------------------------------------------------------------------
+// 4a. PUT /loans/:id/approve — Setujui Permohonan Pinjaman/Sewa oleh Admin
+// ----------------------------------------------------------------------------
+router.put('/loans/:id/approve', async (req: Request, res: Response): Promise<void> => {
+  const client = await db.getClient();
+  try {
+    const { id } = req.params;
+    const { approvalNotes } = req.body;
+    const adminUserId = req.user?.id || null;
+
+    await client.query('BEGIN');
+    const loanRes = await client.query('SELECT * FROM asset_loans WHERE id = $1 FOR UPDATE', [id]);
+    if (loanRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      res.status(404).json({ success: false, message: 'Permohonan pinjaman tidak ditemukan.' });
+      return;
+    }
+
+    const loan = loanRes.rows[0];
+    if (loan.status === 'APPROVED' || loan.status === 'ACTIVE') {
+      await client.query('ROLLBACK');
+      res.status(400).json({ success: false, message: 'Permohonan ini sudah disetujui sebelumnya.' });
+      return;
+    }
+
+    const assetRes = await client.query('SELECT * FROM assets WHERE id = $1 FOR UPDATE', [loan.asset_id]);
+    if (assetRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      res.status(404).json({ success: false, message: 'Aset terkait tidak ditemukan.' });
+      return;
+    }
+
+    const asset = assetRes.rows[0];
+    const qty = parseInt(loan.quantity_borrowed, 10) || 1;
+    const available = parseInt(asset.available_quantity, 10) || 0;
+
+    if (available < qty) {
+      await client.query('ROLLBACK');
+      res.status(400).json({
+        success: false,
+        message: `Stok aset tidak mencukupi untuk disetujui. Tersedia: ${available} unit, diminta: ${qty} unit.`,
+      });
+      return;
+    }
+
+    const newAvailable = available - qty;
+    const isRent = String(loan.loan_type).toUpperCase() === 'SEWA';
+    const newBorrowStatus = newAvailable <= 0 ? (isRent ? 'RENTED' : 'BORROWED') : 'AVAILABLE';
+
+    await client.query(
+      `UPDATE assets 
+       SET available_quantity = $1, borrow_status = $2, updated_at = CURRENT_TIMESTAMP 
+       WHERE id = $3`,
+      [newAvailable, newBorrowStatus, loan.asset_id]
+    );
+
+    const updateRes = await client.query(
+      `UPDATE asset_loans
+       SET status = 'APPROVED',
+           approved_by = $1,
+           approved_at = CURRENT_TIMESTAMP,
+           approval_notes = $2,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3
+       RETURNING *`,
+      [adminUserId, approvalNotes ? String(approvalNotes).trim() : 'Disetujui oleh pengurus yayasan. Aset siap diambil di kantor GMH.', id]
+    );
+
+    await client.query('COMMIT');
+    res.status(200).json({
+      success: true,
+      message: `Permohonan pinjaman (${loan.request_code || 'ASET'}) berhasil disetujui.`,
+      loan: updateRes.rows[0],
+    });
+  } catch (err: any) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ success: false, message: 'Gagal menyetujui permohonan pinjaman.', error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+// ----------------------------------------------------------------------------
+// 4b. PUT /loans/:id/reject — Tolak Permohonan Pinjaman/Sewa oleh Admin
+// ----------------------------------------------------------------------------
+router.put('/loans/:id/reject', async (req: Request, res: Response): Promise<void> => {
+  const client = await db.getClient();
+  try {
+    const { id } = req.params;
+    const { rejectionReason } = req.body;
+    const adminUserId = req.user?.id || null;
+
+    if (!rejectionReason || !String(rejectionReason).trim()) {
+      res.status(400).json({ success: false, message: 'Alasan penolakan wajib diisi oleh admin.' });
+      return;
+    }
+
+    await client.query('BEGIN');
+    const loanRes = await client.query('SELECT * FROM asset_loans WHERE id = $1 FOR UPDATE', [id]);
+    if (loanRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      res.status(404).json({ success: false, message: 'Permohonan pinjaman tidak ditemukan.' });
+      return;
+    }
+
+    const loan = loanRes.rows[0];
+
+    // Jika sebelumnya sudah APPROVED, kembalikan stok
+    if (loan.status === 'APPROVED' || loan.status === 'ACTIVE') {
+      const assetRes = await client.query('SELECT * FROM assets WHERE id = $1 FOR UPDATE', [loan.asset_id]);
+      if (assetRes.rows.length > 0) {
+        const asset = assetRes.rows[0];
+        const qty = parseInt(loan.quantity_borrowed, 10) || 1;
+        const restoredAvailable = Math.min(
+          parseInt(asset.quantity, 10) || 1,
+          (parseInt(asset.available_quantity, 10) || 0) + qty
+        );
+        await client.query(
+          `UPDATE assets SET available_quantity = $1, borrow_status = 'AVAILABLE', updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+          [restoredAvailable, loan.asset_id]
+        );
+      }
+    }
+
+    const updateRes = await client.query(
+      `UPDATE asset_loans
+       SET status = 'REJECTED',
+           rejection_reason = $1,
+           approved_by = $2,
+           approved_at = CURRENT_TIMESTAMP,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3
+       RETURNING *`,
+      [String(rejectionReason).trim(), adminUserId, id]
+    );
+
+    await client.query('COMMIT');
+    res.status(200).json({
+      success: true,
+      message: `Permohonan pinjaman (${loan.request_code || 'ASET'}) telah ditolak.`,
+      loan: updateRes.rows[0],
+    });
+  } catch (err: any) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ success: false, message: 'Gagal menolak permohonan pinjaman.', error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+// ----------------------------------------------------------------------------
+// 4c. PUT /loans/:id/handover — Tandai Barang Telah Diserahkan (Status Menjadi ACTIVE)
+// ----------------------------------------------------------------------------
+router.put('/loans/:id/handover', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const updateRes = await db.query(
+      `UPDATE asset_loans
+       SET status = 'ACTIVE',
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1 AND status = 'APPROVED'
+       RETURNING *`,
+      [id]
+    );
+
+    if (updateRes.rows.length === 0) {
+      res.status(400).json({
+        success: false,
+        message: 'Hanya permohonan dengan status APPROVED yang dapat diserahterimakan.',
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Aset berhasil diserahterimakan kepada pemohon (Status aktif dipinjam).',
+      loan: updateRes.rows[0],
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: 'Gagal memproses serah terima aset.', error: err.message });
+  }
+});
+
+// ----------------------------------------------------------------------------
+// 5. POST / — Mendaftarkan Aset Baru
+// ----------------------------------------------------------------------------
 router.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { assetName, categoryId, purchasePrice, physicalCondition, locationRoom, isBorrowable } = req.body;
+    const {
+      assetName,
+      categoryId,
+      purchasePrice,
+      physicalCondition,
+      locationRoom,
+      isBorrowable,
+      quantity,
+      assetType,
+      rentalPrice,
+      notes,
+    } = req.body;
+
+    if (!assetName || !assetName.trim()) {
+      res.status(400).json({ success: false, message: 'Nama aset wajib diisi.' });
+      return;
+    }
 
     const countRes = await db.query(`SELECT COUNT(*)::int as cnt FROM assets`);
     const seq = String((countRes.rows[0]?.cnt || 0) + 1).padStart(3, '0');
     const assetCode = `AST-GMH-${seq}`;
 
+    const totalQty = Math.max(1, parseInt(quantity, 10) || 1);
+
     const insertRes = await db.query(
-      `INSERT INTO assets (asset_code, asset_name, category_id, purchase_date, purchase_price, physical_condition, location_room, is_borrowable)
-       VALUES ($1, $2, $3, CURRENT_DATE, $4, $5, $6, $7)
-       RETURNING *`,
+      `INSERT INTO assets (
+        asset_code, asset_name, category_id, purchase_date, purchase_price,
+        physical_condition, location_room, is_borrowable,
+        quantity, available_quantity, asset_type, rental_price, borrow_status, notes
+      ) VALUES ($1, $2, $3, CURRENT_DATE, $4, $5, $6, $7, $8, $9, $10, $11, 'AVAILABLE', $12)
+      RETURNING *`,
       [
         assetCode,
-        assetName,
+        assetName.trim(),
         categoryId || null,
         purchasePrice ? parseFloat(purchasePrice) : 0,
         physicalCondition || 'GOOD',
         locationRoom || 'Gedung GMH',
         isBorrowable !== undefined ? Boolean(isBorrowable) : true,
+        totalQty,
+        totalQty,
+        assetType || 'BARANG',
+        rentalPrice ? parseFloat(rentalPrice) : 0,
+        notes || null,
       ]
     );
 
     res.status(201).json({ success: true, message: 'Aset berhasil didaftarkan.', asset: insertRes.rows[0] });
   } catch (err: any) {
     res.status(500).json({ success: false, message: 'Gagal mendaftarkan aset.', error: err.message });
+  }
+});
+
+// ----------------------------------------------------------------------------
+// 6. PUT /:id — Mengubah Detail, Jumlah Stok, Kondisi, Tarif Sewa Aset
+// ----------------------------------------------------------------------------
+router.put('/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const {
+      assetName,
+      categoryId,
+      purchasePrice,
+      physicalCondition,
+      locationRoom,
+      isBorrowable,
+      quantity,
+      assetType,
+      rentalPrice,
+      notes,
+    } = req.body;
+
+    const currentAssetRes = await db.query('SELECT * FROM assets WHERE id = $1', [id]);
+    if (currentAssetRes.rows.length === 0) {
+      res.status(404).json({ success: false, message: 'Aset tidak ditemukan.' });
+      return;
+    }
+
+    const current = currentAssetRes.rows[0];
+    const oldQty = parseInt(current.quantity, 10) || 1;
+    const oldAvail = parseInt(current.available_quantity, 10) || 1;
+
+    let newQty = oldQty;
+    let newAvail = oldAvail;
+
+    if (quantity !== undefined) {
+      newQty = Math.max(1, parseInt(quantity, 10) || 1);
+      const diff = newQty - oldQty;
+      newAvail = Math.max(0, oldAvail + diff);
+    }
+
+    const updateRes = await db.query(
+      `UPDATE assets
+       SET asset_name = COALESCE($1, asset_name),
+           category_id = COALESCE($2, category_id),
+           purchase_price = COALESCE($3, purchase_price),
+           physical_condition = COALESCE($4, physical_condition),
+           location_room = COALESCE($5, location_room),
+           is_borrowable = COALESCE($6, is_borrowable),
+           quantity = $7,
+           available_quantity = $8,
+           asset_type = COALESCE($9, asset_type),
+           rental_price = COALESCE($10, rental_price),
+           notes = COALESCE($11, notes),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $12
+       RETURNING *`,
+      [
+        assetName !== undefined ? assetName.trim() : null,
+        categoryId !== undefined ? (categoryId || null) : null,
+        purchasePrice !== undefined ? parseFloat(purchasePrice) : null,
+        physicalCondition || null,
+        locationRoom !== undefined ? locationRoom.trim() : null,
+        isBorrowable !== undefined ? Boolean(isBorrowable) : null,
+        newQty,
+        newAvail,
+        assetType || null,
+        rentalPrice !== undefined ? parseFloat(rentalPrice) : null,
+        notes !== undefined ? notes : null,
+        id,
+      ]
+    );
+
+    res.status(200).json({ success: true, message: 'Data aset berhasil diperbarui.', asset: updateRes.rows[0] });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: 'Gagal memperbarui aset.', error: err.message });
+  }
+});
+
+// ----------------------------------------------------------------------------
+// 7. DELETE /:id — Hapus Aset dari Inventaris
+// ----------------------------------------------------------------------------
+router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const activeLoans = await db.query(
+      `SELECT COUNT(*)::int as count FROM asset_loans WHERE asset_id = $1 AND status = 'ACTIVE'`,
+      [id]
+    );
+    if ((activeLoans.rows[0]?.count || 0) > 0) {
+      res.status(400).json({
+        success: false,
+        message: 'Tidak dapat menghapus aset yang saat ini sedang aktif dipinjam atau disewa.',
+      });
+      return;
+    }
+
+    await db.query('DELETE FROM asset_loans WHERE asset_id = $1', [id]);
+    const delRes = await db.query('DELETE FROM assets WHERE id = $1 RETURNING *', [id]);
+
+    if (delRes.rows.length === 0) {
+      res.status(404).json({ success: false, message: 'Aset tidak ditemukan.' });
+      return;
+    }
+
+    res.status(200).json({ success: true, message: 'Aset berhasil dihapus dari inventaris.' });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: 'Gagal menghapus aset.', error: err.message });
   }
 });
 

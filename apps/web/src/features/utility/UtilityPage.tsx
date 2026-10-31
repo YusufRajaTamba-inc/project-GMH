@@ -478,13 +478,15 @@ const UtilityPage: React.FC = () => {
       </div>
 
       {/* Active Menu Detail Card */}
-      <div className="card" style={{ marginBottom: 24, borderLeft: '4px solid var(--gmh-gold)' }}>
+      <div className="card" style={{ marginBottom: 24 }}>
         <div className="card-body" style={{ padding: '16px 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ color: 'var(--gmh-gold)' }}>{MENU_ICONS[activeMenuId] || <Layers size={22} />}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ color: '#0f172a', background: '#f1f5f9', padding: 8, borderRadius: 8, display: 'grid', placeItems: 'center' }}>
+              {MENU_ICONS[activeMenuId] || <Layers size={20} />}
+            </div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 16 }}>Menu Sistem: {activeMenuInfo.label}</div>
-              <div style={{ fontSize: 13, color: 'var(--gmh-text-muted)' }}>{activeMenuInfo.description}</div>
+              <div style={{ fontWeight: 700, fontSize: 16, color: '#0f172a' }}>Menu Sistem: {activeMenuInfo.label}</div>
+              <div style={{ fontSize: 13, color: 'var(--gmh-text-muted)', marginTop: 2 }}>{activeMenuInfo.description}</div>
             </div>
           </div>
         </div>

@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS system_lookups (
     is_active BOOLEAN DEFAULT TRUE,
     metadata JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_category_code UNIQUE (category, code)
 );
 
@@ -185,8 +186,12 @@ CREATE TABLE IF NOT EXISTS departments (
     id VARCHAR(50) PRIMARY KEY, -- 'DEWAN_PEMBINA', 'DEWAN_PENGAWAS', 'PENGURUS_HARIAN', 'PELAYANAN_ALUMNI', 'PELAYANAN_PEMBINAAN', 'PELAYANAN_MISI', 'PENGEMBANGAN_BISNIS', 'KOMUNIKASI'
     name VARCHAR(150) NOT NULL,
     description TEXT,
+    order_index INT DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
     parent_id VARCHAR(50) REFERENCES departments(id),
-    head_member_id UUID REFERENCES members(id)
+    head_member_id UUID REFERENCES members(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS staff_members (
@@ -251,13 +256,19 @@ CREATE TABLE IF NOT EXISTS chart_of_accounts (
 CREATE TABLE IF NOT EXISTS building_projects (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     project_name VARCHAR(150) NOT NULL,         -- 'Pembangunan Rumah Persekutuan GMH'
+    category VARCHAR(100) DEFAULT 'INFRASTRUKTUR',
     target_budget DECIMAL(15, 2) NOT NULL,      -- Target biaya dana pembangunan
     current_funds DECIMAL(15, 2) DEFAULT 0,     -- Akumulasi dana terkumpul
     start_date DATE,
     target_completion_date DATE,
     progress_percentage INT DEFAULT 0,
     status VARCHAR(30) DEFAULT 'ON_PROGRESS',
-    description TEXT
+    description TEXT,
+    pic_name VARCHAR(150) DEFAULT 'Tim Proyek Yayasan',
+    milestones JSONB DEFAULT '[]'::jsonb,
+    account_id VARCHAR(50) REFERENCES chart_of_accounts(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS pledges (
@@ -305,7 +316,18 @@ CREATE TABLE IF NOT EXISTS foundation_programs (
     theme VARCHAR(255),
     speaker_name VARCHAR(150),
     bulletin_url TEXT,                          -- E-Buletin / Warta Yayasan Digital
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    budget_estimate NUMERIC(15, 2) DEFAULT 0,
+    cash_balance NUMERIC(15, 2) DEFAULT 0,
+    status VARCHAR(30) DEFAULT 'PLANNING',
+    description TEXT,
+    media_drive_url TEXT,
+    document_drive_url TEXT,
+    transactions JSONB DEFAULT '[]'::jsonb,
+    rundown JSONB DEFAULT '[]'::jsonb,
+    tasks JSONB DEFAULT '[]'::jsonb,
+    committees JSONB DEFAULT '[]'::jsonb,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS program_rosters (
@@ -370,6 +392,9 @@ CREATE TABLE IF NOT EXISTS asset_loans (
     actual_return_at TIMESTAMP,
     condition_on_return VARCHAR(30),
     approved_by UUID REFERENCES users(id),
+    approved_at TIMESTAMP,
+    approval_notes TEXT,
+    rejection_reason TEXT,
     status VARCHAR(30) DEFAULT 'PENDING',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

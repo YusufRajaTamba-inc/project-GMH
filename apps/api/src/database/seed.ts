@@ -693,7 +693,7 @@ export async function seedDatabase() {
     { code: 'TX-GMH-202610-003', date: '2026-10-24', type: 'EXPENSE', coa: '5-2010', amt: 850000.00, method: 'BANK_TRANSFER', scope: 'OPERASIONAL', notes: 'Langganan Internet Fiber Optic Kantor Sekretariat GMH (Indihome 100 Mbps)' },
     { code: 'TX-GMH-202610-004', date: '2026-10-25', type: 'INCOME', coa: '4-1010', amt: 500000.00, method: 'BANK_TRANSFER', scope: 'OPERASIONAL', notes: 'Donasi kemitraan rutin alumni: dr. Jekson Simanjuntak' },
     { code: 'TX-GMH-202610-005', date: '2026-10-27', type: 'INCOME', coa: '4-1010', amt: 1500000.00, method: 'BANK_TRANSFER', scope: 'OPERASIONAL', notes: 'Persembahan kasih alumni: Yusuf Panjaitan' },
-    { code: 'TX-GMH-202610-006', date: '2026-10-28', type: 'EXPENSE', coa: '5-1030', amt: 450000.00, method: 'CASH', scope: 'OPERASIONAL', notes: 'Konsumsi persekutuan pengurus & doa evaluasi bulanan kantor' },
+    { code: 'TX-GMH-202610-006', date: '2026-10-28', type: 'EXPENSE', coa: '5-2010', amt: 450000.00, method: 'CASH', scope: 'OPERASIONAL', notes: 'Konsumsi persekutuan pengurus & doa evaluasi bulanan kantor' },
   ];
 
   for (const t of trxSeeds) {

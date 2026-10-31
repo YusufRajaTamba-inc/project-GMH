@@ -154,7 +154,7 @@ const DonationsPage: React.FC = () => {
         const mapped: Donor[] = rows.map((r: any, idx: number) => {
           const tot = Number(r.total_pledge || 0);
           const pd = Number(r.fulfilled_amount || 0);
-          const tCode = r.receipt_number || `KWT-GMH-202610-${String(idx + 1).padStart(3, '0')}`;
+          const tCode = r.receipt_number || '-';
           return {
             id: r.id || String(idx),
             receiptNumber: tCode,
@@ -207,7 +207,7 @@ const DonationsPage: React.FC = () => {
       const matchSearch =
         !q ||
         d.name.toLowerCase().includes(q) ||
-        d.receiptNumber.toLowerCase().includes(q) ||
+        (d.receiptNumber && d.receiptNumber !== '-' && d.receiptNumber.toLowerCase().includes(q)) ||
         (d.memberNumber && d.memberNumber.toLowerCase().includes(q)) ||
         (urlMemberId && d.memberId === urlMemberId) ||
         d.category.toLowerCase().includes(q);
@@ -608,9 +608,13 @@ const DonationsPage: React.FC = () => {
                       title="Klik baris untuk melihat rincian kapan-kapan donatur memberikan"
                     >
                       <td>
-                        <code style={{ fontSize: 11, background: 'var(--gmh-surface-2)', padding: '2px 6px', borderRadius: 4, fontWeight: 600 }}>
-                          {d.receiptNumber}
-                        </code>
+                        {d.receiptNumber && d.receiptNumber !== '-' ? (
+                          <code style={{ fontSize: 11, background: 'var(--gmh-surface-2)', padding: '2px 6px', borderRadius: 4, fontWeight: 600 }}>
+                            {d.receiptNumber}
+                          </code>
+                        ) : (
+                          <span style={{ fontSize: 11, color: '#94a3b8' }}>-</span>
+                        )}
                       </td>
                       <td>
                         <div style={{ fontWeight: 600, color: 'var(--gmh-primary-dark)' }}>{d.name}</div>
@@ -692,26 +696,28 @@ const DonationsPage: React.FC = () => {
                           </button>
 
                           {/* E-Kuitansi Button */}
-                          <button
-                            className="btn btn-sm btn-outline"
-                            id={`btn-receipt-${d.id}`}
-                            style={{ fontSize: 11, padding: '3px 8px', display: 'flex', alignItems: 'center', gap: 4 }}
-                            onClick={() =>
-                              setSelectedReceipt({
-                                receiptNumber: d.receiptNumber,
-                                name: d.name,
-                                category: d.category,
-                                amount: d.paid,
-                                lastPayment: d.lastPayment,
-                                total: d.total,
-                                paid: d.paid,
-                                remaining: d.remaining,
-                              })
-                            }
-                            title="Buka E-Kuitansi Resmi"
-                          >
-                            <QrCode size={12} /> E-Kuitansi
-                          </button>
+                          {d.receiptNumber && d.receiptNumber !== '-' && (
+                            <button
+                              className="btn btn-sm btn-outline"
+                              id={`btn-receipt-${d.id}`}
+                              style={{ fontSize: 11, padding: '3px 8px', display: 'flex', alignItems: 'center', gap: 4 }}
+                              onClick={() =>
+                                setSelectedReceipt({
+                                  receiptNumber: d.receiptNumber,
+                                  name: d.name,
+                                  category: d.category,
+                                  amount: d.paid,
+                                  lastPayment: d.lastPayment,
+                                  total: d.total,
+                                  paid: d.paid,
+                                  remaining: d.remaining,
+                                })
+                              }
+                              title="Buka E-Kuitansi Resmi"
+                            >
+                              <QrCode size={12} /> E-Kuitansi
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

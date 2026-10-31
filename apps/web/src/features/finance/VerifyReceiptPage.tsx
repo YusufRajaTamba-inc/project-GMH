@@ -168,6 +168,13 @@ const VerifyReceiptPage: React.FC = () => {
                     <strong style={{ fontFamily: 'monospace', color: '#0f172a' }}>{data.receiptNumber}</strong>
                   </div>
 
+                  {data.donorName && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: 6 }}>
+                      <span style={{ color: '#64748b' }}>Nama Donatur / Pemberi:</span>
+                      <strong style={{ color: '#0f172a' }}>{data.donorName}</strong>
+                    </div>
+                  )}
+
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: 6 }}>
                     <span style={{ color: '#64748b' }}>Tanggal Transaksi:</span>
                     <strong style={{ color: '#0f172a' }}>

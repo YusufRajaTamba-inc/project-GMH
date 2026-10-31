@@ -675,33 +675,309 @@ export async function seedDatabase() {
   }
   console.log('[Seeder] Mission activities seeded with full JSONB relations.');
 
-  // 8. Seed Pledges & Donations
-  const sinuratPledge = await db.query(
-    `INSERT INTO pledges (donor_name, total_pledge, fulfilled_amount, status)
-     VALUES ('Keluarga Sinurat', 50000000.00, 35000000.00, 'ACTIVE')
-     ON CONFLICT DO NOTHING
-     RETURNING id`
-  );
+  // 8. Seed Building Project, Pledges & Donations
+  await db.query(`
+    ALTER TABLE pledges ADD COLUMN IF NOT EXISTS category VARCHAR(150) DEFAULT 'Pembangunan Rumah Persekutuan';
+    ALTER TABLE pledges ADD COLUMN IF NOT EXISTS pledge_type VARCHAR(50) DEFAULT 'PLEDGE';
+    ALTER TABLE pledges ADD COLUMN IF NOT EXISTS notes TEXT;
+  `);
+
+  const bpRes = await db.query(`
+    INSERT INTO building_projects (
+      id, project_name, target_budget, current_funds, start_date, target_completion_date, progress_percentage, status, description
+    ) VALUES (
+      'b0000000-0000-0000-0000-000000000001',
+      'Pembangunan Rumah Persekutuan GMH',
+      1500000000.00,
+      650000000.00,
+      '2024-01-15',
+      '2027-12-31',
+      45,
+      'ON_PROGRESS',
+      'Pembangunan gedung pusat persekutuan dan pembinaan mahasiswa/alumni GMH PA KMK USU'
+    )
+    ON CONFLICT (id) DO UPDATE 
+    SET project_name = EXCLUDED.project_name, target_budget = EXCLUDED.target_budget, current_funds = EXCLUDED.current_funds
+    RETURNING id
+  `);
+  const bpId = bpRes.rows[0]?.id || 'b0000000-0000-0000-0000-000000000001';
+
+  const yusufMem = await db.query(`SELECT id FROM members WHERE full_name ILIKE '%Yusuf Panjaitan%' LIMIT 1`);
+  const jeksonMem = await db.query(`SELECT id FROM members WHERE full_name ILIKE '%Jekson Simanjuntak%' LIMIT 1`);
+  const marianaMem = await db.query(`SELECT id FROM members WHERE full_name ILIKE '%Mariana Hutabarat%' LIMIT 1`);
+  const deboraMem = await db.query(`SELECT id FROM members WHERE full_name ILIKE '%Debora Sinaga%' LIMIT 1`);
+
+  const yusufId = yusufMem.rows[0]?.id || null;
+  const jeksonId = jeksonMem.rows[0]?.id || null;
+  const marianaId = marianaMem.rows[0]?.id || null;
+  const deboraId = deboraMem.rows[0]?.id || null;
+
+  const sinuratPledgeId = 'e0000000-0000-0000-0000-000000000001';
+  const yusufPledgeId = 'e0000000-0000-0000-0000-000000000002';
+  const jeksonPledgeId = 'e0000000-0000-0000-0000-000000000003';
+  const marianaPledgeId = 'e0000000-0000-0000-0000-000000000004';
+  const siraitPledgeId = 'e0000000-0000-0000-0000-000000000005';
+  const deboraPledgeId = 'e0000000-0000-0000-0000-000000000006';
+
+  const pledgesData = [
+    {
+      id: sinuratPledgeId,
+      donor_name: 'Keluarga Sinurat',
+      total_pledge: 50000000.00,
+      fulfilled_amount: 35000000.00,
+      category: 'Pembangunan Rumah Persekutuan',
+      pledge_type: 'PLEDGE',
+      status: 'ACTIVE',
+      notes: 'Komitmen donasi keluarga untuk pembangunan tahap 1 hingga selesai',
+      building_project_id: bpId,
+      member_id: null,
+    },
+    {
+      id: yusufPledgeId,
+      donor_name: 'Yusuf Raja Tamba Panjaitan, S.Kom',
+      total_pledge: 20000000.00,
+      fulfilled_amount: 12000000.00,
+      category: 'Pembangunan Rumah Persekutuan',
+      pledge_type: 'PLEDGE',
+      status: 'ACTIVE',
+      notes: 'Komitmen janji iman alumni angkatan 2021',
+      building_project_id: bpId,
+      member_id: yusufId,
+    },
+    {
+      id: jeksonPledgeId,
+      donor_name: 'dr. Jekson Simanjuntak, Sp.A',
+      total_pledge: 15000000.00,
+      fulfilled_amount: 5000000.00,
+      category: 'Pembangunan Rumah Persekutuan',
+      pledge_type: 'PLEDGE',
+      status: 'ACTIVE',
+      notes: 'Angsuran per 3 bulan selama tahun 2026',
+      building_project_id: bpId,
+      member_id: jeksonId,
+    },
+    {
+      id: marianaPledgeId,
+      donor_name: 'Mariana Hutabarat, S.E.',
+      total_pledge: 10000000.00,
+      fulfilled_amount: 7500000.00,
+      category: 'Renovasi & Audio Visual Ruang Doa',
+      pledge_type: 'PLEDGE',
+      status: 'ACTIVE',
+      notes: 'Komitmen dukungan sound system & streaming kampus',
+      building_project_id: bpId,
+      member_id: marianaId,
+    },
+    {
+      id: siraitPledgeId,
+      donor_name: 'Pdt. Dr. J. Sirait & Kel.',
+      total_pledge: 25000000.00,
+      fulfilled_amount: 25000000.00,
+      category: 'Pembangunan Rumah Persekutuan',
+      pledge_type: 'PLEDGE',
+      status: 'COMPLETED',
+      notes: 'Pelunasan Janji Iman Pembangunan Rumah Persekutuan',
+      building_project_id: bpId,
+      member_id: null,
+    },
+    {
+      id: deboraPledgeId,
+      donor_name: 'Debora Sinaga, S.Ked',
+      total_pledge: 3000000.00,
+      fulfilled_amount: 3000000.00,
+      category: 'Pelayanan Misi & Pembinaan Adik Binaan',
+      pledge_type: 'DONATION',
+      status: 'COMPLETED',
+      notes: 'Persembahan syukur wisuda & donasi adik asuh',
+      building_project_id: null,
+      member_id: deboraId,
+    },
+  ];
+
+  for (const p of pledgesData) {
+    await db.query(
+      `INSERT INTO pledges (
+        id, donor_name, total_pledge, fulfilled_amount, category, pledge_type, status, notes, building_project_id, member_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      ON CONFLICT (id) DO UPDATE 
+      SET donor_name = EXCLUDED.donor_name,
+          total_pledge = EXCLUDED.total_pledge,
+          fulfilled_amount = EXCLUDED.fulfilled_amount,
+          category = EXCLUDED.category,
+          pledge_type = EXCLUDED.pledge_type,
+          status = EXCLUDED.status,
+          notes = EXCLUDED.notes,
+          building_project_id = EXCLUDED.building_project_id,
+          member_id = EXCLUDED.member_id`,
+      [p.id, p.donor_name, p.total_pledge, p.fulfilled_amount, p.category, p.pledge_type, p.status, p.notes, p.building_project_id, p.member_id]
+    );
+  }
+  console.log('[Seeder] Pledges and building projects seeded.');
 
   // 9. Seed Financial Transactions (COA Compliant)
   const superUserRes = await db.query(`SELECT id FROM users WHERE username = 'superadmin'`);
   const adminUserId = superUserRes.rows[0].id;
 
   const trxSeeds = [
-    { code: 'TX-GMH-202610-001', date: '2026-10-14', type: 'INCOME', coa: '4-2010', amt: 35000000.00, method: 'BANK_TRANSFER', scope: 'YAYASAN_PUSAT', notes: 'Tahap 3 dari 5 komitmen pembangunan Rumah Persekutuan (Kel. Sinurat)' },
-    { code: 'TX-GMH-202610-002', date: '2026-10-20', type: 'EXPENSE', coa: '5-2010', amt: 1250000.00, method: 'CASH', scope: 'OPERASIONAL', notes: 'Pembelian ATK, kertas kop surat yayasan F4, map arsip, dan toner printer kantor' },
-    { code: 'TX-GMH-202610-003', date: '2026-10-24', type: 'EXPENSE', coa: '5-2010', amt: 850000.00, method: 'BANK_TRANSFER', scope: 'OPERASIONAL', notes: 'Langganan Internet Fiber Optic Kantor Sekretariat GMH (Indihome 100 Mbps)' },
-    { code: 'TX-GMH-202610-004', date: '2026-10-25', type: 'INCOME', coa: '4-1010', amt: 500000.00, method: 'BANK_TRANSFER', scope: 'OPERASIONAL', notes: 'Donasi kemitraan rutin alumni: dr. Jekson Simanjuntak' },
-    { code: 'TX-GMH-202610-005', date: '2026-10-27', type: 'INCOME', coa: '4-1010', amt: 1500000.00, method: 'BANK_TRANSFER', scope: 'OPERASIONAL', notes: 'Persembahan kasih alumni: Yusuf Panjaitan' },
-    { code: 'TX-GMH-202610-006', date: '2026-10-28', type: 'EXPENSE', coa: '5-2010', amt: 450000.00, method: 'CASH', scope: 'OPERASIONAL', notes: 'Konsumsi persekutuan pengurus & doa evaluasi bulanan kantor' },
+    {
+      code: 'KWT-GMH-202610-001',
+      date: '2026-10-14',
+      type: 'INCOME',
+      coa: '4-2010',
+      amt: 35000000.00,
+      method: 'BANK_TRANSFER',
+      scope: 'YAYASAN_PUSAT',
+      pledgeId: sinuratPledgeId,
+      memberId: null,
+      notes: 'Penerimaan Janji Iman - Keluarga Sinurat (Tahap 3 dari 5 komitmen pembangunan Rumah Persekutuan)',
+    },
+    {
+      code: 'TX-GMH-202610-001',
+      date: '2026-10-14',
+      type: 'INCOME',
+      coa: '4-2010',
+      amt: 35000000.00,
+      method: 'BANK_TRANSFER',
+      scope: 'YAYASAN_PUSAT',
+      pledgeId: sinuratPledgeId,
+      memberId: null,
+      notes: 'Tahap 3 dari 5 komitmen pembangunan Rumah Persekutuan (Kel. Sinurat)',
+    },
+    {
+      code: 'KWT-GMH-202610-002',
+      date: '2026-10-20',
+      type: 'INCOME',
+      coa: '4-2010',
+      amt: 12000000.00,
+      method: 'BANK_TRANSFER',
+      scope: 'YAYASAN_PUSAT',
+      pledgeId: yusufPledgeId,
+      memberId: yusufId,
+      notes: 'Penerimaan Janji Iman - Yusuf Raja Tamba Panjaitan (Komitmen janji iman alumni angkatan 2021)',
+    },
+    {
+      code: 'KWT-GMH-202610-003',
+      date: '2026-10-22',
+      type: 'INCOME',
+      coa: '4-2010',
+      amt: 5000000.00,
+      method: 'BANK_TRANSFER',
+      scope: 'YAYASAN_PUSAT',
+      pledgeId: jeksonPledgeId,
+      memberId: jeksonId,
+      notes: 'Penerimaan Janji Iman - dr. Jekson Simanjuntak, Sp.A (Angsuran 1/3 pembangunan Rumah Persekutuan)',
+    },
+    {
+      code: 'KWT-GMH-202610-004',
+      date: '2026-10-25',
+      type: 'INCOME',
+      coa: '4-2010',
+      amt: 7500000.00,
+      method: 'BANK_TRANSFER',
+      scope: 'YAYASAN_PUSAT',
+      pledgeId: marianaPledgeId,
+      memberId: marianaId,
+      notes: 'Penerimaan Janji Iman - Mariana Hutabarat, S.E. (Dukungan sound system & audio visual)',
+    },
+    {
+      code: 'KWT-GMH-202610-005',
+      date: '2026-10-10',
+      type: 'INCOME',
+      coa: '4-2010',
+      amt: 25000000.00,
+      method: 'BANK_TRANSFER',
+      scope: 'YAYASAN_PUSAT',
+      pledgeId: siraitPledgeId,
+      memberId: null,
+      notes: 'Penerimaan Janji Iman - Pdt. Dr. J. Sirait & Kel. (Pelunasan Janji Iman Pembangunan Rumah Persekutuan)',
+    },
+    {
+      code: 'KWT-GMH-202610-006',
+      date: '2026-10-18',
+      type: 'INCOME',
+      coa: '4-1010',
+      amt: 3000000.00,
+      method: 'BANK_TRANSFER',
+      scope: 'YAYASAN_PUSAT',
+      pledgeId: deboraPledgeId,
+      memberId: deboraId,
+      notes: 'Penerimaan Donasi - Debora Sinaga, S.Ked (Persembahan syukur wisuda & donasi adik asuh)',
+    },
+    {
+      code: 'TX-GMH-202610-002',
+      date: '2026-10-20',
+      type: 'EXPENSE',
+      coa: '5-2010',
+      amt: 1250000.00,
+      method: 'CASH',
+      scope: 'OPERASIONAL',
+      pledgeId: null,
+      memberId: null,
+      notes: 'Pembelian ATK, kertas kop surat yayasan F4, map arsip, dan toner printer kantor',
+    },
+    {
+      code: 'TX-GMH-202610-003',
+      date: '2026-10-24',
+      type: 'EXPENSE',
+      coa: '5-2010',
+      amt: 850000.00,
+      method: 'BANK_TRANSFER',
+      scope: 'OPERASIONAL',
+      pledgeId: null,
+      memberId: null,
+      notes: 'Langganan Internet Fiber Optic Kantor Sekretariat GMH (Indihome 100 Mbps)',
+    },
+    {
+      code: 'TX-GMH-202610-004',
+      date: '2026-10-25',
+      type: 'INCOME',
+      coa: '4-1010',
+      amt: 500000.00,
+      method: 'BANK_TRANSFER',
+      scope: 'OPERASIONAL',
+      pledgeId: null,
+      memberId: jeksonId,
+      notes: 'Donasi kemitraan rutin alumni: dr. Jekson Simanjuntak',
+    },
+    {
+      code: 'TX-GMH-202610-005',
+      date: '2026-10-27',
+      type: 'INCOME',
+      coa: '4-1010',
+      amt: 1500000.00,
+      method: 'BANK_TRANSFER',
+      scope: 'OPERASIONAL',
+      pledgeId: null,
+      memberId: yusufId,
+      notes: 'Persembahan kasih alumni: Yusuf Panjaitan',
+    },
+    {
+      code: 'TX-GMH-202610-006',
+      date: '2026-10-28',
+      type: 'EXPENSE',
+      coa: '5-2010',
+      amt: 450000.00,
+      method: 'CASH',
+      scope: 'OPERASIONAL',
+      pledgeId: null,
+      memberId: null,
+      notes: 'Konsumsi persekutuan pengurus & doa evaluasi bulanan kantor',
+    },
   ];
 
   for (const t of trxSeeds) {
     await db.query(
-      `INSERT INTO financial_transactions (transaction_code, transaction_date, transaction_type, account_id, amount, payment_method, scope, notes, recorded_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       ON CONFLICT (transaction_code) DO NOTHING`,
-      [t.code, t.date, t.type, t.coa, t.amt, t.method, t.scope, t.notes, adminUserId]
+      `INSERT INTO financial_transactions (
+        transaction_code, transaction_date, transaction_type, account_id,
+        amount, payment_method, scope, notes, recorded_by, pledge_id, donor_member_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      ON CONFLICT (transaction_code) DO UPDATE 
+      SET pledge_id = EXCLUDED.pledge_id,
+          donor_member_id = EXCLUDED.donor_member_id,
+          amount = EXCLUDED.amount,
+          notes = EXCLUDED.notes,
+          account_id = EXCLUDED.account_id`,
+      [t.code, t.date, t.type, t.coa, t.amt, t.method, t.scope, t.notes, adminUserId, t.pledgeId, t.memberId]
     );
   }
   console.log('[Seeder] Financial transactions seeded.');

@@ -656,8 +656,8 @@ export const recordDonationPayment = async (req: Request, res: Response): Promis
     const txRes = await client.query(
       `INSERT INTO financial_transactions (
         transaction_code, transaction_date, transaction_type,
-        account_id, amount, payment_method, scope, notes, recorded_by
-      ) VALUES ($1, $2, 'INCOME', $3, $4, 'BANK_TRANSFER', 'YAYASAN_PUSAT', $5, $6)
+        account_id, amount, payment_method, scope, notes, recorded_by, pledge_id
+      ) VALUES ($1, $2, 'INCOME', $3, $4, 'BANK_TRANSFER', 'YAYASAN_PUSAT', $5, $6, $7)
       RETURNING *`,
       [
         receiptNumber,
@@ -666,6 +666,7 @@ export const recordDonationPayment = async (req: Request, res: Response): Promis
         paymentAmount,
         `Penerimaan ${type === 'PLEDGE' ? 'Janji Iman' : 'Donasi'} - ${donorName} (${notes || ''})`,
         req.user?.id,
+        pledgeId || null,
       ]
     );
 
@@ -720,13 +721,21 @@ export const recordDonationPayment = async (req: Request, res: Response): Promis
 export const verifyReceipt = async (req: Request, res: Response): Promise<void> => {
   try {
     const { receiptNumber } = req.params;
+    const cleanNumber = (receiptNumber || '').trim();
     const result = await db.query(
-      `SELECT ft.*, coa.account_name, u.full_name as recorded_by_name
+      `SELECT ft.*, coa.account_name, u.full_name as recorded_by_name,
+              COALESCE(p.donor_name, m.full_name, split_part(split_part(ft.notes, ' - ', 2), ' (', 1)) as donor_name
        FROM financial_transactions ft
        JOIN chart_of_accounts coa ON ft.account_id = coa.id
        LEFT JOIN users u ON ft.recorded_by = u.id
-       WHERE ft.transaction_code = $1`,
-      [receiptNumber]
+       LEFT JOIN pledges p ON ft.pledge_id = p.id
+       LEFT JOIN members m ON ft.donor_member_id = m.id
+       WHERE ft.transaction_code ILIKE $1
+          OR ft.transaction_code ILIKE REPLACE($1, 'KWT-', 'TX-')
+          OR ft.transaction_code ILIKE REPLACE($1, 'TX-', 'KWT-')
+       ORDER BY ft.transaction_date DESC, ft.created_at DESC
+       LIMIT 1`,
+      [cleanNumber]
     );
 
     if (result.rows.length === 0) {
@@ -743,6 +752,7 @@ export const verifyReceipt = async (req: Request, res: Response): Promise<void> 
       amount: tx.amount,
       purpose: tx.account_name,
       notes: tx.notes,
+      donorName: tx.donor_name || 'Hamba Tuhan (Anonim)',
       issuer: 'Yayasan Global Mission House (GMH PA KMK)',
     });
   } catch (err: any) {

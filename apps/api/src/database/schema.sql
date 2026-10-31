@@ -104,6 +104,8 @@ CREATE TABLE IF NOT EXISTS members (
     
     avatar_url TEXT,
     status VARCHAR(20) DEFAULT 'ACTIVE',        -- 'ACTIVE', 'MUTATED', 'DECEASED'
+    is_active BOOLEAN DEFAULT TRUE,
+    membership_type VARCHAR(30) DEFAULT 'ALUMNI',
     custom_fields JSONB DEFAULT '{}'::jsonb,    -- Menampung seluruh field dinamis form
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -334,12 +336,19 @@ CREATE TABLE IF NOT EXISTS assets (
     asset_code VARCHAR(50) UNIQUE NOT NULL,     -- AST-GMH-001
     asset_name VARCHAR(150) NOT NULL,
     category_id UUID REFERENCES system_lookups(id), -- 'SOUND_SYSTEM', 'MULTIMEDIA', 'KENDARAAN', 'GEDUNG_RUMAH_PERSEKUTUAN'
+    asset_type VARCHAR(50) DEFAULT 'OPERATIONAL',
+    quantity INT DEFAULT 1,
+    available_quantity INT DEFAULT 1,
     purchase_date DATE,
     purchase_price DECIMAL(15, 2) DEFAULT 0,
+    rental_price DECIMAL(15, 2) DEFAULT 0,
     physical_condition VARCHAR(30) DEFAULT 'GOOD',  -- 'GOOD', 'NEED_REPAIR', 'BROKEN'
+    borrow_status VARCHAR(50) DEFAULT 'AVAILABLE',
     location_room VARCHAR(100),
     is_borrowable BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS asset_loans (

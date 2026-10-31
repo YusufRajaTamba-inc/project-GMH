@@ -3,7 +3,7 @@ WORKDIR /app
 COPY package*.json ./
 COPY apps/api/package*.json ./apps/api/
 COPY apps/web/package*.json ./apps/web/
-RUN npm ci
+RUN npm ci && npm install --no-save @rolldown/binding-linux-x64-musl@1.2.16
 COPY apps/web ./apps/web
 ARG VITE_API_BASE_URL=/api/v1
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL

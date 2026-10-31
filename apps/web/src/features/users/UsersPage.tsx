@@ -105,6 +105,12 @@ const UsersPage: React.FC = () => {
   const [activeIntegrityHash, setActiveIntegrityHash] = useState<string>('');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
   const [isPermsLoading, setIsPermsLoading] = useState<boolean>(false);
+  const [showRoleForm, setShowRoleForm] = useState(false);
+  const [newRoleName, setNewRoleName] = useState('');
+  const [newRoleId, setNewRoleId] = useState('');
+  const [newRoleDescription, setNewRoleDescription] = useState('');
+  const [copyRoleId, setCopyRoleId] = useState('');
+  const [isCreatingRole, setIsCreatingRole] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -241,6 +247,59 @@ const UsersPage: React.FC = () => {
     loadData();
     void loadPermissions();
   }, []);
+
+  const handleCreateRole = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const generatedId = (newRoleId || newRoleName)
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+    if (!generatedId || !newRoleName.trim()) {
+      showToast('Kode dan nama role wajib diisi.');
+      return;
+    }
+
+    setIsCreatingRole(true);
+    try {
+      const response: any = await api.users.createRole({
+        id: generatedId,
+        name: newRoleName.trim(),
+        description: newRoleDescription.trim(),
+        ...(copyRoleId ? { copyFromRoleId: copyRoleId } : {}),
+      });
+      showToast(response.message || 'Role baru berhasil dibuat.');
+      setNewRoleName('');
+      setNewRoleId('');
+      setNewRoleDescription('');
+      setCopyRoleId('');
+      setShowRoleForm(false);
+      await loadPermissions();
+      await loadData();
+      handleSelectRole(generatedId);
+    } catch (err: any) {
+      showToast('Gagal membuat role: ' + err.message);
+    } finally {
+      setIsCreatingRole(false);
+    }
+  };
+
+  const handleDeleteRole = async (role: SystemRole) => {
+    if (role.id === 'SUPER_ADMIN') return;
+    if (!window.confirm(`Hapus role "${role.name}"? Role hanya dapat dihapus jika belum digunakan akun pengguna.`)) return;
+    try {
+      const response: any = await api.users.deleteRole(role.id);
+      showToast(response.message || 'Role berhasil dihapus.');
+      if (selectedRole === role.id) {
+        setSelectedRole('SUPER_ADMIN');
+        setRolePermsMap({});
+      }
+      await loadPermissions();
+      await loadData();
+    } catch (err: any) {
+      showToast('Gagal menghapus role: ' + err.message);
+    }
+  };
 
   // Filtered Users
   const filteredUsers = useMemo(() => {
@@ -974,9 +1033,52 @@ const UsersPage: React.FC = () => {
 
           {/* Role Selector Grid */}
           <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 10 }}>
-              PILIH PERAN (ROLE) YANG INGIN DIATUR:
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#334155' }}>
+                PILIH PERAN (ROLE) YANG INGIN DIATUR:
+              </div>
+              {currentUser?.role === 'SUPER_ADMIN' && (
+                <button
+                  id="add-system-role"
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  onClick={() => setShowRoleForm((open) => !open)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  <Plus size={14} /> {showRoleForm ? 'Tutup Form' : 'Tambah Role'}
+                </button>
+              )}
             </div>
+            {showRoleForm && currentUser?.role === 'SUPER_ADMIN' && (
+              <form onSubmit={handleCreateRole} style={{ ...cardStyle, padding: 16, marginBottom: 14, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, alignItems: 'end' }}>
+                <div>
+                  <label className="form-label" htmlFor="new-role-name">Nama Role *</label>
+                  <input id="new-role-name" className="form-input" value={newRoleName} onChange={(e) => setNewRoleName(e.target.value)} placeholder="Contoh: Staf Keuangan" required />
+                </div>
+                <div>
+                  <label className="form-label" htmlFor="new-role-id">Kode Role</label>
+                  <input id="new-role-id" className="form-input" value={newRoleId} onChange={(e) => setNewRoleId(e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_'))} placeholder="Otomatis dari nama" maxLength={50} />
+                </div>
+                <div>
+                  <label className="form-label" htmlFor="new-role-description">Deskripsi</label>
+                  <input id="new-role-description" className="form-input" value={newRoleDescription} onChange={(e) => setNewRoleDescription(e.target.value)} placeholder="Uraian tanggung jawab" />
+                </div>
+                <div>
+                  <label className="form-label" htmlFor="copy-role-permissions">Salin hak akses dari</label>
+                  <select id="copy-role-permissions" className="form-select" value={copyRoleId} onChange={(e) => setCopyRoleId(e.target.value)}>
+                    <option value="">Tanpa salin (Dashboard saja)</option>
+                    {roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
+                  </select>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button type="submit" className="btn btn-primary btn-sm" disabled={isCreatingRole} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#0f172a', color: '#fff', border: 'none' }}>
+                    <Save size={14} /> {isCreatingRole ? 'Membuat...' : 'Buat Role'}
+                  </button>
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => setShowRoleForm(false)} disabled={isCreatingRole}>Batal</button>
+                </div>
+                <p style={{ gridColumn: '1 / -1', margin: 0, color: '#64748b', fontSize: 11.5 }}>Akses dapat disesuaikan setelah role dibuat. Tanpa menyalin, hanya Dashboard yang aktif secara default.</p>
+              </form>
+            )}
             <div
               style={{
                 display: 'grid',
@@ -1002,7 +1104,7 @@ const UsersPage: React.FC = () => {
                       boxShadow: isSelected ? '0 4px 12px rgba(15, 23, 42, 0.08)' : 'none',
                     }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, gap: 8 }}>
                       <span style={{ fontSize: 13, fontWeight: 700, color: isSelected ? '#0f172a' : '#334155' }}>
                         {r.name}
                       </span>
@@ -1012,8 +1114,9 @@ const UsersPage: React.FC = () => {
                           fontWeight: 700,
                           padding: '2px 7px',
                           borderRadius: 10,
-                          background: count === totalMod ? '#dcfce7' : count > 0 ? '#e0f2fe' : '#fee2e2',
-                          color: count === totalMod ? '#15803d' : count > 0 ? '#0369a1' : '#b91c1c',
+                          background: '#f1f5f9',
+                          color: '#475569',
+                          whiteSpace: 'nowrap',
                         }}
                       >
                         {count}/{totalMod} Modul
@@ -1022,6 +1125,16 @@ const UsersPage: React.FC = () => {
                     <p style={{ margin: 0, fontSize: 11, color: '#64748b', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                       {r.description}
                     </p>
+                    {currentUser?.role === 'SUPER_ADMIN' && r.id !== 'SUPER_ADMIN' && (
+                      <button
+                        id={`delete-role-${r.id.toLowerCase()}`}
+                        type="button"
+                        onClick={(event) => { event.stopPropagation(); void handleDeleteRole(r); }}
+                        style={{ marginTop: 8, padding: 0, border: 'none', background: 'transparent', color: '#64748b', fontSize: 11, cursor: 'pointer' }}
+                      >
+                        Hapus role
+                      </button>
+                    )}
                   </div>
                 );
               })}

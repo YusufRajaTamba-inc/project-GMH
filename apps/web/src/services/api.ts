@@ -297,6 +297,9 @@ export const api = {
       return request(`/users${query ? `?${query}` : ''}`);
     },
     getRoles: () => request('/users/roles'),
+    createRole: (data: { id: string; name: string; description: string; copyFromRoleId?: string }) =>
+      request('/users/roles', { method: 'POST', body: JSON.stringify(data) }),
+    deleteRole: (roleId: string) => request(`/users/roles/${encodeURIComponent(roleId)}`, { method: 'DELETE' }),
     getPermissionsMatrix: () => request<PermissionsMatrixResponse>('/users/permissions'),
     updateRolePermissions: (roleId: string, permissions: Record<string, boolean>) =>
       request<{ success: boolean; message: string; roleId: string; permissions: SignedPermissionsPayload }>(

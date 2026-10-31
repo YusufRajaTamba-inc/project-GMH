@@ -104,7 +104,179 @@ router.get('/roles', async (_req: Request, res: Response): Promise<void> => {
 });
 
 // ----------------------------------------------------------------------------
-// 2B. GET /permissions — Matriks Hak Akses Modul Seluruh Role
+// 2A. POST /roles — Buat Peran (Role) Baru
+// Hanya Super Admin (IT) yang boleh menambah peran baru ke sistem.
+// ----------------------------------------------------------------------------
+router.post('/roles', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const actorUser = req.user;
+    const { id, name, description, copyFromRoleId } = req.body || {};
+
+    if (!actorUser || actorUser.roleId !== 'SUPER_ADMIN') {
+      res.status(403).json({
+        success: false,
+        code: 'FORBIDDEN_ROLE_MANAGEMENT',
+        message: 'Hanya Super Admin (IT) yang dapat menambah peran baru.',
+      });
+      return;
+    }
+
+    const cleanId = String(id || '').trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+    const cleanName = String(name || '').trim();
+    const cleanDesc = String(description || '').trim() || null;
+
+    if (!cleanId || !cleanName) {
+      res.status(400).json({
+        success: false,
+        message: 'Kode peran (id) dan nama peran wajib diisi.',
+      });
+      return;
+    }
+
+    if (!/^[A-Z][A-Z0-9_]{2,49}$/.test(cleanId)) {
+      res.status(400).json({
+        success: false,
+        message: 'Kode peran harus huruf kapital/angka/underscore, minimal 3 karakter (contoh: STAF_KEUANGAN).',
+      });
+      return;
+    }
+
+    const dupCheck = await db.query(`SELECT id FROM roles WHERE id = $1`, [cleanId]);
+    if (dupCheck.rows.length > 0) {
+      res.status(409).json({
+        success: false,
+        message: `Kode peran "${cleanId}" sudah digunakan.`,
+      });
+      return;
+    }
+
+    await db.query(
+      `INSERT INTO roles (id, name, description, created_at)
+       VALUES ($1, $2, $3, CURRENT_TIMESTAMP)`,
+      [cleanId, cleanName, cleanDesc]
+    );
+
+    // Inisialisasi matriks hak akses: salin dari role sumber bila ada, selain itu semua modul non-USERS/DASHBOARD di-nonaktifkan.
+    const copySource = copyFromRoleId ? String(copyFromRoleId) : null;
+    if (copySource) {
+      const sourceCheck = await db.query(`SELECT id FROM roles WHERE id = $1`, [copySource]);
+      if (sourceCheck.rows.length === 0) {
+        res.status(400).json({
+          success: false,
+          message: `Role sumber "${copySource}" tidak ditemukan.`,
+        });
+        return;
+      }
+      await db.query(
+        `INSERT INTO role_permissions (role_id, module_key, can_access, updated_at)
+         SELECT $1, module_key, can_access, CURRENT_TIMESTAMP
+         FROM role_permissions WHERE role_id = $2
+         ON CONFLICT (role_id, module_key) DO NOTHING`,
+        [cleanId, copySource]
+      );
+    } else {
+      for (const mod of SYSTEM_MODULES) {
+        const canAccess = mod.key === 'DASHBOARD';
+        await db.query(
+          `INSERT INTO role_permissions (role_id, module_key, can_access, updated_at)
+           VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+           ON CONFLICT (role_id, module_key) DO NOTHING`,
+          [cleanId, mod.key, canAccess]
+        );
+      }
+    }
+
+    // Tanda tangan kriptografis awal untuk peran baru
+    const signedPayload = await getSignedRolePermissions(cleanId);
+
+    await logAudit(
+      actorUser.id,
+      'CREATE_ROLE',
+      'roles',
+      cleanId,
+      null,
+      { roleId: cleanId, roleName: cleanName, copyFromRoleId: copySource, createdBy: actorUser.username },
+      req.ip,
+      req.headers['user-agent']
+    );
+
+    res.status(201).json({
+      success: true,
+      message: `Peran "${cleanName}" (${cleanId}) berhasil dibuat.`,
+      role: { id: cleanId, name: cleanName, description: cleanDesc || '' },
+      permissions: signedPayload,
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      message: 'Gagal membuat peran baru.',
+      error: err.message,
+    });
+  }
+});
+
+// ----------------------------------------------------------------------------
+// 2B. DELETE /roles/:roleId — Hapus Peran (hanya jika belum dipakai pengguna)
+// ----------------------------------------------------------------------------
+router.delete('/roles/:roleId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const actorUser = req.user;
+    const roleId = String(req.params.roleId).trim().toUpperCase();
+
+    if (!actorUser || actorUser.roleId !== 'SUPER_ADMIN') {
+      res.status(403).json({
+        success: false,
+        code: 'FORBIDDEN_ROLE_MANAGEMENT',
+        message: 'Hanya Super Admin (IT) yang dapat menghapus peran.',
+      });
+      return;
+    }
+
+    if (roleId === 'SUPER_ADMIN') {
+      res.status(400).json({ success: false, message: 'Peran SUPER_ADMIN tidak dapat dihapus.' });
+      return;
+    }
+
+    const inUse = await db.query(`SELECT COUNT(*)::int as total FROM users WHERE role_id = $1`, [roleId]);
+    if ((inUse.rows[0]?.total || 0) > 0) {
+      res.status(409).json({
+        success: false,
+        message: `Peran "${roleId}" masih digunakan oleh ${inUse.rows[0].total} pengguna. Pindahkan pengguna terlebih dahulu.`,
+      });
+      return;
+    }
+
+    const del = await db.query(`DELETE FROM roles WHERE id = $1 RETURNING id, name`, [roleId]);
+    if (del.rows.length === 0) {
+      res.status(404).json({ success: false, message: `Peran "${roleId}" tidak ditemukan.` });
+      return;
+    }
+
+    await logAudit(
+      actorUser.id,
+      'DELETE_ROLE',
+      'roles',
+      roleId,
+      { id: roleId, name: del.rows[0].name },
+      { roleId, deletedBy: actorUser.username },
+      req.ip,
+      req.headers['user-agent']
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `Peran "${del.rows[0].name}" berhasil dihapus.`,
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      message: 'Gagal menghapus peran.',
+      error: err.message,
+    });
+  }
+});
+// ----------------------------------------------------------------------------
+// 2C. GET /permissions — Matriks Hak Akses Modul Seluruh Role
 // ----------------------------------------------------------------------------
 router.get('/permissions', async (_req: Request, res: Response): Promise<void> => {
   try {

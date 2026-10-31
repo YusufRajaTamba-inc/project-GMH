@@ -1941,7 +1941,7 @@ const FinanceOperationalPage: React.FC = () => {
                     <th style={{ textAlign: 'right' }}>SISA ANGGARAN</th>
                     <th style={{ minWidth: 150 }}>PENYERAPAN</th>
                     <th style={{ textAlign: 'center' }}>STATUS</th>
-                    <th style={{ textAlign: 'center', minWidth: 200 }}>AKSI</th>
+                    <th style={{ textAlign: 'center', width: 260, minWidth: 260 }}>AKSI</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2140,34 +2140,63 @@ const FinanceOperationalPage: React.FC = () => {
                           </td>
 
                           {/* 8. Aksi */}
-                          <td style={{ textAlign: 'center' }}>
-                            <div style={{ display: 'inline-flex', gap: 5, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
+                          <td style={{ textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                            <div
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 6,
+                                flexWrap: 'nowrap',
+                              }}
+                            >
                               {/* Tombol Top-Up (Tambahkan Nominal) */}
                               <button
-                                className="btn btn-outline btn-sm"
+                                type="button"
+                                className="btn btn-sm"
                                 style={{
-                                  padding: '3px 8px',
+                                  padding: '4px 9px',
                                   fontSize: 11.5,
-                                  height: 'auto',
-                                  color: '#047857',
-                                  borderColor: '#6ee7b7',
+                                  height: 28,
+                                  color: '#065f46',
+                                  borderColor: '#a7f3d0',
                                   background: '#ecfdf5',
+                                  border: '1px solid #a7f3d0',
                                   fontWeight: 600,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  borderRadius: 6,
+                                  cursor: 'pointer',
                                 }}
                                 onClick={() => {
                                   setTopUpTarget(b);
                                   setTopUpAmount(0);
                                   setTopUpReason('');
                                 }}
-                                title="Tambahkan nominal pagu anggaran jika alokasi kurang/belum selesai"
+                                title="Top-Up: Tambahkan nominal pagu anggaran jika alokasi kurang"
                               >
-                                <PlusCircle size={12} style={{ display: 'inline', marginRight: 2 }} /> + Top-Up
+                                <PlusCircle size={13} />
+                                <span>Top-Up</span>
                               </button>
 
                               {/* Tombol Ubah Pagu */}
                               <button
-                                className="btn btn-outline btn-sm"
-                                style={{ padding: '3px 8px', fontSize: 11.5, height: 'auto' }}
+                                type="button"
+                                className="btn btn-sm btn-outline"
+                                style={{
+                                  padding: '4px 9px',
+                                  fontSize: 11.5,
+                                  height: 28,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  borderRadius: 6,
+                                  color: '#334155',
+                                  borderColor: '#cbd5e1',
+                                  background: '#ffffff',
+                                  cursor: 'pointer',
+                                }}
                                 onClick={() => {
                                   let m = '10';
                                   let y = '2026';
@@ -2191,48 +2220,64 @@ const FinanceOperationalPage: React.FC = () => {
                                 }}
                                 title="Ubah detail pos anggaran"
                               >
-                                Ubah Pagu
+                                <Edit size={12} />
+                                <span>Ubah</span>
                               </button>
 
                               {/* Tombol Tutup / Buka Pagu */}
                               <button
-                                className="btn btn-outline btn-sm"
+                                type="button"
+                                className="btn btn-sm btn-outline"
                                 style={{
-                                  padding: '3px 8px',
+                                  padding: '4px 9px',
                                   fontSize: 11.5,
-                                  height: 'auto',
+                                  height: 28,
                                   color: isClosed ? '#059669' : '#b45309',
                                   borderColor: isClosed ? '#a7f3d0' : '#fde68a',
                                   background: isClosed ? '#f0fdf4' : '#fffbeb',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  borderRadius: 6,
+                                  cursor: 'pointer',
                                 }}
                                 onClick={() => handleToggleCloseBudget(b)}
                                 title={isClosed ? 'Buka kembali pos anggaran ini' : 'Tutup pagu anggaran ini (bekukan pengeluaran)'}
                               >
                                 {isClosed ? (
                                   <>
-                                    <Unlock size={11} style={{ display: 'inline', marginRight: 2 }} /> Buka Pagu
+                                    <Unlock size={12} />
+                                    <span>Buka</span>
                                   </>
                                 ) : (
                                   <>
-                                    <Lock size={11} style={{ display: 'inline', marginRight: 2 }} /> Tutup Pagu
+                                    <Lock size={12} />
+                                    <span>Tutup</span>
                                   </>
                                 )}
                               </button>
 
                               {/* Tombol Hapus */}
                               <button
-                                className="btn btn-outline btn-sm"
+                                type="button"
+                                className="btn btn-sm btn-outline"
                                 style={{
-                                  padding: '3px 7px',
+                                  padding: '4px 8px',
                                   fontSize: 11.5,
-                                  height: 'auto',
+                                  height: 28,
                                   color: '#dc2626',
                                   borderColor: '#fca5a5',
+                                  background: '#ffffff',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  borderRadius: 6,
+                                  cursor: 'pointer',
                                 }}
                                 onClick={() => handleDeleteBudgetCategory(b)}
                                 title="Hapus kategori anggaran"
                               >
-                                <Trash2 size={12} />
+                                <Trash2 size={13} />
                               </button>
                             </div>
                           </td>

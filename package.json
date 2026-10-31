@@ -1,0 +1,25 @@
+{
+  "name": "global-mission-house",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sistem Informasi Manajemen Yayasan Global Mission House (GMH PA KMK)",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace=web",
+    "dev:api": "npm run dev --workspace=api",
+    "build:web": "npm run build --workspace=web",
+    "build:api": "npm run build --workspace=api",
+    "db:init": "npm run db:init --workspace=api",
+    "db:seed": "npm run db:seed --workspace=api"
+  },
+  "keywords": [
+    "foundation",
+    "alumni",
+    "gmh",
+    "pa-kmk"
+  ],
+  "author": "Yayasan Global Mission House",
+  "license": "UNLICENSED"
+}

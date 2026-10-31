@@ -1,0 +1,61 @@
+STRUKTUR SISTEM WEB
+Monolit modular dengan UI dan API terpisah
+
+global-mission-house/
+├── apps/
+│   ├── web/                          # Aplikasi UI (frontend)
+│   │   ├── public/                   # Aset statis
+│   │   └── src/
+│   │       ├── app/                  # Routing, layout, dan konfigurasi UI
+│   │       ├── features/             # Halaman dan komponen per fitur
+│   │       ├── components/           # Komponen UI bersama
+│   │       ├── services/             # HTTP client dan integrasi API
+│   │       ├── hooks/                # Hook/logic UI yang dapat digunakan ulang
+│   │       ├── state/                # State global bila diperlukan
+│   │       ├── styles/
+│   │       └── utils/
+│   └── api/                          # Satu aplikasi backend monolitik
+│       └── src/
+│           ├── app/                  # Pembuatan aplikasi dan registrasi modul
+│           ├── config/               # Konfigurasi dan environment
+│           ├── middleware/           # Auth, validasi, logging, dan error
+│           ├── modules/              # Modul domain dengan batas yang jelas
+│           │   ├── auth/
+│           │   │   ├── routes         # Definisi endpoint
+│           │   │   ├── controller     # HTTP request/response
+│           │   │   ├── service        # Aturan dan proses bisnis
+│           │   │   ├── repository     # Akses data
+│           │   │   └── validation     # Validasi input
+│           │   ├── users/
+│           │   ├── missions/
+│           │   └── donations/
+│           ├── database/              # Koneksi, migrasi, dan seeder
+│           ├── shared/                # Utilitas lintas modul
+│           └── tests/
+├── packages/
+│   └── contracts/                    # Skema/tipe kontrak API bersama
+├── docs/                             # Dokumentasi API dan arsitektur
+├── .env.example
+└── README.md
+
+BATAS TANGGUNG JAWAB
+- UI hanya mengurus tampilan, interaksi, dan pemanggilan API melalui services.
+- API menangani autentikasi/otorisasi, validasi, aturan bisnis, dan database.
+- Alur di backend: route → controller → service → repository → database.
+- Modul-modul berjalan dalam satu aplikasi backend dan dirilis sebagai satu
+	kesatuan; pemisahan modul tidak menjadikannya microservices.
+- UI dan API berkomunikasi melalui HTTP/JSON dengan kontrak yang terdokumentasi
+	(misalnya OpenAPI). UI tidak mengakses database secara langsung.
+
+ALUR REQUEST
+Browser → apps/web → HTTP/JSON → apps/api → modul domain → database
+
+CATATAN PENERAPAN
+- Jalankan UI dan API sebagai proses terpisah saat development. Simpan alamat API
+	dalam environment variable yang sesuai untuk masing-masing environment.
+- Produksi dapat menggunakan satu domain melalui reverse proxy atau domain
+	terpisah dengan CORS yang dibatasi.
+- Simpan rahasia hanya di environment/server; validasi input dan izin akses
+	selalu diperiksa di API.
+- Tambahkan migrasi database, logging terstruktur, penanganan error konsisten,
+	serta pengujian untuk service dan endpoint.

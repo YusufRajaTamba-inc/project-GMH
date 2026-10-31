@@ -392,6 +392,8 @@ CREATE TABLE IF NOT EXISTS secretariat_incoming_letters (
     metadata JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- 11. HAK AKSES PERAN (ROLE-BASED ACCESS CONTROL MATRIX)
 CREATE TABLE IF NOT EXISTS role_permissions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

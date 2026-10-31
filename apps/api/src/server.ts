@@ -1,6 +1,8 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import { ENV } from './config/env.js';
+import { authRateLimiter, generalRateLimiter } from './middleware/rateLimit.middleware.js';
 import { db } from './config/db.js';
 
 // Route modules
@@ -33,12 +35,26 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// Global Middlewares
+// P1-B: CORS Strict — hanya izinkan origin yang terdaftar
 app.use(cors({
-  origin: '*',
+  origin: (origin, callback) => {
+    // Izinkan request tanpa origin (mobile app, curl, Postman)
+    if (!origin) return callback(null, true);
+    if (ENV.CORS_ORIGIN.includes(origin)) {
+      return callback(null, true);
+    }
+    callback(new Error(`CORS: Origin '${origin}' tidak diizinkan.`));
+  },
+  credentials: true, // Wajib untuk HttpOnly Cookie
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'Pragma'],
 }));
+
+// Cookie parser (untuk HttpOnly Cookie JWT)
+app.use(cookieParser());
+
+// P1-C: General rate limiter untuk semua endpoint
+app.use('/api/v1', generalRateLimiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -61,6 +77,8 @@ app.get('/health', async (_req: Request, res: Response) => {
 
 
 // Mount API v1 Routes
+// P1-C: Auth rate limiter khusus — 5 percobaan per 15 menit
+app.use('/api/v1/auth/login', authRateLimiter);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/utility', utilityRoutes);
 app.use('/api/v1/registrations', registrationsRoutes);

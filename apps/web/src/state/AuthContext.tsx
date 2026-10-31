@@ -5,7 +5,6 @@ import { api } from '../services/api';
 
 interface AuthContextValue {
   user: CurrentUser;
-  token: string | null;
   isLoading: boolean;
   setRole: (role: UserRole) => Promise<void>;
   login: (username: string, password: string) => Promise<boolean>;
@@ -22,7 +21,6 @@ const DEFAULT_USER: CurrentUser = {
 
 const AuthContext = createContext<AuthContextValue>({
   user: DEFAULT_USER,
-  token: null,
   isLoading: false,
   setRole: async () => {},
   login: async () => false,
@@ -31,42 +29,37 @@ const AuthContext = createContext<AuthContextValue>({
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<CurrentUser>(DEFAULT_USER);
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('gmh_auth_token'));
   const [isLoading, setIsLoading] = useState(false);
 
-  // Initialize session on mount
+  // P1-A: Init sesi — tidak bergantung localStorage, cukup panggil /auth/me
+  // Browser otomatis mengirim HttpOnly Cookie yang ada
   useEffect(() => {
     const initAuth = async () => {
-      const savedToken = localStorage.getItem('gmh_auth_token');
-      if (savedToken) {
-        try {
-          const res = await api.auth.getMe();
-          if (res?.user) {
-            setUser({
-              id: res.user.id,
-              name: res.user.full_name || res.user.username,
-              role: res.user.role_id,
-              department: res.user.role_name || ROLE_LABELS[res.user.role_id] || 'Yayasan GMH',
-              initials: (res.user.full_name || res.user.username || 'YS')
-                .split(' ')
-                .map((n: string) => n[0])
-                .join('')
-                .toUpperCase()
-                .slice(0, 2),
-            });
-            setToken(savedToken);
-            return;
-          }
-        } catch {
-          // Token expired or invalid, fallback to demo switch
+      try {
+        const res = await api.auth.getMe();
+        if (res?.user) {
+          setUser({
+            id: res.user.id,
+            name: res.user.full_name || res.user.username,
+            role: res.user.role_id,
+            department: res.user.role_name || ROLE_LABELS[res.user.role_id] || 'Yayasan GMH',
+            initials: (res.user.full_name || res.user.username || 'YS')
+              .split(' ')
+              .map((n: string) => n[0])
+              .join('')
+              .toUpperCase()
+              .slice(0, 2),
+          });
+          return;
         }
+      } catch {
+        // Sesi tidak ada atau kedaluwarsa, coba demo fallback
       }
 
-      // Default demo login as SUPER_ADMIN
+      // Default demo login sebagai SUPER_ADMIN
       try {
         const switchRes = await api.auth.demoSwitch('SUPER_ADMIN');
         if (switchRes.token) {
-          setToken(switchRes.token);
           setUser({
             id: switchRes.user.id,
             name: switchRes.user.fullName,
@@ -82,6 +75,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initAuth();
   }, []);
+
 
   const setRole = async (role: UserRole) => {
     setIsLoading(true);
@@ -121,7 +115,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const res = await api.auth.demoSwitch(normalizedRole);
       if (res.token) {
-        setToken(res.token);
         setUser({
           id: res.user.id,
           name: res.user.fullName || names[role] || 'User Yayasan',
@@ -147,9 +140,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (username: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     try {
+      // P1-A: res tidak mengandung token — cookie diterima otomatis oleh browser
       const res = await api.auth.login(username, password);
-      if (res.success && res.token) {
-        setToken(res.token);
+      if (res.success && res.user) {
         setUser({
           id: res.user.id,
           name: res.user.fullName,
@@ -169,13 +162,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
-    api.auth.logout();
-    setToken(null);
+    api.auth.logout(); // P1-A: Hapus cookie di server
     setUser(DEFAULT_USER);
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, setRole, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, setRole, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -5,6 +5,18 @@ import { db } from '../../config/db.js';
 import { ENV } from '../../config/env.js';
 import { logAudit } from '../../middleware/audit.interceptor.js';
 
+// ============================================================
+// Cookie options — P1-A: HttpOnly Cookie JWT
+// ============================================================
+const COOKIE_OPTIONS = {
+  httpOnly: true,                              // Tidak bisa diakses oleh JavaScript (anti-XSS)
+  secure: ENV.NODE_ENV === 'production',       // HTTPS only di production
+  sameSite: 'strict' as const,                // Anti-CSRF
+  maxAge: 7 * 24 * 60 * 60 * 1000,           // 7 hari (ms)
+  path: '/',
+};
+
+
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     const { username, password } = req.body;
@@ -54,10 +66,13 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     await logAudit(user.id, 'LOGIN', 'users', user.id, null, { username: user.username }, req.ip, req.headers['user-agent']);
 
+    // P1-A: Set HttpOnly Cookie — token tidak dikirim di body JSON
+    res.cookie('gmh_auth_token', token, COOKIE_OPTIONS);
+
     res.status(200).json({
       success: true,
       message: 'Login berhasil.',
-      token,
+      // token TIDAK disertakan di body untuk mencegah XSS
       user: {
         id: user.id,
         username: user.username,
@@ -71,6 +86,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({ success: false, message: 'Terjadi kesalahan internal server.', error: err.message });
   }
 };
+
 
 export const getMe = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -93,6 +109,13 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({ success: false, message: 'Gagal mengambil profil akun.', error: err.message });
   }
 };
+
+// P1-A: Logout — hapus cookie sisi server
+export const logout = (_req: Request, res: Response): void => {
+  res.clearCookie('gmh_auth_token', { path: '/' });
+  res.status(200).json({ success: true, message: 'Logout berhasil.' });
+};
+
 
 export const getRoles = async (_req: Request, res: Response): Promise<void> => {
   try {
@@ -133,9 +156,13 @@ export const demoSwitchRole = async (req: Request, res: Response): Promise<void>
 
     const token = jwt.sign(tokenPayload, ENV.JWT_SECRET, { expiresIn: '7d' });
 
+    // P1-A: Set HttpOnly Cookie untuk demo switch
+    res.cookie('gmh_auth_token', token, COOKIE_OPTIONS);
+
     res.status(200).json({
       success: true,
       message: `Beralih ke peran: ${role.name}`,
+      // token disertakan di demo switch agar kompatibel dengan mode demo offline
       token,
       user: {
         id: user.id,
@@ -151,3 +178,4 @@ export const demoSwitchRole = async (req: Request, res: Response): Promise<void>
     res.status(500).json({ success: false, message: 'Gagal berganti peran demo.', error: err.message });
   }
 };
+

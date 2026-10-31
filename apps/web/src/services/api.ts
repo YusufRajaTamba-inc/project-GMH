@@ -1,15 +1,10 @@
 // ============================================================================
 // API CLIENT SERVICE — Yayasan Global Mission House (GMH PA KMK)
-// Connects apps/web to apps/api (http://localhost:4000/api/v1)
+// P1-A: Semua request menggunakan credentials:'include' untuk HttpOnly Cookie
 // ============================================================================
 
 export const API_BASE_URL =
   (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:4000/api/v1';
-
-function getAuthHeader(): Record<string, string> {
-  const token = localStorage.getItem('gmh_auth_token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
 
 async function request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
@@ -17,12 +12,12 @@ async function request<T = any>(endpoint: string, options: RequestInit = {}): Pr
     'Content-Type': 'application/json',
     'Cache-Control': 'no-cache',
     'Pragma': 'no-cache',
-    ...getAuthHeader(),
     ...(options.headers || {}),
   };
 
   const response = await fetch(url, {
-    cache: 'no-store', // Prevents browser from caching and sending If-None-Match (HTTP 304)
+    cache: 'no-store',
+    credentials: 'include', // P1-A: Kirim & terima HttpOnly Cookie secara otomatis
     ...options,
     headers,
   });
@@ -36,33 +31,35 @@ async function request<T = any>(endpoint: string, options: RequestInit = {}): Pr
 }
 
 
+
 export const api = {
   // 1. Auth & RBAC
   auth: {
     login: async (username: string, password: string) => {
-      const res = await request<{ success: boolean; token: string; user: any }>('/auth/login', {
+      // P1-A: Token tidak ada di body response, disimpan otomatis via HttpOnly Cookie
+      const res = await request<{ success: boolean; user: any }>('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ username, password }),
       });
-      if (res.token) {
-        localStorage.setItem('gmh_auth_token', res.token);
-      }
       return res;
     },
     demoSwitch: async (roleId: string) => {
+      // demo-switch mengembalikan token di body untuk mode offline fallback
       const res = await request<{ success: boolean; token: string; user: any }>('/auth/demo-switch', {
         method: 'POST',
         body: JSON.stringify({ roleId }),
       });
-      if (res.token) {
-        localStorage.setItem('gmh_auth_token', res.token);
-      }
       return res;
     },
     getMe: () => request('/auth/me'),
     getRoles: () => request('/auth/roles'),
-    logout: () => {
-      localStorage.removeItem('gmh_auth_token');
+    logout: async () => {
+      // P1-A: Hapus cookie di sisi server
+      try {
+        await request('/auth/logout', { method: 'POST' });
+      } catch {
+        // Abaikan error, tetap lanjutkan logout di sisi client
+      }
     },
   },
 

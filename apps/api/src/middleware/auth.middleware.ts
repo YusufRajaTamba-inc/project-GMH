@@ -19,8 +19,13 @@ declare global {
 }
 
 export const authenticateJwt = (req: Request, res: Response, next: NextFunction): void => {
+  // P1-A: Baca token dari HttpOnly Cookie (prioritas utama), fallback ke Bearer header
+  const cookieToken = req.cookies?.gmh_auth_token;
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+  const token = cookieToken || bearerToken;
+
+  if (!token) {
     if (ENV.NODE_ENV === 'development') {
       req.user = {
         id: '31563344-ee08-4252-8cfa-7c1cd41910ca',
@@ -34,12 +39,10 @@ export const authenticateJwt = (req: Request, res: Response, next: NextFunction)
 
     res.status(401).json({
       success: false,
-      message: 'Akses ditolak. Token otentikasi JWT tidak ditemukan.',
+      message: 'Akses ditolak. Sesi tidak ditemukan. Silakan login kembali.',
     });
     return;
   }
-
-  const token = authHeader.split(' ')[1];
 
   try {
     const decoded = jwt.verify(token, ENV.JWT_SECRET) as AuthUser;
@@ -56,10 +59,11 @@ export const authenticateJwt = (req: Request, res: Response, next: NextFunction)
       };
       return next();
     }
+    // P1-A: Hapus cookie yang tidak valid
+    res.clearCookie('gmh_auth_token', { path: '/' });
     res.status(401).json({
       success: false,
-      message: 'Sesi login telah kedaluwarsa atau token tidak valid.',
-      error: err.message,
+      message: 'Sesi login telah kedaluwarsa. Silakan login kembali.',
     });
   }
 };

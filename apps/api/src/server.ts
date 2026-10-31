@@ -28,6 +28,12 @@ import secretariatRoutes from './modules/secretariat/secretariat.routes.js';
 
 const app = express();
 
+// Percaya 1 hop reverse proxy (nginx container "web") di depan Express.
+// Tanpa ini, req.ip selalu berisi IP nginx sehingga rate limiter
+// menghitung semua user sebagai satu IP. Jangan set true: client
+// bisa memalsukan X-Forwarded-For untuk melewati rate limit.
+app.set('trust proxy', 1);
+
 // Disable ETag generation to completely eliminate HTTP 304 Not Modified responses
 app.disable('etag');
 app.set('etag', false);

@@ -53,9 +53,7 @@ services:
 
   # Jalankan sekali: membuat skema tabel dari schema.sql
   migrate:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
+    image: gmh-api:latest
     profiles: ["migrate"]
     environment:
       NODE_ENV: production
@@ -68,9 +66,7 @@ services:
 
   # Jalankan sekali: seeding data awal roles, master lookups, dan akun superadmin
   seed:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
+    image: gmh-api:latest
     profiles: ["seed"]
     environment:
       NODE_ENV: production

@@ -68,6 +68,21 @@ services:
         condition: service_healthy
     networks: [internal]
 
+  # Jalankan sekali: seeding data awal roles, master lookups, dan akun superadmin
+  seed:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    profiles: ["seed"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER:-gmh}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-foundationos}
+    command: ["node", "apps/api/dist/database/seed.js"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [internal]
+
 volumes:
   postgres_data:
 

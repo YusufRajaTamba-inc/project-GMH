@@ -189,7 +189,7 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
 
 const COOKIE_CLEAR_OPTIONS = {
   httpOnly: true,
-  secure: ENV.NODE_ENV === 'production',
+  secure: ENV.COOKIE_SECURE,
   sameSite: 'strict' as const,
   path: '/',
 };

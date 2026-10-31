@@ -15,7 +15,7 @@ COPY apps/api/package*.json ./apps/api/
 COPY apps/web/package*.json ./apps/web/
 RUN npm ci --workspace=api --omit=dev && npm cache clean --force
 COPY --from=build /app/apps/api/dist ./apps/api/dist
-COPY apps/api/src/database/schema.sql ./apps/api/dist/database/schema.sql
+COPY apps/api/src/database/schema.sql apps/api/src/database/seeds.sql ./apps/api/dist/database/
 USER node
 EXPOSE 4000
 CMD ["node", "apps/api/dist/server.js"]

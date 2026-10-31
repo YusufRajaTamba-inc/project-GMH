@@ -1089,12 +1089,9 @@ export async function seedDatabase() {
     WHERE tx.building_project_id = b.id;
   `);
 
-  // Selaraskan progress_percentage proyek dengan progres pendanaan riil.
-  await db.query(`
-    UPDATE building_projects
-    SET progress_percentage = LEAST(100, GREATEST(0, ROUND(current_funds * 100.0 / NULLIF(target_budget, 0))))
-    WHERE target_budget > 0 AND current_funds > 0;
-  `);
+  // Catatan: progress_percentage sengaja TIDAK diturunkan dari rasio pendanaan.
+  // Progres fisik proyek (peletakan batu, finishing, dsb.) berbeda dari progres
+  // dana, jadi keduanya harus dikelola terpisah agar tidak saling menimpa.
   console.log('[Seeder] Financial figures reconciled from actual transactions.');
 
   // 10. Seed Sample Pending Registrations

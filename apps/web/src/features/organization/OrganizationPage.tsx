@@ -865,22 +865,9 @@ export const OrganizationPage: React.FC = () => {
         </div>
       )}
 
-      {/* Top Banner KPI Header */}
-      <section
-        style={{
-          border: '1px solid #e2e8f0',
-          borderRadius: 12,
-          padding: '18px 22px',
-          background: '#ffffff',
-          boxShadow: '0 1px 3px rgba(15,23,42,0.05)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 16,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+      {/* Page Header */}
+      <section className="org-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0, flex: '1 1 280px' }}>
           <div
             style={{
               width: 44,
@@ -890,76 +877,53 @@ export const OrganizationPage: React.FC = () => {
               color: '#047857',
               display: 'grid',
               placeItems: 'center',
+              flexShrink: 0,
             }}
           >
             <Award size={22} />
           </div>
-          <div>
-            <h1 style={{ margin: 0, fontSize: 19, fontWeight: 750, color: '#0f172a' }}>
+          <div style={{ minWidth: 0 }}>
+            <h1 style={{ margin: 0, fontSize: 19, fontWeight: 750, color: '#0f172a', wordBreak: 'break-word' }}>
               Struktur & Kepengurusan Yayasan
             </h1>
-            <p style={{ margin: '3px 0 0', color: '#64748b', fontSize: 13 }}>
+            <p style={{ margin: '3px 0 0', color: '#64748b', fontSize: 13, wordBreak: 'break-word' }}>
               Direktori kepanitiaan anggota, susunan pengurus inti, staf penuh waktu, dan divisi pelayanan GMH PA KMK
             </p>
           </div>
         </div>
 
         {/* 4 Summary KPI counters */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10, width: '100%', maxWidth: 560 }}>
-          <div style={{ padding: '8px 12px', borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 650, textTransform: 'uppercase' }}>Kepanitiaan</div>
-            <div style={{ fontSize: 18, fontWeight: 750, color: '#0f172a' }}>{stats.totalCommittees}</div>
+        <div className="org-kpi-grid">
+          <div className="org-kpi-card">
+            <div className="org-kpi-label">Kepanitiaan</div>
+            <div className="org-kpi-value" style={{ color: '#0f172a' }}>{stats.totalCommittees}</div>
           </div>
-          <div style={{ padding: '8px 12px', borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 650, textTransform: 'uppercase' }}>Jabatan Inti</div>
-            <div style={{ fontSize: 18, fontWeight: 750, color: '#047857' }}>{stats.totalPositions}</div>
+          <div className="org-kpi-card">
+            <div className="org-kpi-label">Jabatan Inti</div>
+            <div className="org-kpi-value" style={{ color: '#047857' }}>{stats.totalPositions}</div>
           </div>
-          <div style={{ padding: '8px 12px', borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 650, textTransform: 'uppercase' }}>Staf Full-Time</div>
-            <div style={{ fontSize: 18, fontWeight: 750, color: '#0369a1' }}>{stats.totalStaff}</div>
+          <div className="org-kpi-card">
+            <div className="org-kpi-label">Staf Full-Time</div>
+            <div className="org-kpi-value" style={{ color: '#0369a1' }}>{stats.totalStaff}</div>
           </div>
-          <div style={{ padding: '8px 12px', borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 650, textTransform: 'uppercase' }}>Divisi Pelayanan</div>
-            <div style={{ fontSize: 18, fontWeight: 750, color: '#b45309' }}>{stats.totalDivisions}</div>
+          <div className="org-kpi-card">
+            <div className="org-kpi-label">Divisi Pelayanan</div>
+            <div className="org-kpi-value" style={{ color: '#b45309' }}>{stats.totalDivisions}</div>
           </div>
         </div>
       </section>
 
       {/* Modern Sub-Tab Navigation Bar */}
-      <div
-        style={{
-          display: 'flex',
-          gap: 6,
-          background: '#f1f5f9',
-          padding: 5,
-          borderRadius: 10,
-          border: '1px solid #e2e8f0',
-          width: '100%',
-          maxWidth: '100%',
-          overflowX: 'auto',
-          WebkitOverflowScrolling: 'touch',
-          scrollbarWidth: 'none',
-        }}
-      >
+      <div className="org-tab-bar">
         <button
           type="button"
           onClick={() => setActiveTab('committees')}
+          className="org-tab-btn"
           style={{
-            padding: '8px 18px',
-            borderRadius: 7,
-            border: 'none',
-            fontSize: 13,
             fontWeight: activeTab === 'committees' ? 700 : 500,
             background: activeTab === 'committees' ? '#ffffff' : 'transparent',
             color: activeTab === 'committees' ? '#0f172a' : '#64748b',
             boxShadow: activeTab === 'committees' ? '0 1px 3px rgba(15,23,42,0.08)' : 'none',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-            whiteSpace: 'nowrap',
-            flexShrink: 0,
           }}
         >
           <Calendar size={15} color={activeTab === 'committees' ? '#047857' : '#94a3b8'} />
@@ -972,22 +936,12 @@ export const OrganizationPage: React.FC = () => {
         <button
           type="button"
           onClick={() => setActiveTab('positions')}
+          className="org-tab-btn"
           style={{
-            padding: '8px 18px',
-            borderRadius: 7,
-            border: 'none',
-            fontSize: 13,
             fontWeight: activeTab === 'positions' ? 700 : 500,
             background: activeTab === 'positions' ? '#ffffff' : 'transparent',
             color: activeTab === 'positions' ? '#0f172a' : '#64748b',
             boxShadow: activeTab === 'positions' ? '0 1px 3px rgba(15,23,42,0.08)' : 'none',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-            whiteSpace: 'nowrap',
-            flexShrink: 0,
           }}
         >
           <ShieldCheck size={15} color={activeTab === 'positions' ? '#047857' : '#94a3b8'} />
@@ -1000,22 +954,12 @@ export const OrganizationPage: React.FC = () => {
         <button
           type="button"
           onClick={() => setActiveTab('staff')}
+          className="org-tab-btn"
           style={{
-            padding: '8px 18px',
-            borderRadius: 7,
-            border: 'none',
-            fontSize: 13,
             fontWeight: activeTab === 'staff' ? 700 : 500,
             background: activeTab === 'staff' ? '#ffffff' : 'transparent',
             color: activeTab === 'staff' ? '#0f172a' : '#64748b',
             boxShadow: activeTab === 'staff' ? '0 1px 3px rgba(15,23,42,0.08)' : 'none',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-            whiteSpace: 'nowrap',
-            flexShrink: 0,
           }}
         >
           <Briefcase size={15} color={activeTab === 'staff' ? '#047857' : '#94a3b8'} />
@@ -1028,22 +972,12 @@ export const OrganizationPage: React.FC = () => {
         <button
           type="button"
           onClick={() => setActiveTab('divisions')}
+          className="org-tab-btn"
           style={{
-            padding: '8px 18px',
-            borderRadius: 7,
-            border: 'none',
-            fontSize: 13,
             fontWeight: activeTab === 'divisions' ? 700 : 500,
             background: activeTab === 'divisions' ? '#ffffff' : 'transparent',
             color: activeTab === 'divisions' ? '#0f172a' : '#64748b',
             boxShadow: activeTab === 'divisions' ? '0 1px 3px rgba(15,23,42,0.08)' : 'none',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-            whiteSpace: 'nowrap',
-            flexShrink: 0,
           }}
         >
           <Layers size={15} color={activeTab === 'divisions' ? '#047857' : '#94a3b8'} />
@@ -1059,32 +993,23 @@ export const OrganizationPage: React.FC = () => {
       {/* ==================================================================== */}
       {activeTab === 'committees' && (
         <section style={{ border: '1px solid #e2e8f0', borderRadius: 10, background: '#ffffff', overflow: 'hidden', boxShadow: '0 1px 3px rgba(15,23,42,0.05)' }}>
-          <header
-            style={{
-              padding: '16px 20px',
-              borderBottom: '1px solid #e2e8f0',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: 14,
-            }}
-          >
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Header & Controls Toolbar */}
+          <header className="org-section-header">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
+              <div>
                 <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
                   Log Record Riwayat Kepanitiaan & Pelayanan Anggota
                 </h2>
-                <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 6, background: '#f1f5f9', color: '#475569', fontWeight: 650 }}>
-                  Order: Created At DESC
-                </span>
+                <p style={{ margin: '3px 0 0', color: '#64748b', fontSize: 12 }}>
+                  Pencatatan riwayat keterlibatan anggota yayasan dalam panitia natal, retret, pokja pembangunan, dan event pelayanan lainnya.
+                </p>
               </div>
-              <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 12 }}>
-                Pencatatan riwayat keterlibatan anggota yayasan dalam panitia natal, retret, pokja pembangunan, dan event pelayanan lainnya.
-              </p>
+              <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 6, background: '#f1f5f9', color: '#475569', fontWeight: 650, whiteSpace: 'nowrap' }}>
+                Order: Created At DESC
+              </span>
             </div>
 
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', width: '100%', maxWidth: '100%' }}>
+            <div className="org-toolbar-controls" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', width: '100%' }}>
               <div style={{ position: 'relative', flex: '1 1 200px', minWidth: 160 }}>
                 <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
                 <input
@@ -1093,7 +1018,7 @@ export const OrganizationPage: React.FC = () => {
                   value={committeeSearch}
                   onChange={(e) => setCommitteeSearch(e.target.value)}
                   className="form-input form-input-sm"
-                  style={{ paddingLeft: 32, fontSize: 12.5, height: 34, width: '100%' }}
+                  style={{ paddingLeft: 32, fontSize: 12.5, height: 34, width: '100%', boxSizing: 'border-box' }}
                 />
               </div>
 
@@ -1101,7 +1026,7 @@ export const OrganizationPage: React.FC = () => {
                 value={committeeFilterStatus}
                 onChange={(e) => setCommitteeFilterStatus(e.target.value)}
                 className="form-select form-select-sm"
-                style={{ fontSize: 12.5, height: 34, flex: '1 1 130px', minWidth: 120 }}
+                style={{ fontSize: 12.5, height: 34, flex: '1 1 130px', minWidth: 120, boxSizing: 'border-box' }}
               >
                 <option value="ALL">Semua Status</option>
                 <option value="AKTIF">Aktif Melayani</option>
@@ -1110,7 +1035,7 @@ export const OrganizationPage: React.FC = () => {
 
               <button
                 type="button"
-                className="btn btn-primary btn-sm"
+                className="btn btn-primary btn-sm org-btn-mobile-full"
                 onClick={openNewCommitteeModal}
                 style={{ display: 'flex', alignItems: 'center', gap: 6, height: 34, fontSize: 12.5, whiteSpace: 'nowrap' }}
               >
@@ -1132,118 +1057,215 @@ export const OrganizationPage: React.FC = () => {
               </p>
             </div>
           ) : (
-            <div className="table-wrapper">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th style={{ width: 125 }}>Dicatat Pada</th>
-                    <th>Nama Anggota (Relasi Anggota)</th>
-                    <th>Kepanitiaan / Event</th>
-                    <th style={{ width: 160 }}>Posisi / Jabatan</th>
-                    <th style={{ width: 110 }}>Tahun / Periode</th>
-                    <th style={{ width: 110 }}>Status</th>
-                    <th>Keterangan / Tanggung Jawab</th>
-                    <th style={{ width: 85, textAlign: 'center' }}>Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedCommittees.map((row) => (
-                    <tr key={row.id}>
-                      <td style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>
-                        {new Date(row.created_at).toLocaleDateString('id-ID', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                        })}
-                        <div style={{ fontSize: 10.5, color: '#94a3b8' }}>
-                          {new Date(row.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                      </td>
-                      <td>
-                        <div style={{ fontWeight: 650, color: '#0f172a', fontSize: 13 }}>
-                          <button
-                            type="button"
-                            onClick={() => navigate(`/members/${row.member_id}`)}
-                            title="Buka Profil Anggota & Alumni"
-                            style={{
-                              background: 'transparent',
-                              border: 'none',
-                              padding: 0,
-                              fontWeight: 650,
-                              color: '#047857',
-                              fontSize: 13,
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 4,
-                              textAlign: 'left',
-                            }}
-                          >
-                            <span>{row.member_name}</span>
-                            <ExternalLink size={11} style={{ opacity: 0.7 }} />
-                          </button>
-                        </div>
-                        <div style={{ fontSize: 11, color: '#64748b', display: 'flex', gap: 6, alignItems: 'center', marginTop: 2 }}>
+            <>
+              {/* Desktop View Table (> 768px) */}
+              <div className="desktop-only-table">
+                <div className="table-wrapper">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: 125 }}>Dicatat Pada</th>
+                        <th>Nama Anggota (Relasi Anggota)</th>
+                        <th>Kepanitiaan / Event</th>
+                        <th style={{ width: 160 }}>Posisi / Jabatan</th>
+                        <th style={{ width: 110 }}>Tahun / Periode</th>
+                        <th style={{ width: 110 }}>Status</th>
+                        <th>Keterangan / Tanggung Jawab</th>
+                        <th style={{ width: 85, textAlign: 'center' }}>Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginatedCommittees.map((row) => (
+                        <tr key={row.id}>
+                          <td style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>
+                            {new Date(row.created_at).toLocaleDateString('id-ID', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                            <div style={{ fontSize: 10.5, color: '#94a3b8' }}>
+                              {new Date(row.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ fontWeight: 650, color: '#0f172a', fontSize: 13 }}>
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/members/${row.member_id}`)}
+                                title="Buka Profil Anggota & Alumni"
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  padding: 0,
+                                  fontWeight: 650,
+                                  color: '#047857',
+                                  fontSize: 13,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  textAlign: 'left',
+                                }}
+                              >
+                                <span>{row.member_name}</span>
+                                <ExternalLink size={11} style={{ opacity: 0.7 }} />
+                              </button>
+                            </div>
+                            <div style={{ fontSize: 11, color: '#64748b', display: 'flex', gap: 6, alignItems: 'center', marginTop: 2 }}>
+                              <span style={{ fontFamily: 'monospace', background: '#f1f5f9', padding: '1px 5px', borderRadius: 4 }}>
+                                {row.member_number}
+                              </span>
+                              {row.faculty && <span>{row.faculty} {row.graduation_year ? `'${String(row.graduation_year).slice(-2)}` : ''}</span>}
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ fontWeight: 650, color: '#1e293b', fontSize: 13 }}>
+                              {row.committee_name}
+                            </div>
+                          </td>
+                          <td>
+                            <span style={{ fontWeight: 600, color: '#047857', background: '#ecfdf5', padding: '3px 8px', borderRadius: 6, fontSize: 12 }}>
+                              {row.role_title}
+                            </span>
+                          </td>
+                          <td style={{ fontSize: 12.5, color: '#334155', fontWeight: 600 }}>
+                            {row.period || row.event_year || '—'}
+                          </td>
+                          <td>
+                            {row.status === 'AKTIF' ? (
+                              <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 99, background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}>
+                                Aktif
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: 11, fontWeight: 650, padding: '3px 8px', borderRadius: 99, background: '#f1f5f9', color: '#64748b', border: '1px solid #e2e8f0' }}>
+                                Selesai
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ fontSize: 12, color: '#475569', lineHeight: 1.4 }}>
+                            {row.description || '—'}
+                          </td>
+                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                            <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+                              <button
+                                type="button"
+                                className="btn btn-outline btn-xs"
+                                onClick={() => openEditCommitteeModal(row)}
+                                title="Edit Record"
+                                style={{ padding: '4px 6px' }}
+                              >
+                                <Edit2 size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-outline btn-xs"
+                                onClick={() => deleteCommittee(row.id)}
+                                title="Hapus Record"
+                                style={{ padding: '4px 6px', color: '#b91c1c', borderColor: '#fecaca' }}
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Mobile View Cards (<= 768px) */}
+              <div className="mobile-only-cards">
+                {paginatedCommittees.map((row) => (
+                  <div key={row.id} className="mobile-record-card">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/members/${row.member_id}`)}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            padding: 0,
+                            fontWeight: 700,
+                            color: '#047857',
+                            fontSize: 14,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            textAlign: 'left',
+                            wordBreak: 'break-word',
+                          }}
+                        >
+                          <span>{row.member_name}</span>
+                          <ExternalLink size={12} style={{ opacity: 0.7, flexShrink: 0 }} />
+                        </button>
+                        <div style={{ fontSize: 11, color: '#64748b', display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 3 }}>
                           <span style={{ fontFamily: 'monospace', background: '#f1f5f9', padding: '1px 5px', borderRadius: 4 }}>
                             {row.member_number}
                           </span>
                           {row.faculty && <span>{row.faculty} {row.graduation_year ? `'${String(row.graduation_year).slice(-2)}` : ''}</span>}
                         </div>
-                      </td>
-                      <td>
-                        <div style={{ fontWeight: 650, color: '#1e293b', fontSize: 13 }}>
-                          {row.committee_name}
-                        </div>
-                      </td>
-                      <td>
-                        <span style={{ fontWeight: 600, color: '#047857', background: '#ecfdf5', padding: '3px 8px', borderRadius: 6, fontSize: 12 }}>
-                          {row.role_title}
+                      </div>
+                      {row.status === 'AKTIF' ? (
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 99, background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          Aktif
                         </span>
-                      </td>
-                      <td style={{ fontSize: 12.5, color: '#334155', fontWeight: 600 }}>
-                        {row.period || row.event_year || '—'}
-                      </td>
-                      <td>
-                        {row.status === 'AKTIF' ? (
-                          <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 99, background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}>
-                            Aktif
-                          </span>
-                        ) : (
-                          <span style={{ fontSize: 11, fontWeight: 650, padding: '3px 8px', borderRadius: 99, background: '#f1f5f9', color: '#64748b', border: '1px solid #e2e8f0' }}>
-                            Selesai
-                          </span>
-                        )}
-                      </td>
-                      <td style={{ fontSize: 12, color: '#475569', lineHeight: 1.4 }}>
-                        {row.description || '—'}
-                      </td>
-                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
-                          <button
-                            type="button"
-                            className="btn btn-outline btn-xs"
-                            onClick={() => openEditCommitteeModal(row)}
-                            title="Edit Record"
-                            style={{ padding: '4px 6px' }}
-                          >
-                            <Edit2 size={13} />
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-outline btn-xs"
-                            onClick={() => deleteCommittee(row.id)}
-                            title="Hapus Record"
-                            style={{ padding: '4px 6px', color: '#b91c1c', borderColor: '#fecaca' }}
-                          >
-                            <Trash2 size={13} />
-                          </button>
+                      ) : (
+                        <span style={{ fontSize: 11, fontWeight: 650, padding: '3px 8px', borderRadius: 99, background: '#f1f5f9', color: '#64748b', border: '1px solid #e2e8f0', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          Selesai
+                        </span>
+                      )}
+                    </div>
+
+                    <div style={{ background: '#f8fafc', borderRadius: 8, padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                        <span style={{ color: '#64748b' }}>Kepanitiaan:</span>
+                        <span style={{ fontWeight: 650, color: '#0f172a', textAlign: 'right' }}>{row.committee_name}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                        <span style={{ color: '#64748b' }}>Posisi / Jabatan:</span>
+                        <span style={{ fontWeight: 650, color: '#047857', textAlign: 'right' }}>{row.role_title}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                        <span style={{ color: '#64748b' }}>Periode:</span>
+                        <span style={{ fontWeight: 600, color: '#334155' }}>{row.period || row.event_year || '—'}</span>
+                      </div>
+                      {row.description && (
+                        <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: 6, color: '#475569', fontSize: 11.5, lineHeight: 1.4 }}>
+                          {row.description}
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 2 }}>
+                      <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                        {new Date(row.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </span>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          type="button"
+                          className="btn btn-outline btn-xs"
+                          onClick={() => openEditCommitteeModal(row)}
+                          style={{ padding: '5px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                        >
+                          <Edit2 size={12} /> Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-outline btn-xs"
+                          onClick={() => deleteCommittee(row.id)}
+                          style={{ padding: '5px 10px', fontSize: 12, color: '#b91c1c', borderColor: '#fecaca', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                        >
+                          <Trash2 size={12} /> Hapus
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
 
           {/* Pagination */}
@@ -1266,35 +1288,32 @@ export const OrganizationPage: React.FC = () => {
       {activeTab === 'positions' && (
         <section style={{ display: 'grid', gap: 16 }}>
           <div
+            className="org-section-header"
             style={{
-              padding: '16px 20px',
               border: '1px solid #e2e8f0',
               borderRadius: 10,
               background: '#ffffff',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: 14,
             }}
           >
-            <div>
-              <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
-                Susunan Struktur Kepengurusan Yayasan GMH Inti
-              </h2>
-              <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 12 }}>
-                Struktur jabatan dibuat dinamis. Setiap jabatan dapat dilihat riwayat siapa saja yang pernah menjabat dari periode ke periode.
-              </p>
-            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
+                  Susunan Struktur Kepengurusan Yayasan GMH Inti
+                </h2>
+                <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 12 }}>
+                  Struktur jabatan dibuat dinamis. Setiap jabatan dapat dilihat riwayat siapa saja yang pernah menjabat dari periode ke periode.
+                </p>
+              </div>
 
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              onClick={openNewPositionModal}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, height: 34, fontSize: 12.5 }}
-            >
-              <Plus size={14} /> Tambah Jabatan Baru
-            </button>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm org-btn-mobile-full"
+                onClick={openNewPositionModal}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, height: 34, fontSize: 12.5 }}
+              >
+                <Plus size={14} /> Tambah Jabatan Baru
+              </button>
+            </div>
           </div>
 
           {loadingPositions ? (
@@ -1478,17 +1497,8 @@ export const OrganizationPage: React.FC = () => {
       {/* ==================================================================== */}
       {activeTab === 'staff' && (
         <section style={{ border: '1px solid #e2e8f0', borderRadius: 10, background: '#ffffff', overflow: 'hidden', boxShadow: '0 1px 3px rgba(15,23,42,0.05)' }}>
-          <header
-            style={{
-              padding: '16px 20px',
-              borderBottom: '1px solid #e2e8f0',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: 14,
-            }}
-          >
+          {/* Header Controls */}
+          <header className="org-section-header">
             <div>
               <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
                 Direktori Staf Penuh Waktu (Full-Time Staff Yayasan)
@@ -1498,7 +1508,7 @@ export const OrganizationPage: React.FC = () => {
               </p>
             </div>
 
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', width: '100%', maxWidth: '100%' }}>
+            <div className="org-toolbar-controls" style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', width: '100%', maxWidth: '100%' }}>
               <div style={{ position: 'relative', flex: '1 1 200px', minWidth: 160 }}>
                 <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
                 <input
@@ -1507,13 +1517,13 @@ export const OrganizationPage: React.FC = () => {
                   value={staffSearch}
                   onChange={(e) => setStaffSearch(e.target.value)}
                   className="form-input form-input-sm"
-                  style={{ paddingLeft: 32, fontSize: 12.5, height: 34, width: '100%' }}
+                  style={{ paddingLeft: 32, fontSize: 12.5, height: 34, width: '100%', boxSizing: 'border-box' }}
                 />
               </div>
 
               <button
                 type="button"
-                className="btn btn-primary btn-sm"
+                className="btn btn-primary btn-sm org-btn-mobile-full"
                 onClick={openNewStaffModal}
                 style={{ display: 'flex', alignItems: 'center', gap: 6, height: 34, fontSize: 12.5, whiteSpace: 'nowrap' }}
               >
@@ -1535,108 +1545,208 @@ export const OrganizationPage: React.FC = () => {
               </p>
             </div>
           ) : (
-            <div className="table-wrapper">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Nama Staf (Relasi Anggota)</th>
-                    <th style={{ width: 175 }}>Posisi / Pekerjaan</th>
-                    <th style={{ width: 175 }}>Departemen / Divisi</th>
-                    <th style={{ width: 125 }}>Tgl Bergabung</th>
-                    <th style={{ width: 105 }}>Status</th>
-                    <th>Tugas & Tanggung Jawab</th>
-                    <th style={{ width: 85, textAlign: 'center' }}>Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {staffList.map((s) => (
-                    <tr key={s.id}>
-                      <td>
-                        <div style={{ fontWeight: 700, color: '#0f172a', fontSize: 13.5 }}>
-                          <button
-                            type="button"
-                            onClick={() => navigate(`/members/${s.member_id}`)}
-                            title="Buka Profil Anggota & Alumni"
-                            style={{
-                              background: 'transparent',
-                              border: 'none',
-                              padding: 0,
-                              fontWeight: 700,
-                              color: '#047857',
-                              fontSize: 13.5,
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 4,
-                              textAlign: 'left',
-                            }}
-                          >
-                            <span>{s.member_name}</span>
-                            <ExternalLink size={11} style={{ opacity: 0.7 }} />
-                          </button>
-                        </div>
-                        <div style={{ fontSize: 11, color: '#64748b', display: 'flex', gap: 6, marginTop: 2 }}>
-                          <span style={{ fontFamily: 'monospace' }}>{s.member_number}</span>
+            <>
+              {/* Desktop View Table (> 768px) */}
+              <div className="desktop-only-table">
+                <div className="table-wrapper">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Nama Staf (Relasi Anggota)</th>
+                        <th style={{ width: 175 }}>Posisi / Pekerjaan</th>
+                        <th style={{ width: 175 }}>Departemen / Divisi</th>
+                        <th style={{ width: 125 }}>Tgl Bergabung</th>
+                        <th style={{ width: 105 }}>Status</th>
+                        <th>Tugas & Tanggung Jawab</th>
+                        <th style={{ width: 85, textAlign: 'center' }}>Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {staffList.map((s) => (
+                        <tr key={s.id}>
+                          <td>
+                            <div style={{ fontWeight: 700, color: '#0f172a', fontSize: 13.5 }}>
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/members/${s.member_id}`)}
+                                title="Buka Profil Anggota & Alumni"
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  padding: 0,
+                                  fontWeight: 700,
+                                  color: '#047857',
+                                  fontSize: 13.5,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  textAlign: 'left',
+                                }}
+                              >
+                                <span>{s.member_name}</span>
+                                <ExternalLink size={11} style={{ opacity: 0.7 }} />
+                              </button>
+                            </div>
+                            <div style={{ fontSize: 11, color: '#64748b', display: 'flex', gap: 6, marginTop: 2 }}>
+                              <span style={{ fontFamily: 'monospace' }}>{s.member_number}</span>
+                              {s.phone_number && <span>· {s.phone_number}</span>}
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ fontWeight: 650, color: '#0369a1', fontSize: 13 }}>
+                              {s.position_title}
+                            </div>
+                            <span style={{ fontSize: 10.5, color: '#64748b' }}>{s.employment_type}</span>
+                          </td>
+                          <td>
+                            <span style={{ fontWeight: 600, color: '#334155', fontSize: 12 }}>
+                              {s.department_name || 'Kantor Operasional GMH'}
+                            </span>
+                          </td>
+                          <td style={{ fontSize: 12, color: '#475569' }}>
+                            {s.joined_date
+                              ? new Date(s.joined_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+                              : '—'}
+                          </td>
+                          <td>
+                            {s.is_active ? (
+                              <span style={{ fontSize: 11, fontWeight: 750, padding: '3px 8px', borderRadius: 99, background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}>
+                                Aktif
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: 11, fontWeight: 650, padding: '3px 8px', borderRadius: 99, background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca' }}>
+                                Non-Aktif
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ fontSize: 12, color: '#475569', lineHeight: 1.4 }}>
+                            {s.job_description || '—'}
+                          </td>
+                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                            <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+                              <button
+                                type="button"
+                                className="btn btn-outline btn-xs"
+                                onClick={() => openEditStaffModal(s)}
+                                title="Edit Staf"
+                                style={{ padding: '4px 6px' }}
+                              >
+                                <Edit2 size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-outline btn-xs"
+                                onClick={() => deleteStaff(s.id)}
+                                title="Hapus Staf"
+                                style={{ padding: '4px 6px', color: '#b91c1c', borderColor: '#fecaca' }}
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Mobile View Cards (<= 768px) */}
+              <div className="mobile-only-cards">
+                {staffList.map((s) => (
+                  <div key={s.id} className="mobile-record-card">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/members/${s.member_id}`)}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            padding: 0,
+                            fontWeight: 700,
+                            color: '#047857',
+                            fontSize: 14,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            textAlign: 'left',
+                            wordBreak: 'break-word',
+                          }}
+                        >
+                          <span>{s.member_name}</span>
+                          <ExternalLink size={12} style={{ opacity: 0.7, flexShrink: 0 }} />
+                        </button>
+                        <div style={{ fontSize: 11, color: '#64748b', display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 3 }}>
+                          <span style={{ fontFamily: 'monospace', background: '#f1f5f9', padding: '1px 5px', borderRadius: 4 }}>
+                            {s.member_number}
+                          </span>
                           {s.phone_number && <span>· {s.phone_number}</span>}
                         </div>
-                      </td>
-                      <td>
-                        <div style={{ fontWeight: 650, color: '#0369a1', fontSize: 13 }}>
-                          {s.position_title}
-                        </div>
-                        <span style={{ fontSize: 10.5, color: '#64748b' }}>{s.employment_type}</span>
-                      </td>
-                      <td>
-                        <span style={{ fontWeight: 600, color: '#334155', fontSize: 12 }}>
-                          {s.department_name || 'Kantor Operasional GMH'}
+                      </div>
+                      {s.is_active ? (
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 99, background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          Aktif
                         </span>
-                      </td>
-                      <td style={{ fontSize: 12, color: '#475569' }}>
-                        {s.joined_date
-                          ? new Date(s.joined_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
-                          : '—'}
-                      </td>
-                      <td>
-                        {s.is_active ? (
-                          <span style={{ fontSize: 11, fontWeight: 750, padding: '3px 8px', borderRadius: 99, background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}>
-                            Aktif
-                          </span>
-                        ) : (
-                          <span style={{ fontSize: 11, fontWeight: 650, padding: '3px 8px', borderRadius: 99, background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca' }}>
-                            Non-Aktif
-                          </span>
-                        )}
-                      </td>
-                      <td style={{ fontSize: 12, color: '#475569', lineHeight: 1.4 }}>
-                        {s.job_description || '—'}
-                      </td>
-                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
-                          <button
-                            type="button"
-                            className="btn btn-outline btn-xs"
-                            onClick={() => openEditStaffModal(s)}
-                            title="Edit Staf"
-                            style={{ padding: '4px 6px' }}
-                          >
-                            <Edit2 size={13} />
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-outline btn-xs"
-                            onClick={() => deleteStaff(s.id)}
-                            title="Hapus Staf"
-                            style={{ padding: '4px 6px', color: '#b91c1c', borderColor: '#fecaca' }}
-                          >
-                            <Trash2 size={13} />
-                          </button>
+                      ) : (
+                        <span style={{ fontSize: 11, fontWeight: 650, padding: '3px 8px', borderRadius: 99, background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          Non-Aktif
+                        </span>
+                      )}
+                    </div>
+
+                    <div style={{ background: '#f8fafc', borderRadius: 8, padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                        <span style={{ color: '#64748b' }}>Posisi:</span>
+                        <span style={{ fontWeight: 650, color: '#0369a1', textAlign: 'right' }}>{s.position_title}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                        <span style={{ color: '#64748b' }}>Tipe:</span>
+                        <span style={{ fontWeight: 600, color: '#334155' }}>{s.employment_type}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                        <span style={{ color: '#64748b' }}>Departemen:</span>
+                        <span style={{ fontWeight: 600, color: '#334155', textAlign: 'right' }}>{s.department_name || 'Kantor Operasional GMH'}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                        <span style={{ color: '#64748b' }}>Tgl Bergabung:</span>
+                        <span style={{ fontWeight: 600, color: '#334155' }}>
+                          {s.joined_date
+                            ? new Date(s.joined_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+                            : '—'}
+                        </span>
+                      </div>
+                      {s.job_description && (
+                        <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: 6, color: '#475569', fontSize: 11.5, lineHeight: 1.4 }}>
+                          {s.job_description}
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 2 }}>
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-xs"
+                        onClick={() => openEditStaffModal(s)}
+                        style={{ padding: '5px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                      >
+                        <Edit2 size={12} /> Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-xs"
+                        onClick={() => deleteStaff(s.id)}
+                        style={{ padding: '5px 10px', fontSize: 12, color: '#b91c1c', borderColor: '#fecaca', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                      >
+                        <Trash2 size={12} /> Hapus
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </section>
       )}
@@ -1647,35 +1757,32 @@ export const OrganizationPage: React.FC = () => {
       {activeTab === 'divisions' && (
         <section style={{ display: 'grid', gap: 16 }}>
           <div
+            className="org-section-header"
             style={{
-              padding: '16px 20px',
               border: '1px solid #e2e8f0',
               borderRadius: 10,
               background: '#ffffff',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: 14,
             }}
           >
-            <div>
-              <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
-                Divisi & Departemen Pelayanan Yayasan
-              </h2>
-              <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 12 }}>
-                Divisi dapat ditambah secara dinamis. Setiap divisi mengelola daftar anggota bertugas dan riwayat pejabat/alumni divisi.
-              </p>
-            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
+                  Divisi & Departemen Pelayanan Yayasan
+                </h2>
+                <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 12 }}>
+                  Divisi dapat ditambah secara dinamis. Setiap divisi mengelola daftar anggota bertugas dan riwayat pejabat/alumni divisi.
+                </p>
+              </div>
 
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              onClick={openNewDivisionModal}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, height: 34, fontSize: 12.5 }}
-            >
-              <Plus size={14} /> Tambah Divisi Baru
-            </button>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm org-btn-mobile-full"
+                onClick={openNewDivisionModal}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, height: 34, fontSize: 12.5 }}
+              >
+                <Plus size={14} /> Tambah Divisi Baru
+              </button>
+            </div>
           </div>
 
           {loadingDivisions ? (

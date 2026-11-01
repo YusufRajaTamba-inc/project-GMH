@@ -178,92 +178,39 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onClose }) => {
   return (
     <aside className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'open' : ''}`}>
       {/* Brand */}
-      <div
-        className="sidebar-brand"
-        style={{
-          padding: '16px 16px 12px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'stretch',
-          gap: 8,
-          background: '#0f172a',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div className="sidebar-brand-logo" style={{ width: 40, height: 40, flexShrink: 0 }}>
-            <img
-              src="/logo-yayasan.png"
-              alt="Logo Yayasan GMH"
-              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-            />
-          </div>
-          {!collapsed && (
-            <div className="sidebar-brand-text" style={{ minWidth: 0, flex: 1 }}>
-              <div
-                className="sidebar-brand-name"
-                style={{
-                  fontSize: 14,
-                  fontWeight: 700,
-                  color: '#ffffff',
-                  lineHeight: 1.25,
-                }}
-              >
-                Global Mission House
-              </div>
-              <div
-                className="sidebar-brand-sub"
-                style={{
-                  fontSize: 11,
-                  color: '#94a3b8',
-                  letterSpacing: '0.04em',
-                  fontWeight: 600,
-                  marginTop: 2,
-                }}
-              >
-                PA KMK USU · Yayasan
-              </div>
-            </div>
-          )}
-          {mobileOpen && (
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Tutup Menu"
-              style={{
-                marginLeft: 'auto',
-                background: 'transparent',
-                border: 'none',
-                color: '#94a3b8',
-                padding: 6,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <X size={20} />
-            </button>
-          )}
+      <div className="sidebar-brand">
+        <div className="sidebar-brand-logo">
+          <img
+            src="/logo-yayasan.png"
+            alt="Logo Yayasan GMH"
+            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+          />
         </div>
-
         {!collapsed && (
-          <div
+          <div className="sidebar-brand-text">
+            <div className="sidebar-brand-name">Global Mission House</div>
+            <div className="sidebar-brand-sub">PA KMK USU · Yayasan</div>
+          </div>
+        )}
+        {mobileOpen && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Tutup Menu"
             style={{
-              fontSize: 10,
-              color: '#64748b',
-              letterSpacing: '0.02em',
-              lineHeight: 1.2,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              paddingTop: 6,
-              borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+              marginLeft: 'auto',
+              background: 'transparent',
+              border: 'none',
+              color: '#94a3b8',
+              padding: 6,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
-            <span>powered by </span>
-            <span style={{ color: '#94a3b8', fontWeight: 600 }}>Beyond Quality Management</span>
-          </div>
+            <X size={20} />
+          </button>
         )}
       </div>
 

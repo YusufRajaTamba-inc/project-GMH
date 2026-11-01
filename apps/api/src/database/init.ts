@@ -22,6 +22,12 @@ export async function initDatabase() {
   // Idempotent migrations for existing production tables
   console.log('[Migration] Applying table column migrations...');
   await db.query(`
+    -- members: compatibility columns for local & production databases
+    ALTER TABLE members ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+    ALTER TABLE members ADD COLUMN IF NOT EXISTS membership_type VARCHAR(50) DEFAULT 'ALUMNI';
+    UPDATE members SET is_active = (COALESCE(status, 'ACTIVE') = 'ACTIVE') WHERE is_active IS NULL;
+    UPDATE members SET membership_type = COALESCE(member_type, 'ALUMNI') WHERE membership_type IS NULL;
+
     -- building_projects
     ALTER TABLE building_projects ADD COLUMN IF NOT EXISTS category VARCHAR(100) DEFAULT 'INFRASTRUKTUR';
     ALTER TABLE building_projects ADD COLUMN IF NOT EXISTS pic_name VARCHAR(150) DEFAULT 'Tim Proyek Yayasan';

@@ -1044,7 +1044,10 @@ router.get('/members/:memberId/profile', authenticateJwt, async (req: Request, r
 
     const memberRes = await db.query(
       `SELECT m.id, m.member_number, m.full_name, m.phone_number, m.email,
-              m.member_type, m.status, m.is_active,
+              COALESCE(m.member_type, 'ALUMNI') AS member_type,
+              COALESCE(m.membership_type, m.member_type, 'ALUMNI') AS membership_type,
+              m.status,
+              COALESCE(m.is_active, TRUE) AS is_active,
               ap.faculty, ap.major, ap.entry_year, ap.graduation_year,
               ap.current_profession, ap.company_name, ap.ktb_group_name
        FROM members m

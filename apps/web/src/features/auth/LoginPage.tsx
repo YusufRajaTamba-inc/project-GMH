@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import {
   Lock,
   User,
-  Shield,
   Eye,
   EyeOff,
   AlertCircle,
@@ -53,7 +52,7 @@ const LoginPage: React.FC = () => {
       <div
         style={{
           width: '100%',
-          maxWidth: 440,
+          maxWidth: 460,
           background: '#ffffff',
           borderRadius: 16,
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.45)',
@@ -63,28 +62,52 @@ const LoginPage: React.FC = () => {
         }}
       >
         {/* Header Brand */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
           <div
             style={{
-              width: 44,
-              height: 44,
+              width: 52,
+              height: 52,
               borderRadius: 12,
-              background: 'linear-gradient(135deg, #047857 0%, #065f46 100%)',
-              color: '#ffffff',
-              display: 'grid',
-              placeItems: 'center',
-              boxShadow: '0 4px 10px rgba(4,120,87,0.3)',
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              padding: 4,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 2px 8px rgba(15,23,42,0.06)',
+              flexShrink: 0,
             }}
           >
-            <Shield size={22} />
+            <img
+              src="/logo-yayasan.png"
+              alt="Logo Yayasan GMH PA KMK"
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
           </div>
-          <div>
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
-              GMH PA KMK
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <h2
+              style={{
+                margin: 0,
+                fontSize: 16,
+                fontWeight: 800,
+                color: '#0f172a',
+                letterSpacing: '-0.01em',
+                lineHeight: 1.25,
+              }}
+            >
+              Organization Management System
             </h2>
-            <span style={{ fontSize: 11.5, color: '#64748b', fontWeight: 500 }}>
-              Yayasan Global Mission House
-            </span>
+            <p
+              style={{
+                margin: '3px 0 0',
+                fontSize: 12,
+                color: '#475569',
+                fontWeight: 600,
+                lineHeight: 1.35,
+              }}
+            >
+              Yayasan Global Mission House - PA KMK USU Medan
+            </p>
           </div>
         </div>
 
@@ -271,6 +294,34 @@ const LoginPage: React.FC = () => {
             </Link>
           </div>
         </div>
+
+        {/* Powered by Beyond Quality System */}
+        <div
+          style={{
+            marginTop: 22,
+            paddingTop: 14,
+            borderTop: '1px solid #f1f5f9',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: 5,
+            fontSize: 11,
+            color: '#94a3b8',
+          }}
+        >
+          <span>Powered by</span>
+          <span style={{ fontWeight: 700, color: '#334155', letterSpacing: '0.01em' }}>
+            Beyond Quality System
+          </span>
+        </div>
+      </div>
+
+      {/* Page Footer */}
+      <div style={{ marginTop: 20, textAlign: 'center', fontSize: 11.5, color: 'rgba(255, 255, 255, 0.65)' }}>
+        <span>Powered by </span>
+        <strong style={{ color: '#ffffff', fontWeight: 650 }}>Beyond Quality System</strong>
+        <span style={{ margin: '0 8px', opacity: 0.4 }}>·</span>
+        <span>© {new Date().getFullYear()} Yayasan Global Mission House</span>
       </div>
     </div>
   );

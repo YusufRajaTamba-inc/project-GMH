@@ -1140,17 +1140,19 @@ export async function seedDatabase() {
   if (proyektorRes.rows.length > 0 && yusufMemRes.rows.length > 0) {
     const assetId = proyektorRes.rows[0].id;
     const borrowerMemberId = yusufMemRes.rows[0].id;
-    await db.query(
-      `INSERT INTO asset_loans (
-        asset_id, borrower_member_id, borrower_name, borrower_phone, borrower_email, borrower_institution,
-        loan_purpose, loan_type, rental_fee, quantity_borrowed, request_code,
-        borrowed_at, expected_return_at, status
-      ) VALUES ($1, $2, 'Yusuf Panjaitan', '081234567801', 'yusuf.panjaitan@gmail.com', 'Alumni PA KMK',
-        'Peminjaman proyektor untuk persekutuan doa wilayah Medan Baru', 'INTERNAL', 0.00, 1, 'REQ-AST-202610-001',
-        NOW(), NOW() + INTERVAL '2 days', 'BORROWED')
-       ON CONFLICT DO NOTHING`,
-      [assetId, borrowerMemberId]
-    );
+    const existingLoan = await db.query(`SELECT id FROM asset_loans WHERE request_code = $1`, ['REQ-AST-202610-001']);
+    if (existingLoan.rows.length === 0) {
+      await db.query(
+        `INSERT INTO asset_loans (
+          asset_id, borrower_member_id, borrower_name, borrower_phone, borrower_email, borrower_institution,
+          loan_purpose, loan_type, rental_fee, quantity_borrowed, request_code,
+          borrowed_at, expected_return_at, status
+        ) VALUES ($1, $2, 'Yusuf Panjaitan', '081234567801', 'yusuf.panjaitan@gmail.com', 'Alumni PA KMK',
+          'Peminjaman proyektor untuk persekutuan doa wilayah Medan Baru', 'PINJAM', 0.00, 1, 'REQ-AST-202610-001',
+          NOW(), NOW() + INTERVAL '2 days', 'PENDING')`,
+        [assetId, borrowerMemberId]
+      );
+    }
   }
   console.log('[Seeder] Assets and sample asset loan seeded.');
 

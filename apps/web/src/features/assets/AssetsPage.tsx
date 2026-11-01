@@ -83,7 +83,7 @@ export interface AssetLoan {
   condition_on_return?: 'GOOD' | 'FAIR' | 'DAMAGED';
   quantity_borrowed: number;
   notes?: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'ACTIVE' | 'RETURNED' | 'CANCELLED';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'ACTIVE' | 'RETURNED' | 'CANCELLED' | 'BORROWED';
   request_code?: string;
   approval_notes?: string;
   rejection_reason?: string;
@@ -361,7 +361,7 @@ const AssetsPage: React.FC = () => {
   // --------------------------------------------------------------------------
   const pendingRequests = useMemo(() => loans.filter((l) => l.status === 'PENDING'), [loans]);
   const allRequests = useMemo(
-    () => loans.filter((l) => Boolean(l.request_code) || l.status === 'PENDING' || l.status === 'APPROVED' || l.status === 'REJECTED'),
+    () => loans.filter((l) => l.status === 'PENDING' || l.status === 'APPROVED' || l.status === 'REJECTED' || (Boolean(l.request_code) && l.status !== 'ACTIVE' && l.status !== 'RETURNED' && l.status !== 'BORROWED')),
     [loans]
   );
 
@@ -398,7 +398,7 @@ const AssetsPage: React.FC = () => {
   // --------------------------------------------------------------------------
   // TAB: Active Loans Filtering & Pagination
   // --------------------------------------------------------------------------
-  const activeLoans = useMemo(() => loans.filter((l) => l.status === 'ACTIVE'), [loans]);
+  const activeLoans = useMemo(() => loans.filter((l) => l.status === 'ACTIVE' || l.status === 'BORROWED'), [loans]);
 
   const filteredActiveLoans = useMemo(() => {
     return activeLoans.filter((l) => {
@@ -1504,7 +1504,7 @@ const AssetsPage: React.FC = () => {
                     const isPending = req.status === 'PENDING';
                     const isApproved = req.status === 'APPROVED';
                     const isRejected = req.status === 'REJECTED';
-                    const isActive = req.status === 'ACTIVE';
+                    const isActive = req.status === 'ACTIVE' || req.status === 'BORROWED';
 
                     return (
                       <tr key={req.id}>

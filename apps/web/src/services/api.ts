@@ -292,6 +292,10 @@ export const api = {
     returnLoan: (id: string, data: { actualReturnAt?: string; conditionOnReturn?: string; notes?: string }) =>
       request(`/assets/loans/${id}/return`, { method: 'PUT', body: JSON.stringify(data) }),
     getAvailable: () => request('/assets/public/available'),
+    checkAvailability: (params: { assetId: string; quantity?: number; borrowedAt?: string; expectedReturnAt?: string }) => {
+      const query = new URLSearchParams(params as any).toString();
+      return request(`/assets/public/check-availability?${query}`);
+    },
     publicRequest: (data: any) => request('/assets/public/request', { method: 'POST', body: JSON.stringify(data) }),
     trackRequest: (query: string) => request(`/assets/public/track/${encodeURIComponent(query)}`),
     approveLoan: (id: string, data?: { approvalNotes?: string }) =>

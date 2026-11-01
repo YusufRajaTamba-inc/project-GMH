@@ -11,7 +11,8 @@ const router = Router();
 // ============================================================================
 
 // ----------------------------------------------------------------------------
-// PUBLIC 1: GET /public/available — Daftar Aset yang Tersedia Dipinjam/Disewa
+// PUBLIC 1: GET /public/available — Katalog Aset Publik (Sanitized / Zero-Leak)
+// Tidak mengekspos: location_room (keamanan fisik), notes internal, total stok
 // ----------------------------------------------------------------------------
 router.get('/public/available', async (_req: Request, res: Response): Promise<void> => {
   try {
@@ -21,13 +22,9 @@ router.get('/public/available', async (_req: Request, res: Response): Promise<vo
         a.asset_code, 
         a.asset_name, 
         a.asset_type, 
-        a.quantity, 
         a.available_quantity, 
-        a.physical_condition, 
-        a.location_room, 
         a.rental_price, 
         a.is_borrowable,
-        a.notes,
         sl.label as category_label
       FROM assets a
       LEFT JOIN system_lookups sl ON a.category_id = sl.id
@@ -46,7 +43,92 @@ router.get('/public/available', async (_req: Request, res: Response): Promise<vo
 });
 
 // ----------------------------------------------------------------------------
-// PUBLIC 2: POST /public/request — Formulir Pengajuan Pinjaman/Sewa Aset
+// PUBLIC 1b: GET /public/check-availability — Validasi Jadwal & Ketersediaan Aset
+// ----------------------------------------------------------------------------
+router.get('/public/check-availability', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { assetId, quantity = 1, borrowedAt, expectedReturnAt } = req.query;
+
+    if (!assetId) {
+      res.status(400).json({ success: false, message: 'ID aset wajib disertakan.' });
+      return;
+    }
+
+    const assetRes = await db.query(
+      `SELECT id, asset_name, available_quantity, is_borrowable 
+       FROM assets 
+       WHERE id = $1 AND is_borrowable = TRUE`,
+      [assetId]
+    );
+
+    if (assetRes.rows.length === 0) {
+      res.status(404).json({
+        success: false,
+        isAvailable: false,
+        message: 'Aset tidak ditemukan atau tidak diperuntukkan bagi peminjaman publik.',
+      });
+      return;
+    }
+
+    const asset = assetRes.rows[0];
+    const requestedQty = Math.max(1, parseInt(String(quantity), 10) || 1);
+    const availableQty = parseInt(asset.available_quantity, 10) || 0;
+
+    // 1. Cek kuota dasar unit fisik yang tidak sedang dipinjam
+    if (availableQty < requestedQty) {
+      res.status(200).json({
+        success: true,
+        assetId: asset.id,
+        assetName: asset.asset_name,
+        isAvailable: false,
+        availableQuantity: availableQty,
+        message: availableQty === 0
+          ? 'Saat ini unit aset sedang kosong / terpakai seluruhnya.'
+          : `Stok saat ini hanya tersedia ${availableQty} unit.`,
+      });
+      return;
+    }
+
+    // 2. Cek bentrokan jadwal dengan peminjaman yang sudah APPROVED/ACTIVE
+    if (borrowedAt && expectedReturnAt) {
+      const conflictRes = await db.query(
+        `SELECT COALESCE(SUM(quantity_borrowed), 0)::int AS reserved_qty
+         FROM asset_loans
+         WHERE asset_id = $1
+           AND status IN ('APPROVED', 'ACTIVE')
+           AND borrowed_at <= $3
+           AND expected_return_at >= $2`,
+        [assetId, borrowedAt, expectedReturnAt]
+      );
+      const reserved = conflictRes.rows[0]?.reserved_qty || 0;
+      if (availableQty - reserved < requestedQty) {
+        res.status(200).json({
+          success: true,
+          assetId: asset.id,
+          assetName: asset.asset_name,
+          isAvailable: false,
+          availableQuantity: Math.max(0, availableQty - reserved),
+          message: 'Aset sudah diagendakan untuk kegiatan lain pada rentang tanggal tersebut.',
+        });
+        return;
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      assetId: asset.id,
+      assetName: asset.asset_name,
+      isAvailable: true,
+      availableQuantity: availableQty,
+      message: 'Aset siap dipinjam.',
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: 'Gagal memvalidasi ketersediaan aset.', error: err.message });
+  }
+});
+
+// ----------------------------------------------------------------------------
+// PUBLIC 2: POST /public/request — Formulir Pengajuan Pinjaman/Sewa Aset (Anti-Hoarding)
 // ----------------------------------------------------------------------------
 router.post('/public/request', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -103,6 +185,15 @@ router.post('/public/request', async (req: Request, res: Response): Promise<void
     }
 
     const qty = Math.max(1, parseInt(quantityBorrowed, 10) || 1);
+    const availableQty = parseInt(asset.available_quantity, 10) || 0;
+    if (availableQty < qty) {
+      res.status(400).json({
+        success: false,
+        message: `Jumlah unit yang diminta (${qty}) melebihi kuota ketersediaan saat ini (${availableQty} unit).`,
+      });
+      return;
+    }
+
     const isRent = String(loanType).toUpperCase() === 'SEWA';
     const type = isRent ? 'SEWA' : 'PINJAM';
     const fee = isRent ? (parseFloat(asset.rental_price) * qty || 0) : 0;
@@ -116,17 +207,18 @@ router.post('/public/request', async (req: Request, res: Response): Promise<void
     const seq = String((countRes.rows[0]?.today_count || 0) + 1).padStart(3, '0');
     const requestCode = `REQ-AST-${todayStr}-${seq}`;
 
-    const insertRes = await db.query(
+    // Note: status PENDING tidak langsung memotong available_quantity aset fisik.
+    // Pemotongan stok riil dilakukan admin saat APPROVE untuk mencegah Denial of Inventory.
+    await db.query(
       `INSERT INTO asset_loans (
         asset_id, borrower_name, borrower_phone, borrower_email, borrower_institution,
         loan_purpose, loan_type, rental_fee,
         borrowed_at, expected_return_at, quantity_borrowed, notes, status, request_code
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'PENDING', $13)
-      RETURNING *`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'PENDING', $13)`,
       [
         assetId,
         borrowerName.trim(),
-        borrowerPhone.trim(),
+        cleanPhone,
         borrowerEmail ? borrowerEmail.trim() : null,
         borrowerInstitution ? borrowerInstitution.trim() : null,
         loanPurpose.trim(),
@@ -144,7 +236,16 @@ router.post('/public/request', async (req: Request, res: Response): Promise<void
       success: true,
       message: 'Permohonan pinjaman aset berhasil dikirim. Silakan simpan nomor tiket untuk melacak progres.',
       requestCode,
-      loan: insertRes.rows[0],
+      loan: {
+        requestCode,
+        assetName: asset.asset_name,
+        borrowerName: borrowerName.trim(),
+        loanType: type,
+        borrowedAt,
+        expectedReturnAt,
+        quantityBorrowed: qty,
+        status: 'PENDING',
+      },
     });
   } catch (err: any) {
     res.status(500).json({ success: false, message: 'Gagal mengirim permohonan pinjaman aset.', error: err.message });
@@ -152,7 +253,8 @@ router.post('/public/request', async (req: Request, res: Response): Promise<void
 });
 
 // ----------------------------------------------------------------------------
-// PUBLIC 3: GET /public/track/:query — Lacak Progres Pengajuan Pinjaman
+// PUBLIC 3: GET /public/track/:query — Lacak Progres (Sanitized PII / Exact Match)
+// Mencegah enumerasi nomor HP / pencurian data peminjam lain
 // ----------------------------------------------------------------------------
 router.get('/public/track/:query', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -164,26 +266,38 @@ router.get('/public/track/:query', async (req: Request, res: Response): Promise<
 
     const cleanPhone = rawQuery.replace(/[^0-9]/g, '');
 
+    // Sanitized SELECT: Masked borrower name & phone, no location_room, no internal admin notes
     const query = `
       SELECT 
-        al.*,
+        al.id,
+        al.request_code,
+        al.loan_type,
+        al.loan_purpose,
+        al.rental_fee,
+        al.borrowed_at,
+        al.expected_return_at,
+        al.quantity_borrowed,
+        al.status,
+        al.approval_notes,
+        al.rejection_reason,
+        al.created_at,
+        -- PII Masking: Amankan nama & nomor telepon agar tidak terbongkar ke publik
+        CONCAT(SUBSTRING(al.borrower_name, 1, 3), '***') AS borrower_name,
+        CONCAT(SUBSTRING(al.borrower_phone, 1, 4), '****', SUBSTRING(al.borrower_phone, LENGTH(al.borrower_phone) - 2, 3)) AS borrower_phone,
         a.asset_code,
         a.asset_name,
         a.asset_type,
-        a.location_room,
-        a.rental_price,
         sl.label as category_label
       FROM asset_loans al
       JOIN assets a ON al.asset_id = a.id
       LEFT JOIN system_lookups sl ON a.category_id = sl.id
       WHERE UPPER(al.request_code) = UPPER($1)
-         OR al.borrower_phone = $1
-         ${cleanPhone ? `OR al.borrower_phone LIKE '%' || $2 || '%'` : ''}
+         OR (LENGTH($1) >= 10 AND al.borrower_phone = $1)
       ORDER BY al.created_at DESC
+      LIMIT 15
     `;
 
-    const params = cleanPhone ? [rawQuery, cleanPhone] : [rawQuery];
-    const result = await db.query(query, params);
+    const result = await db.query(query, [rawQuery]);
 
     res.status(200).json({
       success: true,

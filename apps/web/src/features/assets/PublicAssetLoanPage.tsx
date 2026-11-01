@@ -23,10 +23,10 @@ interface AssetOption {
   asset_code: string;
   asset_name: string;
   asset_type: string;
-  quantity: number;
+  quantity?: number;
   available_quantity: number;
-  physical_condition: string;
-  location_room: string;
+  physical_condition?: string;
+  location_room?: string;
   rental_price: number;
   is_borrowable: boolean;
   notes?: string;
@@ -57,7 +57,7 @@ interface LoanRequestItem {
   asset_code: string;
   asset_name: string;
   asset_type: string;
-  location_room: string;
+  location_room?: string;
   category_label?: string;
 }
 
@@ -89,6 +89,10 @@ const PublicAssetLoanPage: React.FC = () => {
   const [submittedRequestCode, setSubmittedRequestCode] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
 
+  // Live Availability Check State
+  const [availChecking, setAvailChecking] = useState(false);
+  const [availResult, setAvailResult] = useState<{ isAvailable: boolean; message: string; availableQuantity?: number } | null>(null);
+
   // Tracking State
   const [searchQuery, setSearchQuery] = useState(initialTrackCode);
   const [isSearching, setIsSearching] = useState(false);
@@ -115,6 +119,43 @@ const PublicAssetLoanPage: React.FC = () => {
     };
     loadAssets();
   }, []);
+
+  // Live availability verification whenever asset, dates, or quantity change
+  useEffect(() => {
+    if (!selectedAssetId) {
+      setAvailResult(null);
+      return;
+    }
+    let active = true;
+    const verifyAvailability = async () => {
+      setAvailChecking(true);
+      try {
+        const res: any = await api.assets.checkAvailability({
+          assetId: selectedAssetId,
+          quantity: quantityBorrowed,
+          borrowedAt: borrowedAt || undefined,
+          expectedReturnAt: expectedReturnAt || undefined,
+        });
+        if (active && res) {
+          setAvailResult({
+            isAvailable: res.isAvailable,
+            message: res.message,
+            availableQuantity: res.availableQuantity,
+          });
+        }
+      } catch (err: any) {
+        console.error('Availability check failed:', err);
+      } finally {
+        if (active) setAvailChecking(false);
+      }
+    };
+
+    const timer = setTimeout(verifyAvailability, 200);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [selectedAssetId, quantityBorrowed, borrowedAt, expectedReturnAt]);
 
   // Auto track if code is provided in URL
   useEffect(() => {
@@ -525,7 +566,7 @@ const PublicAssetLoanPage: React.FC = () => {
                       >
                         {assets.map((a) => (
                           <option key={a.id} value={a.id}>
-                            [{a.asset_code}] {a.asset_name} (Tersedia: {a.available_quantity} unit) · {a.location_room}
+                            [{a.asset_code}] {a.asset_name} (Tersedia: {a.available_quantity} unit)
                           </option>
                         ))}
                       </select>
@@ -553,7 +594,7 @@ const PublicAssetLoanPage: React.FC = () => {
                         }}
                       />
                       <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 4 }}>
-                        Stok tersedia saat ini: <strong>{selectedAsset?.available_quantity || 0} unit</strong>
+                        Stok unit fisik siap pinjam: <strong>{selectedAsset?.available_quantity || 0} unit</strong>
                       </div>
                     </div>
                   </div>
@@ -578,8 +619,7 @@ const PublicAssetLoanPage: React.FC = () => {
                     >
                       <div>
                         <strong>Kategori:</strong> {selectedAsset.category_label || selectedAsset.asset_type} ·{' '}
-                        <strong>Lokasi:</strong> {selectedAsset.location_room} ·{' '}
-                        <strong>Kondisi:</strong> {selectedAsset.physical_condition === 'GOOD' ? 'Baik & Berfungsi' : selectedAsset.physical_condition}
+                        <strong>Status:</strong> Siap Dipinjam Pelayanan
                       </div>
                       <div>
                         <strong>Tarif Sewa Komersial:</strong>{' '}
@@ -838,20 +878,55 @@ const PublicAssetLoanPage: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Live Availability Status Indicator */}
+                {(availChecking || availResult) && (
+                  <div
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: 8,
+                      fontSize: 12.5,
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      background: availChecking ? '#f8fafc' : availResult?.isAvailable ? '#ecfdf5' : '#fef2f2',
+                      color: availChecking ? '#64748b' : availResult?.isAvailable ? '#065f46' : '#991b1b',
+                      border: `1px solid ${availChecking ? '#e2e8f0' : availResult?.isAvailable ? '#a7f3d0' : '#fecaca'}`,
+                    }}
+                  >
+                    {availChecking ? (
+                      <>
+                        <RefreshCw size={14} className="spin" />
+                        <span>Memverifikasi ketersediaan jadwal aset...</span>
+                      </>
+                    ) : availResult?.isAvailable ? (
+                      <>
+                        <Check size={16} />
+                        <span>{availResult.message}</span>
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle size={16} />
+                        <span>{availResult?.message || 'Aset tidak tersedia pada tanggal yang dipilih.'}</span>
+                      </>
+                    )}
+                  </div>
+                )}
+
                 {/* Submit Action */}
                 <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 18, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
                   <button
                     type="submit"
-                    disabled={isSubmitting || loadingAssets}
+                    disabled={isSubmitting || loadingAssets || availChecking || (availResult !== null && !availResult.isAvailable)}
                     style={{
-                      background: '#0f172a',
+                      background: availResult !== null && !availResult.isAvailable ? '#94a3b8' : '#0f172a',
                       color: '#ffffff',
                       border: 'none',
                       padding: '11px 24px',
                       borderRadius: 8,
                       fontSize: 14,
                       fontWeight: 650,
-                      cursor: 'pointer',
+                      cursor: availResult !== null && !availResult.isAvailable ? 'not-allowed' : 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       gap: 8,

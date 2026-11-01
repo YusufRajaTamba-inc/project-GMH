@@ -16,6 +16,7 @@ import {
   EyeOff,
   ChevronRight,
   LogOut,
+  Menu,
 } from 'lucide-react';
 import { useAuth } from '../state/AuthContext';
 import { ROLE_LABELS } from '../state/auth';
@@ -24,6 +25,7 @@ import { api } from '../services/api';
 interface TopbarProps {
   title: string;
   subtitle?: string;
+  onToggleMobileSidebar?: () => void;
 }
 
 interface NotificationItem {
@@ -55,7 +57,7 @@ interface UserProfileData {
   role_desc?: string;
 }
 
-const Topbar: React.FC<TopbarProps> = ({ title, subtitle }) => {
+const Topbar: React.FC<TopbarProps> = ({ title, subtitle, onToggleMobileSidebar }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -203,6 +205,16 @@ const Topbar: React.FC<TopbarProps> = ({ title, subtitle }) => {
 
   return (
     <header className="topbar">
+      <button
+        type="button"
+        className="btn btn-ghost btn-icon mobile-menu-toggle"
+        onClick={onToggleMobileSidebar}
+        aria-label="Buka Menu Navigasi"
+        title="Menu Navigasi"
+      >
+        <Menu size={20} />
+      </button>
+
       <div className="topbar-title">
         <h1>{title}</h1>
         {subtitle && <p>{subtitle}</p>}

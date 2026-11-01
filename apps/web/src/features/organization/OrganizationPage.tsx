@@ -905,20 +905,20 @@ export const OrganizationPage: React.FC = () => {
         </div>
 
         {/* 4 Summary KPI counters */}
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ padding: '8px 14px', borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10, width: '100%', maxWidth: 560 }}>
+          <div style={{ padding: '8px 12px', borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0', textAlign: 'center' }}>
             <div style={{ fontSize: 11, color: '#64748b', fontWeight: 650, textTransform: 'uppercase' }}>Kepanitiaan</div>
             <div style={{ fontSize: 18, fontWeight: 750, color: '#0f172a' }}>{stats.totalCommittees}</div>
           </div>
-          <div style={{ padding: '8px 14px', borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+          <div style={{ padding: '8px 12px', borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0', textAlign: 'center' }}>
             <div style={{ fontSize: 11, color: '#64748b', fontWeight: 650, textTransform: 'uppercase' }}>Jabatan Inti</div>
             <div style={{ fontSize: 18, fontWeight: 750, color: '#047857' }}>{stats.totalPositions}</div>
           </div>
-          <div style={{ padding: '8px 14px', borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+          <div style={{ padding: '8px 12px', borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0', textAlign: 'center' }}>
             <div style={{ fontSize: 11, color: '#64748b', fontWeight: 650, textTransform: 'uppercase' }}>Staf Full-Time</div>
             <div style={{ fontSize: 18, fontWeight: 750, color: '#0369a1' }}>{stats.totalStaff}</div>
           </div>
-          <div style={{ padding: '8px 14px', borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+          <div style={{ padding: '8px 12px', borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0', textAlign: 'center' }}>
             <div style={{ fontSize: 11, color: '#64748b', fontWeight: 650, textTransform: 'uppercase' }}>Divisi Pelayanan</div>
             <div style={{ fontSize: 18, fontWeight: 750, color: '#b45309' }}>{stats.totalDivisions}</div>
           </div>
@@ -934,7 +934,11 @@ export const OrganizationPage: React.FC = () => {
           padding: 5,
           borderRadius: 10,
           border: '1px solid #e2e8f0',
-          width: 'fit-content',
+          width: '100%',
+          maxWidth: '100%',
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'none',
         }}
       >
         <button
@@ -954,6 +958,8 @@ export const OrganizationPage: React.FC = () => {
             gap: 8,
             cursor: 'pointer',
             transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
           }}
         >
           <Calendar size={15} color={activeTab === 'committees' ? '#047857' : '#94a3b8'} />
@@ -980,6 +986,8 @@ export const OrganizationPage: React.FC = () => {
             gap: 8,
             cursor: 'pointer',
             transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
           }}
         >
           <ShieldCheck size={15} color={activeTab === 'positions' ? '#047857' : '#94a3b8'} />
@@ -1006,6 +1014,8 @@ export const OrganizationPage: React.FC = () => {
             gap: 8,
             cursor: 'pointer',
             transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
           }}
         >
           <Briefcase size={15} color={activeTab === 'staff' ? '#047857' : '#94a3b8'} />
@@ -1032,6 +1042,8 @@ export const OrganizationPage: React.FC = () => {
             gap: 8,
             cursor: 'pointer',
             transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
           }}
         >
           <Layers size={15} color={activeTab === 'divisions' ? '#047857' : '#94a3b8'} />
@@ -1072,8 +1084,8 @@ export const OrganizationPage: React.FC = () => {
               </p>
             </div>
 
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-              <div style={{ position: 'relative', width: 220 }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', width: '100%', maxWidth: '100%' }}>
+              <div style={{ position: 'relative', flex: '1 1 200px', minWidth: 160 }}>
                 <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
                 <input
                   aria-label="Cari kepanitiaan"
@@ -1081,7 +1093,7 @@ export const OrganizationPage: React.FC = () => {
                   value={committeeSearch}
                   onChange={(e) => setCommitteeSearch(e.target.value)}
                   className="form-input form-input-sm"
-                  style={{ paddingLeft: 32, fontSize: 12.5, height: 34 }}
+                  style={{ paddingLeft: 32, fontSize: 12.5, height: 34, width: '100%' }}
                 />
               </div>
 
@@ -1089,7 +1101,7 @@ export const OrganizationPage: React.FC = () => {
                 value={committeeFilterStatus}
                 onChange={(e) => setCommitteeFilterStatus(e.target.value)}
                 className="form-select form-select-sm"
-                style={{ fontSize: 12.5, height: 34, width: 140 }}
+                style={{ fontSize: 12.5, height: 34, flex: '1 1 130px', minWidth: 120 }}
               >
                 <option value="ALL">Semua Status</option>
                 <option value="AKTIF">Aktif Melayani</option>
@@ -1100,7 +1112,7 @@ export const OrganizationPage: React.FC = () => {
                 type="button"
                 className="btn btn-primary btn-sm"
                 onClick={openNewCommitteeModal}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, height: 34, fontSize: 12.5 }}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, height: 34, fontSize: 12.5, whiteSpace: 'nowrap' }}
               >
                 <Plus size={14} /> Catat Kepanitiaan
               </button>
@@ -1319,7 +1331,7 @@ export const OrganizationPage: React.FC = () => {
                       </span>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 14, padding: 16 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: 14, padding: 16 }}>
                       {groupPositions.map((pos: OrgPosition) => (
                         <div
                           key={pos.id}
@@ -1486,8 +1498,8 @@ export const OrganizationPage: React.FC = () => {
               </p>
             </div>
 
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-              <div style={{ position: 'relative', width: 220 }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', width: '100%', maxWidth: '100%' }}>
+              <div style={{ position: 'relative', flex: '1 1 200px', minWidth: 160 }}>
                 <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
                 <input
                   aria-label="Cari staf"
@@ -1495,7 +1507,7 @@ export const OrganizationPage: React.FC = () => {
                   value={staffSearch}
                   onChange={(e) => setStaffSearch(e.target.value)}
                   className="form-input form-input-sm"
-                  style={{ paddingLeft: 32, fontSize: 12.5, height: 34 }}
+                  style={{ paddingLeft: 32, fontSize: 12.5, height: 34, width: '100%' }}
                 />
               </div>
 
@@ -1503,7 +1515,7 @@ export const OrganizationPage: React.FC = () => {
                 type="button"
                 className="btn btn-primary btn-sm"
                 onClick={openNewStaffModal}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, height: 34, fontSize: 12.5 }}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, height: 34, fontSize: 12.5, whiteSpace: 'nowrap' }}
               >
                 <Plus size={14} /> Tambah Staf Full-Time
               </button>
@@ -1671,7 +1683,7 @@ export const OrganizationPage: React.FC = () => {
               Memuat daftar divisi dari database...
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: 16 }}>
               {divisions.map((div) => (
                 <div
                   key={div.id}

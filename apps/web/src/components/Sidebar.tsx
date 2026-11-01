@@ -20,6 +20,7 @@ import {
   Award,
   Mail,
   LogOut,
+  X,
 } from 'lucide-react';
 import { useAuth } from '../state/AuthContext';
 
@@ -104,7 +105,12 @@ const navSections: NavSection[] = [
   },
 ];
 
-const Sidebar: React.FC = () => {
+interface SidebarProps {
+  mobileOpen?: boolean;
+  onClose?: () => void;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onClose }) => {
   const { user, logout, isRouteAllowed } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -170,7 +176,7 @@ const Sidebar: React.FC = () => {
   };
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'open' : ''}`}>
       {/* Brand */}
       <div className="sidebar-brand">
         <div className="sidebar-brand-logo">
@@ -185,6 +191,26 @@ const Sidebar: React.FC = () => {
             <div className="sidebar-brand-name">Global Mission House</div>
             <div className="sidebar-brand-sub">PA KMK USU · Yayasan</div>
           </div>
+        )}
+        {mobileOpen && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Tutup Menu"
+            style={{
+              marginLeft: 'auto',
+              background: 'transparent',
+              border: 'none',
+              color: '#94a3b8',
+              padding: 6,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <X size={20} />
+          </button>
         )}
       </div>
 
@@ -223,6 +249,7 @@ const Sidebar: React.FC = () => {
                         window.open(item.path, '_blank');
                       } else {
                         navigate(item.path);
+                        if (onClose) onClose();
                       }
                     }}
                     title={collapsed ? item.label : undefined}
@@ -263,7 +290,10 @@ const Sidebar: React.FC = () => {
                         return (
                           <button
                             key={sub.path}
-                            onClick={() => navigate(sub.path)}
+                            onClick={() => {
+                              navigate(sub.path);
+                              if (onClose) onClose();
+                            }}
                             style={{
                               display: 'flex',
                               alignItems: 'center',

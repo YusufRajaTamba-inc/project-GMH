@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
@@ -68,6 +68,12 @@ const ProtectedRoute: React.FC<{ path: string; element: React.ReactElement }> = 
 const App: React.FC = () => {
   const location = useLocation();
   const { isAuthenticated, isLoading } = useAuth();
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  // Auto-close mobile sidebar when user navigates
+  useEffect(() => {
+    setMobileSidebarOpen(false);
+  }, [location.pathname]);
 
   // Public self-registration route (accessible standalone without admin frame)
   if (location.pathname === '/register' || location.pathname === '/formulir-pendaftaran') {
@@ -121,9 +127,20 @@ const App: React.FC = () => {
 
   return (
     <div className="app-shell">
-      <Sidebar />
+      <Sidebar mobileOpen={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} />
+      {mobileSidebarOpen && (
+        <div
+          className="sidebar-backdrop"
+          onClick={() => setMobileSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
       <div className="main-content">
-        <Topbar title={meta.title} subtitle={meta.subtitle} />
+        <Topbar
+          title={meta.title}
+          subtitle={meta.subtitle}
+          onToggleMobileSidebar={() => setMobileSidebarOpen((prev) => !prev)}
+        />
         <main className="page-content">
           <Routes>
             <Route path="/" element={<ProtectedRoute path="/" element={<DashboardPage />} />} />

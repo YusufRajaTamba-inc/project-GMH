@@ -1075,7 +1075,7 @@ router.get('/members/:memberId/profile', authenticateJwt, async (req: Request, r
          FROM org_position_tenures t
          JOIN org_positions p ON t.position_id = p.id
          WHERE t.member_id = $1
-         ORDER BY t.is_current DESC, t.hierarchy_order ASC, t.start_date DESC NULLS LAST`,
+         ORDER BY t.is_current DESC, p.hierarchy_order ASC, t.start_date DESC NULLS LAST`,
         [memberId]
       ),
       db.query(
@@ -1109,6 +1109,7 @@ router.get('/members/:memberId/profile', authenticateJwt, async (req: Request, r
       divisions: divisionsRes.rows,
     });
   } catch (err: any) {
+    console.error('[Organization] Error loading member profile:', err);
     res.status(500).json({ success: false, message: 'Gagal memuat profil kepengurusan anggota.', error: err.message });
   }
 });

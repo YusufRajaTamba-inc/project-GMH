@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
@@ -10,6 +10,7 @@ import {
   FileSpreadsheet,
   CheckCircle,
   AlertTriangle,
+  AlertCircle,
   Download,
   X,
   MapPin,
@@ -91,7 +92,7 @@ const getAgeString = (birthDateStr?: string): string => {
 
 const MembersPage: React.FC = () => {
   const { user } = useAuth();
-  const { members, addMember, deleteMember, addBulkMembers } = useMemberStore();
+  const { members, addMember, deleteMember, addBulkMembersChunked } = useMemberStore();
   const { lookups, fieldLabels } = useDynamicConfig();
 
   // Comprehensive Filters State
@@ -272,7 +273,7 @@ const MembersPage: React.FC = () => {
     e.preventDefault();
     if (!selectedMember) return;
     if (newPledgeForm.total <= 0) {
-      alert('Mohon masukkan total komitmen donasi / janji iman yang valid.');
+      showAlert('Validasi Komitmen', 'Mohon masukkan total komitmen donasi / janji iman yang valid.', undefined, 'warning');
       return;
     }
 
@@ -316,7 +317,7 @@ const MembersPage: React.FC = () => {
         });
       }
     } catch (err: any) {
-      alert('Gagal mencatat komitmen: ' + err.message);
+      showAlert('Gagal Mencatat Komitmen', err.message || 'Gagal menyimpan komitmen donasi.', undefined, 'danger');
     }
   };
 
@@ -336,7 +337,7 @@ const MembersPage: React.FC = () => {
     e.preventDefault();
     if (!targetPledgeForInstallment || !selectedMember) return;
     if (installmentForm.amount <= 0) {
-      alert('Nominal angsuran harus lebih besar dari Rp 0.');
+      showAlert('Validasi Angsuran', 'Nominal angsuran harus lebih besar dari Rp 0.', undefined, 'warning');
       return;
     }
 
@@ -367,7 +368,7 @@ const MembersPage: React.FC = () => {
         });
       }
     } catch (err: any) {
-      alert('Gagal mencatat angsuran: ' + err.message);
+      showAlert('Gagal Mencatat Angsuran', err.message || 'Gagal menyimpan angsuran donasi.', undefined, 'danger');
     }
   };
 
@@ -424,6 +425,59 @@ const MembersPage: React.FC = () => {
     valid: 0,
     error: 0,
   });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadedFileName, setUploadedFileName] = useState<string>('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveProgress, setSaveProgress] = useState<{
+    currentBatch: number;
+    totalBatches: number;
+    processed: number;
+    total: number;
+    percent: number;
+  }>({
+    currentBatch: 0,
+    totalBatches: 0,
+    processed: 0,
+    total: 0,
+    percent: 0,
+  });
+
+  // Enterprise Alert Modal State (replaces native browser alert)
+  const [modalAlert, setModalAlert] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    detail?: string;
+    type?: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    detail: undefined,
+    type: 'danger',
+  });
+
+  const showAlert = (
+    title: string,
+    message: string,
+    detail?: string,
+    type: 'danger' | 'warning' | 'info' = 'danger'
+  ) => {
+    setModalAlert({
+      isOpen: true,
+      title,
+      message,
+      detail,
+      type,
+    });
+  };
+
+  // Real-time duplicate NIK detection for Add Member Form
+  const duplicateNikMember = useMemo(() => {
+    const raw = (newMemberData.nik || '').replace(/[^0-9]/g, '');
+    if (!raw || raw.length < 16) return null;
+    return members.find((m) => m.nik && m.nik.replace(/[^0-9]/g, '') === raw) || null;
+  }, [newMemberData.nik, members]);
 
   const isSuperAdminOrAdmin = ['SUPER_ADMIN', 'ADMIN_OPERASIONAL'].includes(user.role);
 
@@ -588,55 +642,83 @@ const MembersPage: React.FC = () => {
   const handleCreateMember = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMemberData.name.trim()) {
-      alert('Nama lengkap wajib diisi.');
+      showAlert('Nama Lengkap Wajib Diisi', 'Silakan masukkan nama lengkap anggota yayasan sebelum menyimpan.', undefined, 'warning');
       return;
+    }
+
+    const cleanNik = newMemberData.nik ? newMemberData.nik.replace(/[^0-9]/g, '') : '';
+    if (cleanNik) {
+      if (cleanNik.length !== 16) {
+        showAlert(
+          'Format NIK Belum Sesuai',
+          `Nomor Induk Kependudukan (NIK) harus tepat 16 digit angka sesuai standar KTP Republik Indonesia (saat ini terdeteksi ${cleanNik.length} digit).`,
+          undefined,
+          'warning'
+        );
+        return;
+      }
+      const existing = members.find((m) => m.nik && m.nik.replace(/[^0-9]/g, '') === cleanNik);
+      if (existing) {
+        showAlert(
+          'NIK Sudah Terdaftar di Sistem',
+          'Data anggota dengan Nomor Induk Kependudukan (NIK) ini sudah tercatat di sistem yayasan. Untuk menjaga integritas data keanggotaan dan mencegah duplikasi, pendaftaran ganda dengan NIK yang sama tidak diizinkan.',
+          `NIK: ${cleanNik} • Terdaftar a.n. ${existing.name} • NIA: ${existing.nia}`,
+          'danger'
+        );
+        return;
+      }
     }
 
     const isSingle = newMemberData.maritalStatus === 'Lajang';
 
-    addMember({
-      ...newMemberData,
-      weddingDate: isSingle ? undefined : newMemberData.weddingDate,
-    });
+    try {
+      addMember({
+        ...newMemberData,
+        nik: cleanNik || undefined,
+        weddingDate: isSingle ? undefined : newMemberData.weddingDate,
+      });
 
-    setShowAddModal(false);
-    showToast(`Anggota baru ${newMemberData.name} berhasil didaftarkan dan diterbitkan NIA!`);
-    setNewMemberData({
-      name: '',
-      nik: '',
-      gender: 'Laki-laki',
-      birthPlace: 'Medan',
-      birthDate: '1998-01-01',
-      faculty: lookups.faculties[0] || 'Fakultas Teknik',
-      major: '',
-      entryYear: 2020,
-      graduationYear: 2024,
-      address: '',
-      city: 'Medan',
-      province: 'Sumatera Utara',
-      postalCode: '',
-      phone: '',
-      email: '',
-      profession: '',
-      company: '',
-      ktb: '',
-      maritalStatus: 'Lajang',
-      weddingDate: '',
-      socialMedia: {
-        linkedin: '',
-        instagram: '',
-        facebook: '',
-      },
-      status: 'ACTIVE',
-      type: 'ALUMNI',
-    });
+      setShowAddModal(false);
+      showToast(`Anggota baru ${newMemberData.name} berhasil didaftarkan dan diterbitkan NIA!`);
+      setNewMemberData({
+        name: '',
+        nik: '',
+        gender: 'Laki-laki',
+        birthPlace: 'Medan',
+        birthDate: '1998-01-01',
+        faculty: lookups.faculties[0] || 'Fakultas Teknik',
+        major: '',
+        entryYear: 2020,
+        graduationYear: 2024,
+        address: '',
+        city: 'Medan',
+        province: 'Sumatera Utara',
+        postalCode: '',
+        phone: '',
+        email: '',
+        profession: '',
+        company: '',
+        ktb: '',
+        maritalStatus: 'Lajang',
+        weddingDate: '',
+        socialMedia: {
+          linkedin: '',
+          instagram: '',
+          facebook: '',
+        },
+        status: 'ACTIVE',
+        type: 'ALUMNI',
+      });
+    } catch (err: any) {
+      showAlert('Gagal Menambahkan Anggota', err.message || 'Terjadi kesalahan sistem saat menyimpan anggota.', undefined, 'danger');
+    }
   };
 
   // Export to CSV Function
   const exportToCSV = (onlyFiltered: boolean) => {
     const dataToExport = onlyFiltered ? filtered : members;
     if (dataToExport.length === 0) {
-      alert('Tidak ada data anggota untuk diekspor.');
+      showAlert('Data Kosong', 'Tidak ada data anggota untuk diekspor.', undefined, 'warning');
       return;
     }
 
@@ -719,6 +801,250 @@ const MembersPage: React.FC = () => {
     showToast(`Berhasil mengekspor ${dataToExport.length} data anggota ke ${filename}!`);
   };
 
+  // 1. Download Template function for Excel / CSV
+  const handleDownloadTemplate = () => {
+    const headers = [
+      'Nama Lengkap',
+      'NIK (16 Digit)',
+      'Jenis Kelamin',
+      'Fakultas Asal USU',
+      'Program Studi / Jurusan',
+      'Tahun Masuk (Stambuk)',
+      'No HP / WhatsApp',
+      'Email',
+      'Kota Tinggal',
+      'Profesi / Pekerjaan',
+    ];
+
+    const sampleRows = [
+      [
+        'Dohar Parulian Sitompul',
+        '1271112304950011',
+        'Laki-laki',
+        'Fakultas Teknik',
+        'Teknik Elektro',
+        '2017',
+        '081234567891',
+        'dohar.sitompul@gmail.com',
+        'Medan',
+        'Electrical Engineer',
+      ],
+      [
+        'Ruth Natalia Simatupang',
+        '1271115510970022',
+        'Perempuan',
+        'Fakultas Kedokteran',
+        'Pendidikan Dokter',
+        '2019',
+        '081298765439',
+        'ruth.simatupang@gmail.com',
+        'Pematangsiantar',
+        'Dokter Umum',
+      ],
+      [
+        'Bona Ventura Tambunan',
+        '1271111102940033',
+        'Laki-laki',
+        'Fakultas Hukum',
+        'Ilmu Hukum',
+        '2016',
+        '081377889988',
+        'bona.tambunan@gmail.com',
+        'Jakarta',
+        'Legal Officer',
+      ],
+      [
+        'Ester Novita Silalahi',
+        '1271114406980044',
+        'Perempuan',
+        'Fakultas Ekonomi & Bisnis',
+        'Manajemen Keuangan',
+        '2018',
+        '081222334499',
+        'ester.silalahi@gmail.com',
+        'Medan',
+        'Financial Analyst',
+      ],
+    ];
+
+    const csvContent =
+      '\uFEFF' +
+      [
+        headers.map((h) => `"${h}"`).join(','),
+        ...sampleRows.map((r) => r.map((c) => `"${c}"`).join(',')),
+      ].join('\r\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'template_import_anggota_gmh.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast('Template Excel (.csv) berhasil diunduh.');
+  };
+
+  // Helper parse CSV row handling quoted fields
+  const parseCsvLine = (line: string, delimiter: string = ','): string[] => {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === delimiter && !inQuotes) {
+        result.push(current.trim().replace(/^"|"$/g, ''));
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    result.push(current.trim().replace(/^"|"$/g, ''));
+    return result;
+  };
+
+  // Process uploaded CSV / Excel text
+  const processUploadedFile = (file: File) => {
+    setUploadedFileName(file.name);
+    const reader = new FileReader();
+
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        if (!text || text.trim().length === 0) {
+          showAlert('Berkas Kosong', 'File yang dipilih tidak memiliki data atau kosong.', undefined, 'warning');
+          return;
+        }
+
+        const lines = text
+          .split(/\r\n|\n/)
+          .map((l) => l.trim())
+          .filter((l) => l.length > 0);
+
+        if (lines.length < 2) {
+          showAlert('Format File Tidak Sesuai', 'File harus memiliki baris header kolom dan minimal 1 baris data anggota.', undefined, 'warning');
+          return;
+        }
+
+        // Detect delimiter: semicolon or comma
+        const headerLine = lines[0];
+        const delimiter = headerLine.includes(';') && !headerLine.includes(',') ? ';' : ',';
+        const headers = parseCsvLine(headerLine, delimiter).map((h) => h.toLowerCase());
+
+        // Header mapping
+        const findColIndex = (keywords: string[], defaultIdx: number) => {
+          const idx = headers.findIndex((h) => keywords.some((k) => h.includes(k)));
+          return idx >= 0 ? idx : defaultIdx;
+        };
+
+        const nameIdx = findColIndex(['nama', 'name'], 0);
+        const nikIdx = findColIndex(['nik', 'ktp'], 1);
+        const genderIdx = findColIndex(['gender', 'kelamin'], 2);
+        const facultyIdx = findColIndex(['fakultas', 'faculty'], 3);
+        const majorIdx = findColIndex(['jurusan', 'prodi', 'program studi', 'major'], 4);
+        const yearIdx = findColIndex(['tahun', 'stambuk', 'masuk', 'year'], 5);
+        const phoneIdx = findColIndex(['hp', 'phone', 'wa', 'whatsapp', 'telp'], 6);
+        const emailIdx = findColIndex(['email', 'surel'], 7);
+        const cityIdx = findColIndex(['kota', 'city'], 8);
+        const professionIdx = findColIndex(['profesi', 'pekerjaan', 'job'], 9);
+
+        const processed: DryRunRow[] = [];
+        const seenNiksInFile = new Set<string>();
+
+        for (let i = 1; i < lines.length; i++) {
+          const rowCols = parseCsvLine(lines[i], delimiter);
+          if (rowCols.length === 0 || rowCols.every((c) => !c)) continue;
+
+          const rawName = rowCols[nameIdx] || '';
+          const rawNik = (rowCols[nikIdx] || '').replace(/[^0-9]/g, '');
+          const rawGender = (rowCols[genderIdx] || '').toLowerCase().startsWith('p') ? 'Perempuan' : 'Laki-laki';
+          const rawFaculty = rowCols[facultyIdx] || lookups.faculties[0] || 'Fakultas Teknik';
+          const rawMajor = rowCols[majorIdx] || 'Umum';
+          const rawYear = parseInt((rowCols[yearIdx] || '').replace(/[^0-9]/g, ''), 10) || new Date().getFullYear();
+          const rawPhone = rowCols[phoneIdx] || '';
+          const rawEmail = rowCols[emailIdx] || '';
+          const rawCity = rowCols[cityIdx] || 'Medan';
+          const rawProfession = rowCols[professionIdx] || 'Alumni';
+
+          let isError = false;
+          let reason = '';
+
+          if (!rawName.trim()) {
+            isError = true;
+            reason = 'Nama lengkap wajib diisi.';
+          } else if (!rawNik) {
+            isError = true;
+            reason = 'NIK wajib diisi.';
+          } else if (rawNik.length !== 16) {
+            isError = true;
+            reason = `NIK harus tepat 16 digit (terdeteksi ${rawNik.length} digit).`;
+          } else if (seenNiksInFile.has(rawNik)) {
+            isError = true;
+            reason = `NIK ${rawNik} terduplikasi di baris sebelumnya dalam file ini.`;
+          } else {
+            const existingMember = members.find((m) => m.nik && m.nik.trim() === rawNik);
+            if (existingMember) {
+              isError = true;
+              reason = `NIK sudah terdaftar di database yayasan a.n. ${existingMember.name} (${existingMember.nia}).`;
+            } else {
+              seenNiksInFile.add(rawNik);
+            }
+          }
+
+          processed.push({
+            index: processed.length + 1,
+            name: rawName,
+            nik: rawNik,
+            gender: rawGender,
+            faculty: rawFaculty,
+            major: rawMajor,
+            entryYear: rawYear,
+            phone: rawPhone,
+            email: rawEmail,
+            city: rawCity,
+            profession: rawProfession,
+            status: isError ? 'ERROR' : 'VALID',
+            errorReason: reason || undefined,
+          });
+        }
+
+        if (processed.length === 0) {
+          showAlert('Data Tidak Terdeteksi', 'Tidak ada baris data anggota yang dapat dibaca dari file.', undefined, 'warning');
+          return;
+        }
+
+        setDryRunRows(processed);
+        setImportSummary({
+          total: processed.length,
+          valid: processed.filter((p) => p.status === 'VALID').length,
+          error: processed.filter((p) => p.status === 'ERROR').length,
+        });
+        setBulkStep('DRY_RUN');
+      } catch (err: any) {
+        console.error('Failed to parse file:', err);
+        showAlert('Gagal Memproses File', 'Terjadi kesalahan saat memproses file: ' + err.message, undefined, 'danger');
+      }
+    };
+
+    reader.onerror = () => {
+      showAlert('Gagal Membaca File', 'Gagal membaca berkas dari komputer lokal.', undefined, 'danger');
+    };
+
+    reader.readAsText(file, 'UTF-8');
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    processUploadedFile(file);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   // Sample data generator for Dry-Run
   const handleLoadSampleExcel = () => {
     const rawData = [
@@ -772,6 +1098,7 @@ const MembersPage: React.FC = () => {
       },
     ];
 
+    const seenNiksInSample = new Set<string>();
     const processed: DryRunRow[] = rawData.map((r, i) => {
       let isError = false;
       let reason = '';
@@ -781,6 +1108,17 @@ const MembersPage: React.FC = () => {
       } else if (!r.name) {
         isError = true;
         reason = 'Nama lengkap wajib diisi.';
+      } else if (seenNiksInSample.has(r.nik)) {
+        isError = true;
+        reason = `NIK ${r.nik} terduplikasi di dalam file.`;
+      } else {
+        const existingMember = members.find((m) => m.nik && m.nik.trim() === r.nik);
+        if (existingMember) {
+          isError = true;
+          reason = `NIK sudah terdaftar di sistem atas nama ${existingMember.name} (${existingMember.nia}).`;
+        } else {
+          seenNiksInSample.add(r.nik);
+        }
       }
 
       return {
@@ -797,13 +1135,25 @@ const MembersPage: React.FC = () => {
       valid: processed.filter((p) => p.status === 'VALID').length,
       error: processed.filter((p) => p.status === 'ERROR').length,
     });
+    setUploadedFileName('Simulasi_Contoh_Excel_4_Baris.xlsx');
     setBulkStep('DRY_RUN');
   };
 
-  const handleCommitBulkImport = () => {
+  const handleCommitBulkImport = async () => {
     const validRows = dryRunRows.filter((r) => r.status === 'VALID');
-    addBulkMembers(
-      validRows.map((r) => ({
+    if (validRows.length === 0) return;
+
+    setIsSaving(true);
+    setSaveProgress({
+      currentBatch: 1,
+      totalBatches: Math.ceil(validRows.length / 100),
+      processed: 0,
+      total: validRows.length,
+      percent: 0,
+    });
+
+    try {
+      const membersToImport = validRows.map((r) => ({
         name: r.name,
         nik: r.nik,
         gender: r.gender,
@@ -814,12 +1164,22 @@ const MembersPage: React.FC = () => {
         phone: r.phone,
         email: r.email,
         profession: r.profession,
-        status: 'ACTIVE',
-        type: 'ALUMNI',
-      }))
-    );
-    setBulkStep('SUCCESS');
-    showToast(`Berhasil mengimpor ${validRows.length} data anggota baru!`);
+        status: 'ACTIVE' as const,
+        type: 'ALUMNI' as const,
+      }));
+
+      const res = await addBulkMembersChunked(membersToImport, (progress) => {
+        setSaveProgress(progress);
+      });
+
+      setBulkStep('SUCCESS');
+      showToast(`Berhasil mengimpor ${res.count} data alumni ke database yayasan!`);
+    } catch (err: any) {
+      console.error('Batch import failed:', err);
+      showAlert('Gagal Menyimpan Data', `Terjadi kesalahan saat menyimpan data ke database: ${err.message || 'Terjadi kesalahan jaringan'}`, undefined, 'danger');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -2559,14 +2919,52 @@ const MembersPage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="form-label">NIK (16 Digit) *</label>
+                    <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>NIK (16 Digit) *</span>
+                      {newMemberData.nik && (
+                        <span style={{ fontSize: 11, color: newMemberData.nik.replace(/[^0-9]/g, '').length === 16 ? 'var(--gmh-green)' : 'var(--gmh-text-muted)', fontWeight: 600 }}>
+                          {newMemberData.nik.replace(/[^0-9]/g, '').length}/16 digit
+                        </span>
+                      )}
+                    </label>
                     <input
                       type="text"
+                      maxLength={16}
                       className="form-input"
+                      placeholder="Contoh: 1271010101960001"
+                      style={{
+                        borderColor: duplicateNikMember ? 'var(--gmh-danger)' : undefined,
+                        background: duplicateNikMember ? '#fff1f2' : undefined,
+                      }}
                       value={newMemberData.nik}
-                      onChange={(e) => setNewMemberData({ ...newMemberData, nik: e.target.value })}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, '');
+                        setNewMemberData({ ...newMemberData, nik: val });
+                      }}
                       required
                     />
+                    {duplicateNikMember && (
+                      <div
+                        style={{
+                          marginTop: 6,
+                          padding: '8px 12px',
+                          background: '#fff1f2',
+                          border: '1px solid #fecdd3',
+                          borderRadius: 6,
+                          fontSize: 12,
+                          color: '#9f1239',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        <AlertTriangle size={16} style={{ flexShrink: 0, color: '#e11d48' }} />
+                        <div>
+                          <strong>NIK Terdeteksi Duplikat:</strong> Sudah terdaftar atas nama <strong>{duplicateNikMember.name}</strong> ({duplicateNikMember.nia}).
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="form-label">Jenis Kelamin</label>
@@ -2846,87 +3244,205 @@ const MembersPage: React.FC = () => {
             <div className="modal-body">
               {bulkStep === 'UPLOAD' && (
                 <div>
+                  {/* Hidden file input */}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept=".csv, .txt, text/csv, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    style={{ display: 'none' }}
+                    onChange={handleFileUpload}
+                  />
+
+                  {/* Clickable Dropzone Area */}
                   <div
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.currentTarget.style.borderColor = 'var(--gmh-green)';
+                      e.currentTarget.style.background = '#f0fdf4';
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault();
+                      e.currentTarget.style.borderColor = 'var(--gmh-border-dark)';
+                      e.currentTarget.style.background = 'var(--gmh-surface-2)';
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.currentTarget.style.borderColor = 'var(--gmh-border-dark)';
+                      e.currentTarget.style.background = 'var(--gmh-surface-2)';
+                      const file = e.dataTransfer.files?.[0];
+                      if (file) processUploadedFile(file);
+                    }}
                     style={{
                       border: '2px dashed var(--gmh-border-dark)',
-                      borderRadius: 8,
-                      padding: 40,
+                      borderRadius: 10,
+                      padding: '36px 20px',
                       textAlign: 'center',
                       background: 'var(--gmh-surface-2)',
                       marginBottom: 20,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
                     }}
                   >
-                    <Upload size={36} color="var(--gmh-gold)" style={{ marginBottom: 12 }} />
-                    <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>
-                      Pilih file Excel (.xlsx / .csv) daftar alumni USU
+                    <div
+                      style={{
+                        width: 56,
+                        height: 56,
+                        borderRadius: '50%',
+                        background: '#ecfdf5',
+                        color: 'var(--gmh-green)',
+                        display: 'grid',
+                        placeItems: 'center',
+                        margin: '0 auto 12px',
+                      }}
+                    >
+                      <Upload size={28} />
                     </div>
-                    <div style={{ fontSize: 12, color: 'var(--gmh-text-muted)', marginBottom: 16 }}>
-                      Kolom wajib: Nama Lengkap, NIK (16 digit), Fakultas, Jurusan, Tahun Masuk, Nomor HP/WA.
+
+                    <div style={{ fontWeight: 700, fontSize: 16, color: '#0f172a', marginBottom: 4 }}>
+                      Klik untuk Memilih File atau Drag & Drop ke Sini
                     </div>
-                    <button className="btn btn-primary btn-sm" onClick={handleLoadSampleExcel}>
-                      Simulasikan Unggah Contoh Excel (4 Baris)
-                    </button>
+                    <div style={{ fontSize: 12.5, color: 'var(--gmh-text-muted)', marginBottom: 18, maxWidth: 520, margin: '0 auto 18px', lineHeight: 1.5 }}>
+                      Mendukung format file <strong>.xlsx</strong> dan <strong>.csv</strong>. Kolom wajib: Nama Lengkap, NIK (16 digit), Fakultas, Jurusan, Tahun Masuk, Nomor HP/WA.
+                    </div>
+
+                    <div
+                      style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        onClick={() => fileInputRef.current?.click()}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 650 }}
+                      >
+                        <Upload size={14} /> Pilih File dari Komputer
+                      </button>
+
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        onClick={handleDownloadTemplate}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 650 }}
+                        title="Unduh format template CSV/Excel yang sudah disesuaikan dengan sistem"
+                      >
+                        <Download size={14} /> Unduh Format Template Excel (.csv)
+                      </button>
+
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        onClick={handleLoadSampleExcel}
+                        style={{ fontSize: 12, color: 'var(--gmh-text-muted)' }}
+                      >
+                        Simulasikan Unggah Contoh (4 Baris)
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
 
               {bulkStep === 'DRY_RUN' && (
                 <div>
-                  <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-                    <div className="card" style={{ flex: 1, padding: '12px 16px' }}>
-                      <div style={{ fontSize: 11, color: 'var(--gmh-text-muted)' }}>Total Baris Terdeteksi</div>
-                      <div style={{ fontSize: 20, fontWeight: 700 }}>{importSummary.total}</div>
-                    </div>
-                    <div className="card" style={{ flex: 1, padding: '12px 16px', borderLeft: '4px solid var(--gmh-green)' }}>
-                      <div style={{ fontSize: 11, color: 'var(--gmh-text-muted)' }}>Valid & Siap Disimpan</div>
-                      <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--gmh-green)' }}>{importSummary.valid}</div>
-                    </div>
-                    <div className="card" style={{ flex: 1, padding: '12px 16px', borderLeft: '4px solid var(--gmh-danger)' }}>
-                      <div style={{ fontSize: 11, color: 'var(--gmh-text-muted)' }}>Error Validasi</div>
-                      <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--gmh-danger)' }}>{importSummary.error}</div>
-                    </div>
-                  </div>
+                  {isSaving ? (
+                    <div style={{ textAlign: 'center', padding: '36px 16px' }}>
+                      <div
+                        style={{
+                          width: 44,
+                          height: 44,
+                          border: '4px solid #e2e8f0',
+                          borderTopColor: 'var(--gmh-green)',
+                          borderRadius: '50%',
+                          animation: 'spin 0.8s linear infinite',
+                          margin: '0 auto 16px',
+                        }}
+                      />
+                      <h4 style={{ fontSize: 17, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>
+                        Menyimpan ke Database Yayasan...
+                      </h4>
+                      <p style={{ color: 'var(--gmh-text-muted)', fontSize: 13, marginBottom: 18 }}>
+                        Memproses <strong>Batch {saveProgress.currentBatch}</strong> dari {saveProgress.totalBatches} ({saveProgress.processed} dari {saveProgress.total} data tersimpan bertahap per 100 baris)
+                      </p>
 
-                  <div className="table-wrapper" style={{ maxHeight: 280, overflowY: 'auto' }}>
-                    <table className="table">
-                      <thead>
-                        <tr>
-                          <th>Baris</th>
-                          <th>Status</th>
-                          <th>Nama Lengkap</th>
-                          <th>NIK</th>
-                          <th>Fakultas / Jurusan</th>
-                          <th>Tahun Masuk</th>
-                          <th>Catatan Validasi</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {dryRunRows.map((r) => (
-                          <tr key={r.index} style={{ background: r.status === 'ERROR' ? '#fff1f2' : undefined }}>
-                            <td>#{r.index}</td>
-                            <td>
-                              {r.status === 'VALID' ? (
-                                <span className="badge badge-success" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                  <CheckCircle size={10} /> Valid
-                                </span>
-                              ) : (
-                                <span className="badge badge-danger" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                  <AlertTriangle size={10} /> Error
-                                </span>
-                              )}
-                            </td>
-                            <td style={{ fontWeight: 600 }}>{r.name}</td>
-                            <td><code>{r.nik}</code></td>
-                            <td>{r.faculty} - {r.major}</td>
-                            <td>{r.entryYear}</td>
-                            <td style={{ fontSize: 11.5, color: r.status === 'ERROR' ? 'var(--gmh-danger)' : 'var(--gmh-text-muted)' }}>
-                              {r.errorReason || 'Semua kolom valid'}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      <div style={{ width: '100%', maxWidth: 440, height: 12, background: '#f1f5f9', borderRadius: 999, margin: '0 auto', overflow: 'hidden', border: '1px solid var(--gmh-border)' }}>
+                        <div
+                          style={{
+                            width: `${saveProgress.percent}%`,
+                            height: '100%',
+                            background: 'var(--gmh-green)',
+                            borderRadius: 999,
+                            transition: 'width 0.25s ease',
+                          }}
+                        />
+                      </div>
+                      <div style={{ marginTop: 8, fontSize: 13, fontWeight: 700, color: 'var(--gmh-green)' }}>
+                        {saveProgress.percent}% Selesai
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {uploadedFileName && (
+                        <div style={{ fontSize: 13, color: 'var(--gmh-text-muted)', marginBottom: 14 }}>
+                          Berkas yang diproses: <strong style={{ color: 'var(--gmh-text-main)' }}>{uploadedFileName}</strong>
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+                        <div className="card" style={{ flex: 1, padding: '12px 16px' }}>
+                          <div style={{ fontSize: 11, color: 'var(--gmh-text-muted)' }}>Total Baris Terdeteksi</div>
+                          <div style={{ fontSize: 20, fontWeight: 700 }}>{importSummary.total}</div>
+                        </div>
+                        <div className="card" style={{ flex: 1, padding: '12px 16px', borderLeft: '4px solid var(--gmh-green)' }}>
+                          <div style={{ fontSize: 11, color: 'var(--gmh-text-muted)' }}>Valid & Siap Disimpan</div>
+                          <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--gmh-green)' }}>{importSummary.valid}</div>
+                        </div>
+                        <div className="card" style={{ flex: 1, padding: '12px 16px', borderLeft: '4px solid var(--gmh-danger)' }}>
+                          <div style={{ fontSize: 11, color: 'var(--gmh-text-muted)' }}>Error Validasi</div>
+                          <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--gmh-danger)' }}>{importSummary.error}</div>
+                        </div>
+                      </div>
+
+                      <div className="table-wrapper" style={{ maxHeight: 280, overflowY: 'auto' }}>
+                        <table className="table">
+                          <thead>
+                            <tr>
+                              <th>Baris</th>
+                              <th>Status</th>
+                              <th>Nama Lengkap</th>
+                              <th>NIK</th>
+                              <th>Fakultas / Jurusan</th>
+                              <th>Tahun Masuk</th>
+                              <th>Catatan Validasi</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {dryRunRows.map((r) => (
+                              <tr key={r.index} style={{ background: r.status === 'ERROR' ? '#fff1f2' : undefined }}>
+                                <td>#{r.index}</td>
+                                <td>
+                                  {r.status === 'VALID' ? (
+                                    <span className="badge badge-success" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                      <CheckCircle size={10} /> Valid
+                                    </span>
+                                  ) : (
+                                    <span className="badge badge-danger" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                      <AlertTriangle size={10} /> Error
+                                    </span>
+                                  )}
+                                </td>
+                                <td style={{ fontWeight: 600 }}>{r.name}</td>
+                                <td><code>{r.nik}</code></td>
+                                <td>{r.faculty} - {r.major}</td>
+                                <td>{r.entryYear}</td>
+                                <td style={{ fontSize: 11.5, color: r.status === 'ERROR' ? 'var(--gmh-danger)' : 'var(--gmh-text-muted)' }}>
+                                  {r.errorReason || 'Semua kolom valid'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -2949,15 +3465,24 @@ const MembersPage: React.FC = () => {
               )}
               {bulkStep === 'DRY_RUN' && (
                 <>
-                  <button className="btn btn-outline btn-sm" onClick={() => setBulkStep('UPLOAD')}>
+                  <button
+                    className="btn btn-outline btn-sm"
+                    disabled={isSaving}
+                    onClick={() => setBulkStep('UPLOAD')}
+                  >
                     Unggah Ulang
                   </button>
                   <button
                     className="btn btn-primary btn-sm"
-                    disabled={importSummary.valid === 0}
+                    disabled={importSummary.valid === 0 || isSaving}
                     onClick={handleCommitBulkImport}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
                   >
-                    Simpan {importSummary.valid} Baris Valid
+                    {isSaving ? (
+                      <>Menyimpan ({saveProgress.percent}%)...</>
+                    ) : (
+                      <>Simpan {importSummary.valid} Baris Valid (Batch 100)</>
+                    )}
                   </button>
                 </>
               )}
@@ -3186,6 +3711,142 @@ const MembersPage: React.FC = () => {
                   <Filter size={14} /> Terapkan Filter
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ========================================================================= */}
+      {/* 6. ENTERPRISE ALERT / NOTIFICATION DIALOG (Replaces Native Alert)          */}
+      {/* ========================================================================= */}
+      {modalAlert.isOpen && (
+        <div
+          className="modal-overlay"
+          style={{
+            zIndex: 99999,
+            backdropFilter: 'blur(4px)',
+            background: 'rgba(15, 23, 42, 0.65)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+          }}
+          onClick={() => setModalAlert({ ...modalAlert, isOpen: false })}
+        >
+          <div
+            className="modal"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: 480,
+              width: '100%',
+              borderRadius: 16,
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              border: '1px solid var(--gmh-border)',
+              background: '#ffffff',
+              overflow: 'hidden',
+              padding: 0,
+            }}
+          >
+            <div style={{ padding: '28px 24px 20px', textAlign: 'center' }}>
+              <div
+                style={{
+                  width: 58,
+                  height: 58,
+                  borderRadius: '50%',
+                  background:
+                    modalAlert.type === 'danger'
+                      ? '#fee2e2'
+                      : modalAlert.type === 'warning'
+                      ? '#fef3c7'
+                      : '#ecfdf5',
+                  color:
+                    modalAlert.type === 'danger'
+                      ? '#dc2626'
+                      : modalAlert.type === 'warning'
+                      ? '#d97706'
+                      : 'var(--gmh-green)',
+                  display: 'grid',
+                  placeItems: 'center',
+                  margin: '0 auto 16px',
+                }}
+              >
+                {modalAlert.type === 'danger' ? (
+                  <AlertTriangle size={30} />
+                ) : modalAlert.type === 'warning' ? (
+                  <AlertCircle size={30} />
+                ) : (
+                  <CheckCircle size={30} />
+                )}
+              </div>
+
+              <h3
+                style={{
+                  fontSize: 18,
+                  fontWeight: 750,
+                  color: '#0f172a',
+                  marginBottom: 10,
+                  letterSpacing: '-0.01em',
+                }}
+              >
+                {modalAlert.title}
+              </h3>
+
+              <p
+                style={{
+                  fontSize: 13.5,
+                  color: '#475569',
+                  lineHeight: 1.55,
+                  margin: '0 auto 16px',
+                  maxWidth: 400,
+                }}
+              >
+                {modalAlert.message}
+              </p>
+
+              {modalAlert.detail && (
+                <div
+                  style={{
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 8,
+                    padding: '10px 14px',
+                    fontSize: 12.5,
+                    color: '#1e293b',
+                    fontWeight: 550,
+                    textAlign: 'left',
+                    marginBottom: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}
+                >
+                  <ShieldCheck size={16} color="var(--gmh-green)" style={{ flexShrink: 0 }} />
+                  <span>{modalAlert.detail}</span>
+                </div>
+              )}
+            </div>
+
+            <div
+              style={{
+                background: '#f8fafc',
+                borderTop: '1px solid var(--gmh-border)',
+                padding: '14px 24px',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: 8,
+              }}
+            >
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => setModalAlert({ ...modalAlert, isOpen: false })}
+                style={{
+                  minWidth: 120,
+                  fontWeight: 650,
+                  borderRadius: 8,
+                }}
+              >
+                Saya Mengerti
+              </button>
             </div>
           </div>
         </div>

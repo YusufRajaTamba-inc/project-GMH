@@ -70,6 +70,16 @@ interface MemberStoreContextValue {
   refreshFromApi: () => Promise<void>;
   addMember: (member: Omit<Member, 'id' | 'nia'>) => Member;
   addBulkMembers: (newMembers: Omit<Member, 'id' | 'nia'>[]) => number;
+  addBulkMembersChunked: (
+    newMembers: Omit<Member, 'id' | 'nia'>[],
+    onProgress?: (progress: {
+      currentBatch: number;
+      totalBatches: number;
+      processed: number;
+      total: number;
+      percent: number;
+    }) => void
+  ) => Promise<{ success: boolean; count: number }>;
   updateMember: (id: string, updates: Partial<Member>) => void;
   deleteMember: (id: string) => void;
   submitPublicRegistration: (reg: Omit<Registration, 'id' | 'ticket' | 'submittedAt' | 'status'>) => string;
@@ -84,6 +94,7 @@ const MemberStoreContext = createContext<MemberStoreContextValue>({
   refreshFromApi: async () => {},
   addMember: () => ({} as Member),
   addBulkMembers: () => 0,
+  addBulkMembersChunked: async () => ({ success: true, count: 0 }),
   updateMember: () => {},
   deleteMember: () => {},
   submitPublicRegistration: () => '',
@@ -215,6 +226,16 @@ export const MemberStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   const addMember = (memberData: Omit<Member, 'id' | 'nia'>): Member => {
+    if (memberData.nik && memberData.nik.trim()) {
+      const cleanNik = memberData.nik.trim();
+      const existing = members.find((m) => m.nik && m.nik.trim() === cleanNik);
+      if (existing) {
+        throw new Error(
+          `NIK ${cleanNik} sudah terdaftar atas nama ${existing.name} (${existing.nia}). Data anggota dengan NIK yang sama tidak dapat ditambahkan.`
+        );
+      }
+    }
+
     const newMember: Member = {
       ...memberData,
       id: String(Date.now()),
@@ -252,40 +273,66 @@ export const MemberStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     return newMember;
   };
 
+  const addBulkMembersChunked = async (
+    newMembersData: Omit<Member, 'id' | 'nia'>[],
+    onProgress?: (progress: {
+      currentBatch: number;
+      totalBatches: number;
+      processed: number;
+      total: number;
+      percent: number;
+    }) => void
+  ): Promise<{ success: boolean; count: number }> => {
+    const BATCH_SIZE = 100;
+    const total = newMembersData.length;
+    if (total === 0) return { success: true, count: 0 };
+
+    const totalBatches = Math.ceil(total / BATCH_SIZE);
+    let processedCount = 0;
+
+    for (let b = 0; b < totalBatches; b++) {
+      const chunk = newMembersData.slice(b * BATCH_SIZE, (b + 1) * BATCH_SIZE);
+      const validRows = chunk.map((m) => ({
+        name: m.name,
+        full_name: m.name,
+        nik: m.nik || '',
+        gender: m.gender === 'Perempuan' ? 'Perempuan' : 'Laki-laki',
+        faculty: m.faculty || 'Fakultas Teknik',
+        major: m.major || '-',
+        entry_year: m.entryYear || 2020,
+        entryYear: m.entryYear || 2020,
+        phone_number: m.phone || '',
+        phone: m.phone || '',
+        email: m.email || '',
+        city: m.city || 'Medan',
+        profession: m.profession || '-',
+        company: m.company || '',
+        ktb_group: m.ktb || '',
+      }));
+
+      await api.members.bulkCommit(validRows);
+      processedCount += chunk.length;
+
+      if (onProgress) {
+        onProgress({
+          currentBatch: b + 1,
+          totalBatches,
+          processed: processedCount,
+          total,
+          percent: Math.round((processedCount / total) * 100),
+        });
+      }
+    }
+
+    await refreshFromApi();
+    return { success: true, count: processedCount };
+  };
+
   const addBulkMembers = (newMembersData: Omit<Member, 'id' | 'nia'>[]): number => {
-    const year = new Date().getFullYear();
-    let currentCount = members.length;
-    const createdList: Member[] = newMembersData.map((data, idx) => {
-      currentCount++;
-      return {
-        ...data,
-        id: `bulk-${Date.now()}-${idx}`,
-        nia: `GMH-${year}-${String(currentCount).padStart(5, '0')}`,
-        createdAt: new Date().toISOString().split('T')[0],
-      };
-    });
-    setMembers((prev) => [...createdList, ...prev]);
-
-    const validRows = newMembersData.map((m) => ({
-      full_name: m.name,
-      nik: m.nik || '',
-      gender: m.gender === 'Perempuan' ? 'F' : 'M',
-      faculty: m.faculty,
-      major: m.major,
-      entry_year: m.entryYear,
-      phone_number: m.phone || '',
-      email: m.email || '',
-      city: m.city,
-      profession: m.profession,
-      company: m.company || '',
-      ktb_group: m.ktb || '',
-    }));
-
-    api.members.bulkCommit(validRows)
-      .then(() => refreshFromApi())
-      .catch((err) => console.error('Failed to bulk commit members via API:', err));
-
-    return createdList.length;
+    addBulkMembersChunked(newMembersData).catch((err) =>
+      console.error('Failed to commit bulk members chunked:', err)
+    );
+    return newMembersData.length;
   };
 
   const updateMember = async (id: string, updates: Partial<Member>) => {
@@ -456,6 +503,7 @@ export const MemberStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
         refreshFromApi,
         addMember,
         addBulkMembers,
+        addBulkMembersChunked,
         updateMember,
         deleteMember,
         submitPublicRegistration,

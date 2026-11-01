@@ -2018,7 +2018,7 @@ const MembersPage: React.FC = () => {
                     <ShieldCheck size={16} color="var(--gmh-gold)" /> Jejak Kepengurusan &amp; Tugas Struktur
                   </div>
                   <span style={{ fontSize: 11, color: 'var(--gmh-text-muted)', fontWeight: 500 }}>
-                    Disinkronkan dari Modul Struktur &amp; Kepengurusan (database)
+                    Disinkronkan dari Modul Struktur &amp; Kepengurusan
                   </span>
                 </div>
                 <MemberOrgHistory memberId={selectedMember.id} />

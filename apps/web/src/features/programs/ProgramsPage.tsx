@@ -780,7 +780,7 @@ const ProgramsPage: React.FC = () => {
           <div className="card">
             <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
               <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Calendar size={16} color="var(--gmh-gold)" /> Agenda Program Yayasan (Database API)
+                <Calendar size={16} color="var(--gmh-gold)" /> Agenda Program Yayasan
               </div>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
                 <div style={{ position: 'relative', width: 220 }}>

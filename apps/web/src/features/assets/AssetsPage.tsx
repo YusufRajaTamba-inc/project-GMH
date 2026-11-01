@@ -3010,7 +3010,7 @@ const AssetsPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="form-label">Lokasi Penempatan Ruangan (Database Lookups)</label>
+                  <label className="form-label">Lokasi Penempatan Ruangan</label>
                   <select
                     className="form-select"
                     value={addRoom}
@@ -3074,7 +3074,7 @@ const AssetsPage: React.FC = () => {
                   disabled={isSubmittingAdd}
                   style={{ display: 'flex', alignItems: 'center', gap: 6 }}
                 >
-                  <Save size={14} /> {isSubmittingAdd ? 'Menyimpan...' : 'Simpan Aset ke Database'}
+                  <Save size={14} /> {isSubmittingAdd ? 'Menyimpan...' : 'Simpan Aset'}
                 </button>
               </div>
             </form>
@@ -3207,7 +3207,7 @@ const AssetsPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="form-label">Lokasi Penempatan Ruangan (Database Lookups)</label>
+                  <label className="form-label">Lokasi Penempatan Ruangan</label>
                   <select
                     className="form-select"
                     value={editRoom}
@@ -3365,7 +3365,7 @@ const AssetsPage: React.FC = () => {
 
                 <div>
                   <label className="form-label" style={{ fontWeight: 600 }}>
-                    Relasi Anggota Yayasan GMH PA KMK (Database Members)
+                    Pilih Anggota / Alumni Yayasan (Opsional)
                   </label>
                   <select
                     className="form-select"
@@ -3389,9 +3389,6 @@ const AssetsPage: React.FC = () => {
                       </option>
                     ))}
                   </select>
-                  <div style={{ fontSize: 11, color: '#0369a1', marginTop: 3 }}>
-                    ✓ Memilih anggota akan langsung mengikat relasi database <code>borrower_member_id</code> ke tabel anggota.
-                  </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 12 }}>

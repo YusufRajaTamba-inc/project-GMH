@@ -380,17 +380,21 @@ export const OrganizationPage: React.FC = () => {
     }
   }, [divisionMemberFilterStatus]);
 
-  // Initial load
+  // Initial load: load stats, search lookup cache, and preload all tabs data
   useEffect(() => {
     void loadStats();
     void searchMembers('');
-  }, [loadStats, searchMembers]);
+    void loadCommittees();
+    void loadPositions();
+    void loadStaff();
+    void loadDivisions();
+  }, [loadStats, searchMembers, loadCommittees, loadPositions, loadStaff, loadDivisions]);
 
   useEffect(() => {
     if (activeTab === 'committees') void loadCommittees();
-    if (activeTab === 'positions') void loadPositions();
-    if (activeTab === 'staff') void loadStaff();
-    if (activeTab === 'divisions') void loadDivisions();
+    else if (activeTab === 'positions') void loadPositions();
+    else if (activeTab === 'staff') void loadStaff();
+    else if (activeTab === 'divisions') void loadDivisions();
   }, [activeTab, loadCommittees, loadPositions, loadStaff, loadDivisions]);
 
   // Pagination for committees
@@ -955,7 +959,7 @@ export const OrganizationPage: React.FC = () => {
           <Calendar size={15} color={activeTab === 'committees' ? '#047857' : '#94a3b8'} />
           <span>1. Riwayat Kepanitiaan</span>
           <span style={{ fontSize: 11, fontWeight: 750, padding: '2px 7px', borderRadius: 99, background: activeTab === 'committees' ? '#ecfdf5' : '#e2e8f0', color: activeTab === 'committees' ? '#047857' : '#64748b' }}>
-            {committees.length}
+            {stats.totalCommittees || committees.length}
           </span>
         </button>
 
@@ -981,7 +985,7 @@ export const OrganizationPage: React.FC = () => {
           <ShieldCheck size={15} color={activeTab === 'positions' ? '#047857' : '#94a3b8'} />
           <span>2. Pengurus Inti Yayasan</span>
           <span style={{ fontSize: 11, fontWeight: 750, padding: '2px 7px', borderRadius: 99, background: activeTab === 'positions' ? '#ecfdf5' : '#e2e8f0', color: activeTab === 'positions' ? '#047857' : '#64748b' }}>
-            {positions.length}
+            {stats.totalPositions || positions.length}
           </span>
         </button>
 
@@ -1007,7 +1011,7 @@ export const OrganizationPage: React.FC = () => {
           <Briefcase size={15} color={activeTab === 'staff' ? '#047857' : '#94a3b8'} />
           <span>3. Staf Full-Time</span>
           <span style={{ fontSize: 11, fontWeight: 750, padding: '2px 7px', borderRadius: 99, background: activeTab === 'staff' ? '#ecfdf5' : '#e2e8f0', color: activeTab === 'staff' ? '#047857' : '#64748b' }}>
-            {staffList.length}
+            {stats.totalStaff || staffList.length}
           </span>
         </button>
 
@@ -1033,7 +1037,7 @@ export const OrganizationPage: React.FC = () => {
           <Layers size={15} color={activeTab === 'divisions' ? '#047857' : '#94a3b8'} />
           <span>4. Divisi & Departemen</span>
           <span style={{ fontSize: 11, fontWeight: 750, padding: '2px 7px', borderRadius: 99, background: activeTab === 'divisions' ? '#ecfdf5' : '#e2e8f0', color: activeTab === 'divisions' ? '#047857' : '#64748b' }}>
-            {divisions.length}
+            {stats.totalDivisions || divisions.length}
           </span>
         </button>
       </div>

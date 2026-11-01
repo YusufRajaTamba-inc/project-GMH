@@ -3,8 +3,17 @@
 // P1-A: Semua request menggunakan credentials:'include' untuk HttpOnly Cookie
 // ============================================================================
 
+// Base URL API.
+// - Production (build): HARUS berupa path relatif "/api/v1" agar request di-proxy
+//   oleh nginx ke service "api" pada jaringan internal compose (lihat apps/web/nginx.conf).
+//   Jangan hardcode localhost di build produksi.
+// - Development (vite dev): memakai localhost:4000 karena nginx tidak ada.
+// Fallback aman: localhost hanya untuk mode development.
+const DEFAULT_API_BASE_URL =
+  (import.meta as any).env?.MODE === 'production' ? '/api/v1' : 'http://localhost:4000/api/v1';
+
 export const API_BASE_URL =
-  (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:4000/api/v1';
+  (import.meta as any).env?.VITE_API_BASE_URL || DEFAULT_API_BASE_URL;
 
 async function request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
@@ -365,6 +374,17 @@ export const api = {
       request(`/organization/division-members/${assignmentId}`, { method: 'PUT', body: JSON.stringify(data) }),
     deleteDivisionMember: (assignmentId: string) =>
       request(`/organization/division-members/${assignmentId}`, { method: 'DELETE' }),
+
+    // Integrasi feature anggota & alumni: jejak kepengurusan satu anggota dari DB
+    getMemberProfile: (memberId: string) =>
+      request<{
+        success: boolean;
+        member: any;
+        committees: any[];
+        positions: any[];
+        staff: any[];
+        divisions: any[];
+      }>(`/organization/members/${memberId}/profile`),
   },
   notifications: {
     getAll: () =>

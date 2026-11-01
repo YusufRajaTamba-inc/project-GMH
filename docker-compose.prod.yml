@@ -43,6 +43,9 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      args:
+        # Base URL API yang di-bake ke bundle Vite. Path relatif → nginx proxy ke service "api".
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
     restart: unless-stopped
     depends_on:
       api:

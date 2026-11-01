@@ -1033,4 +1033,84 @@ router.delete('/division-members/:memberAssignmentId', authenticateJwt, async (r
   }
 });
 
+// ============================================================================
+// PROFIL ORGANISASI SATU ANGGOTA (Integrasi Feature Anggota & Alumni)
+// Menggabungkan seluruh jejak kepengurusan anggota dari database:
+// kepanitiaan, jabatan struktur (tenure), staf, dan keanggotaan divisi.
+// ============================================================================
+router.get('/members/:memberId/profile', authenticateJwt, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { memberId } = req.params;
+
+    const memberRes = await db.query(
+      `SELECT m.id, m.member_number, m.full_name, m.phone_number, m.email,
+              m.member_type, m.status, m.is_active,
+              ap.faculty, ap.major, ap.entry_year, ap.graduation_year,
+              ap.current_profession, ap.company_name, ap.ktb_group_name
+       FROM members m
+       LEFT JOIN alumni_profiles ap ON m.id = ap.member_id
+       WHERE m.id = $1`,
+      [memberId]
+    );
+
+    if (memberRes.rows.length === 0) {
+      res.status(404).json({ success: false, message: 'Anggota tidak ditemukan.' });
+      return;
+    }
+
+    const [committeesRes, tenuresRes, staffRes, divisionsRes] = await Promise.all([
+      db.query(
+        `SELECT cr.id, cr.committee_name, cr.role_title, cr.event_year, cr.period,
+                cr.start_date, cr.end_date, cr.status, cr.description, cr.created_at
+         FROM committee_records cr
+         WHERE cr.member_id = $1
+         ORDER BY COALESCE(cr.event_year, EXTRACT(YEAR FROM cr.created_at)::int) DESC, cr.created_at DESC`,
+        [memberId]
+      ),
+      db.query(
+        `SELECT t.id, t.position_id, t.period, t.start_date, t.end_date, t.is_current,
+                t.decree_number, t.notes, t.created_at,
+                p.title AS position_title, p.position_code, p.category AS position_category,
+                p.hierarchy_order, p.function_description
+         FROM org_position_tenures t
+         JOIN org_positions p ON t.position_id = p.id
+         WHERE t.member_id = $1
+         ORDER BY t.is_current DESC, t.hierarchy_order ASC, t.start_date DESC NULLS LAST`,
+        [memberId]
+      ),
+      db.query(
+        `SELECT sm.id, sm.department_id, sm.position_title, sm.employment_type,
+                sm.joined_date, sm.end_date, sm.status, sm.job_description, sm.is_active,
+                d.name AS department_name
+         FROM staff_members sm
+         LEFT JOIN departments d ON sm.department_id = d.id
+         WHERE sm.member_id = $1
+         ORDER BY sm.is_active DESC, sm.joined_date DESC NULLS LAST`,
+        [memberId]
+      ),
+      db.query(
+        `SELECT dm.id, dm.department_id, dm.role_title, dm.period, dm.start_date,
+                dm.end_date, dm.status, dm.notes, dm.created_at,
+                d.name AS division_name, d.order_index
+         FROM division_members dm
+         JOIN departments d ON dm.department_id = d.id
+         WHERE dm.member_id = $1
+         ORDER BY CASE WHEN dm.status = 'AKTIF' THEN 0 ELSE 1 END, dm.start_date DESC NULLS LAST`,
+        [memberId]
+      ),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      member: memberRes.rows[0],
+      committees: committeesRes.rows,
+      positions: tenuresRes.rows,
+      staff: staffRes.rows,
+      divisions: divisionsRes.rows,
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: 'Gagal memuat profil kepengurusan anggota.', error: err.message });
+  }
+});
+
 export default router;

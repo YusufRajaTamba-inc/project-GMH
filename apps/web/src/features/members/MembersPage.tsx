@@ -39,6 +39,7 @@ import { usePagination } from '../../utils/usePagination';
 import { api } from '../../services/api';
 import { formatRupiah } from '../../utils/currency';
 import NominalInput from '../../components/NominalInput';
+import MemberOrgHistory from './MemberOrgHistory';
 
 interface DryRunRow {
   index: number;
@@ -1361,10 +1362,20 @@ const MembersPage: React.FC = () => {
                     </span>
                   </div>
                 </div>
-              <button className="btn btn-ghost btn-icon" onClick={() => setSelectedMember(null)}>
-                <X size={18} />
-              </button>
-            </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    onClick={() => navigate(`/members/${selectedMember.id}`)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--gmh-green-dark)' }}
+                  >
+                    <ExternalLink size={13} /> Buka Halaman Profil Penuh
+                  </button>
+                  <button className="btn btn-ghost btn-icon" onClick={() => setSelectedMember(null)}>
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
 
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               {/* SECTION A: Data Diri & Detail Tanggal Lahir (Ultah) */}
@@ -1638,6 +1649,19 @@ const MembersPage: React.FC = () => {
                     ))}
                   </div>
                 )}
+              </div>
+
+              {/* SECTION F2: JEJAK KEPENGURUSAN & TUGAS STRUKTUR (DATABASE ORGANISASI) */}
+              <div className="card" style={{ padding: '16px 20px', background: 'var(--gmh-card-bg)' }}>
+                <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12, color: 'var(--gmh-green-dark)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <ShieldCheck size={16} color="var(--gmh-gold)" /> Jejak Kepengurusan &amp; Tugas Struktur
+                  </div>
+                  <span style={{ fontSize: 11, color: 'var(--gmh-text-muted)', fontWeight: 500 }}>
+                    Disinkronkan dari Modul Struktur &amp; Kepengurusan (database)
+                  </span>
+                </div>
+                <MemberOrgHistory memberId={selectedMember.id} />
               </div>
 
               {/* SECTION G: Portofolio Donasi & Janji Iman (Komitmen & Realisasi) */}

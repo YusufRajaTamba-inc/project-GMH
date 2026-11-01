@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Award,
   ShieldCheck,
@@ -13,6 +14,7 @@ import {
   Layers,
   AlertCircle,
   X,
+  ExternalLink,
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { Pagination } from '../../components/common/Pagination';
@@ -150,6 +152,7 @@ interface DivisionMember {
 }
 
 export const OrganizationPage: React.FC = () => {
+  const navigate = useNavigate();
   // Tabs: committees, positions, staff, divisions
   const [activeTab, setActiveTab] = useState<'committees' | 'positions' | 'staff' | 'divisions'>('committees');
   
@@ -421,6 +424,23 @@ export const OrganizationPage: React.FC = () => {
 
   const openEditCommitteeModal = (c: CommitteeRecord) => {
     setEditingCommittee(c);
+    if (c.member_id && c.member_name) {
+      setMemberOptions((prev) => {
+        if (prev.some((m) => m.id === c.member_id)) return prev;
+        return [
+          {
+            id: c.member_id,
+            member_number: c.member_number,
+            full_name: c.member_name,
+            faculty: c.faculty,
+            graduation_year: c.graduation_year,
+            phone_number: c.phone_number,
+            email: c.email,
+          },
+          ...prev,
+        ];
+      });
+    }
     setCommitteeForm({
       member_id: c.member_id,
       committee_name: c.committee_name,
@@ -538,9 +558,26 @@ export const OrganizationPage: React.FC = () => {
 
   const openAssignTenureModal = (p: OrgPosition) => {
     setSelectedPositionForHistory(p);
+    if (p.current_member_id && p.current_member_name) {
+      setMemberOptions((prev) => {
+        if (prev.some((m) => m.id === p.current_member_id)) return prev;
+        return [
+          {
+            id: p.current_member_id!,
+            member_number: p.current_member_number || '',
+            full_name: p.current_member_name!,
+            faculty: p.current_member_faculty,
+            graduation_year: p.current_member_graduation_year,
+            phone_number: p.current_member_phone,
+            email: p.current_member_email,
+          },
+          ...prev,
+        ];
+      });
+    }
     setTenureForm({
-      member_id: memberOptions[0]?.id || '',
-      period: '2024 - 2027',
+      member_id: p.current_member_id || memberOptions[0]?.id || '',
+      period: p.current_period || '2024 - 2027',
       start_date: new Date().toISOString().split('T')[0],
       end_date: '',
       is_current: true,
@@ -600,6 +637,23 @@ export const OrganizationPage: React.FC = () => {
 
   const openEditStaffModal = (s: StaffMember) => {
     setEditingStaff(s);
+    if (s.member_id && s.member_name) {
+      setMemberOptions((prev) => {
+        if (prev.some((m) => m.id === s.member_id)) return prev;
+        return [
+          {
+            id: s.member_id,
+            member_number: s.member_number,
+            full_name: s.member_name,
+            faculty: s.faculty,
+            graduation_year: s.graduation_year,
+            phone_number: s.phone_number,
+            email: s.email,
+          },
+          ...prev,
+        ];
+      });
+    }
     setStaffForm({
       member_id: s.member_id,
       department_id: s.department_id || '',
@@ -1087,7 +1141,27 @@ export const OrganizationPage: React.FC = () => {
                       </td>
                       <td>
                         <div style={{ fontWeight: 650, color: '#0f172a', fontSize: 13 }}>
-                          {row.member_name}
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/members/${row.member_id}`)}
+                            title="Buka Profil Anggota & Alumni"
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              padding: 0,
+                              fontWeight: 650,
+                              color: '#047857',
+                              fontSize: 13,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              textAlign: 'left',
+                            }}
+                          >
+                            <span>{row.member_name}</span>
+                            <ExternalLink size={11} style={{ opacity: 0.7 }} />
+                          </button>
                         </div>
                         <div style={{ fontSize: 11, color: '#64748b', display: 'flex', gap: 6, alignItems: 'center', marginTop: 2 }}>
                           <span style={{ fontFamily: 'monospace', background: '#f1f5f9', padding: '1px 5px', borderRadius: 4 }}>
@@ -1315,7 +1389,27 @@ export const OrganizationPage: React.FC = () => {
                             {pos.current_member_name ? (
                               <div style={{ marginTop: 4 }}>
                                 <div style={{ fontWeight: 750, color: '#0f172a', fontSize: 13.5 }}>
-                                  {pos.current_member_name}
+                                  <button
+                                    type="button"
+                                    onClick={() => pos.current_member_id && navigate(`/members/${pos.current_member_id}`)}
+                                    title="Buka Profil Anggota & Alumni"
+                                    style={{
+                                      background: 'transparent',
+                                      border: 'none',
+                                      padding: 0,
+                                      fontWeight: 750,
+                                      color: '#047857',
+                                      fontSize: 13.5,
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: 4,
+                                      textAlign: 'left',
+                                    }}
+                                  >
+                                    <span>{pos.current_member_name}</span>
+                                    <ExternalLink size={12} style={{ opacity: 0.7 }} />
+                                  </button>
                                 </div>
                                 <div style={{ fontSize: 11.5, color: '#64748b', display: 'flex', gap: 6, marginTop: 2 }}>
                                   <span>{pos.current_member_number}</span>
@@ -1439,7 +1533,27 @@ export const OrganizationPage: React.FC = () => {
                     <tr key={s.id}>
                       <td>
                         <div style={{ fontWeight: 700, color: '#0f172a', fontSize: 13.5 }}>
-                          {s.member_name}
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/members/${s.member_id}`)}
+                            title="Buka Profil Anggota & Alumni"
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              padding: 0,
+                              fontWeight: 700,
+                              color: '#047857',
+                              fontSize: 13.5,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              textAlign: 'left',
+                            }}
+                          >
+                            <span>{s.member_name}</span>
+                            <ExternalLink size={11} style={{ opacity: 0.7 }} />
+                          </button>
                         </div>
                         <div style={{ fontSize: 11, color: '#64748b', display: 'flex', gap: 6, marginTop: 2 }}>
                           <span style={{ fontFamily: 'monospace' }}>{s.member_number}</span>
@@ -1610,7 +1724,31 @@ export const OrganizationPage: React.FC = () => {
                     </div>
                     {div.head_name ? (
                       <div style={{ marginTop: 4, fontWeight: 700, color: '#0f172a', fontSize: 13 }}>
-                        {div.head_name}
+                        {div.head_member_id ? (
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/members/${div.head_member_id}`)}
+                            title="Buka Profil Anggota & Alumni"
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              padding: 0,
+                              fontWeight: 700,
+                              color: '#047857',
+                              fontSize: 13,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              textAlign: 'left',
+                            }}
+                          >
+                            <span>{div.head_name}</span>
+                            <ExternalLink size={11} style={{ opacity: 0.7 }} />
+                          </button>
+                        ) : (
+                          <span>{div.head_name}</span>
+                        )}
                         {div.head_phone && <span style={{ fontWeight: 400, color: '#64748b', fontSize: 11.5 }}> · {div.head_phone}</span>}
                       </div>
                     ) : (
@@ -2033,9 +2171,27 @@ export const OrganizationPage: React.FC = () => {
                   >
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontWeight: 750, color: '#0f172a', fontSize: 13.5 }}>
-                          {t.member_name}
-                        </span>
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/members/${t.member_id}`)}
+                          title="Buka Profil Anggota & Alumni"
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            padding: 0,
+                            fontWeight: 750,
+                            color: '#047857',
+                            fontSize: 13.5,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            textAlign: 'left',
+                          }}
+                        >
+                          <span>{t.member_name}</span>
+                          <ExternalLink size={11} style={{ opacity: 0.7 }} />
+                        </button>
                         {t.is_current ? (
                           <span style={{ fontSize: 10.5, fontWeight: 700, background: '#22c55e', color: '#ffffff', padding: '1px 6px', borderRadius: 99 }}>
                             Pejabat Aktif
@@ -2385,9 +2541,27 @@ export const OrganizationPage: React.FC = () => {
                   >
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontWeight: 750, color: '#0f172a', fontSize: 13.5 }}>
-                          {m.member_name}
-                        </span>
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/members/${m.member_id}`)}
+                          title="Buka Profil Anggota & Alumni"
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            padding: 0,
+                            fontWeight: 750,
+                            color: '#047857',
+                            fontSize: 13.5,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            textAlign: 'left',
+                          }}
+                        >
+                          <span>{m.member_name}</span>
+                          <ExternalLink size={11} style={{ opacity: 0.7 }} />
+                        </button>
                         <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 6, background: '#ecfdf5', color: '#047857' }}>
                           {m.role_title}
                         </span>

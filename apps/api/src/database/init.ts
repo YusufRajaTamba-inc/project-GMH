@@ -61,6 +61,50 @@ export async function initDatabase() {
     ALTER TABLE pledges ADD COLUMN IF NOT EXISTS category VARCHAR(150) DEFAULT 'Pembangunan Rumah Persekutuan';
     ALTER TABLE pledges ADD COLUMN IF NOT EXISTS pledge_type VARCHAR(50) DEFAULT 'PLEDGE';
     ALTER TABLE pledges ADD COLUMN IF NOT EXISTS notes TEXT;
+
+    -- staff_members: kolom yang dipakai modul organisasi
+    ALTER TABLE staff_members ADD COLUMN IF NOT EXISTS end_date DATE;
+    ALTER TABLE staff_members ADD COLUMN IF NOT EXISTS status VARCHAR(30) DEFAULT 'AKTIF';
+    ALTER TABLE staff_members ADD COLUMN IF NOT EXISTS job_description TEXT;
+    ALTER TABLE staff_members ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+    -- division_members
+    ALTER TABLE division_members ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+    -- committee_records
+    ALTER TABLE committee_records ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+  `);
+
+  // Normalisasi nilai status agar konsisten dengan filter di frontend
+  // (frontend memakai AKTIF / SELESAI / DEMISIONER, seed lama memakai ACTIVE).
+  console.log('[Migration] Normalizing organization status values...');
+  await db.query(`
+    UPDATE committee_records
+    SET status = CASE UPPER(status)
+      WHEN 'ACTIVE' THEN 'AKTIF'
+      WHEN 'COMPLETED' THEN 'SELESAI'
+      WHEN 'DEMISSIONER' THEN 'DEMISIONER'
+      ELSE 'SELESAI'
+    END
+    WHERE UPPER(COALESCE(status, '')) IN ('ACTIVE', 'COMPLETED', 'DEMISSIONER');
+
+    UPDATE division_members
+    SET status = CASE UPPER(status)
+      WHEN 'ACTIVE' THEN 'AKTIF'
+      WHEN 'ALUMNI_DIVISI' THEN 'DEMISIONER'
+      WHEN 'DEMISSIONER' THEN 'DEMISIONER'
+      ELSE 'DEMISIONER'
+    END
+    WHERE UPPER(COALESCE(status, '')) IN ('ACTIVE', 'ALUMNI_DIVISI', 'DEMISSIONER');
+
+    UPDATE staff_members
+    SET status = CASE UPPER(status)
+      WHEN 'ACTIVE' THEN 'AKTIF'
+      WHEN 'INACTIVE' THEN 'NON_AKTIF'
+      WHEN 'SELESAI' THEN 'SELESAI'
+      ELSE 'AKTIF'
+    END
+    WHERE UPPER(COALESCE(status, '')) IN ('ACTIVE', 'INACTIVE', 'SELESAI');
   `);
 
   // Idempotent constraint migrations: hapus duplikasi hasil seed berulang,

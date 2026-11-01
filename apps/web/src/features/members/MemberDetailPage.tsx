@@ -29,6 +29,7 @@ import { useAuth } from '../../state/AuthContext';
 import { api } from '../../services/api';
 import { formatRupiah } from '../../utils/currency';
 import NominalInput from '../../components/NominalInput';
+import MemberOrgHistory from './MemberOrgHistory';
 
 const formatIndonesianDate = (dateStr?: string): string => {
   if (!dateStr) return '-';
@@ -184,11 +185,12 @@ const MemberDetailPage: React.FC = () => {
     }
   }, [member?.id]);
 
-  // Compute where and when this member served across missions
+  // Riwayat kepengurusan anggota diambil dari tabel organisasi (bukan pencocokan nama).
+  // Modul Misi tetap dipakai untuk catatan pelayanan misi (JSONB committees/tasks).
   const memberServiceRecords = useMemo(() => {
     if (!member) return [];
     const memberName = member.name.toLowerCase().trim();
-    const memberId = member.id;
+    const memberNumber = member.nia.toLowerCase().trim();
     const records: Array<{
       activityId: string;
       activityTitle: string;
@@ -199,9 +201,15 @@ const MemberDetailPage: React.FC = () => {
       status: string;
     }> = [];
 
+    const isMatch = (value?: string | null): boolean => {
+      if (!value) return false;
+      const v = String(value).toLowerCase();
+      return v.includes(memberName) || (!!memberNumber && v.includes(memberNumber));
+    };
+
     missionActivities.forEach((act) => {
       // 1. Is Coordinator
-      if (act.coordinator && act.coordinator.toLowerCase().includes(memberName)) {
+      if (isMatch(act.coordinator)) {
         records.push({
           activityId: act.id,
           activityTitle: act.title,
@@ -217,8 +225,8 @@ const MemberDetailPage: React.FC = () => {
       if (Array.isArray(act.committees)) {
         act.committees.forEach((com: any) => {
           if (
-            (com.member_id && com.member_id === memberId) ||
-            (com.name && com.name.toLowerCase().includes(memberName))
+            (com.member_id && com.member_id === member.id) ||
+            isMatch(com.name)
           ) {
             records.push({
               activityId: act.id,
@@ -236,7 +244,7 @@ const MemberDetailPage: React.FC = () => {
       // 3. Is in Tasks
       if (Array.isArray(act.tasks)) {
         act.tasks.forEach((tsk: any) => {
-          if (tsk.pic && tsk.pic.toLowerCase().includes(memberName)) {
+          if (isMatch(tsk.pic)) {
             const already = records.some((r) => r.activityId === act.id && r.role.includes(tsk.task));
             if (!already) {
               records.push({
@@ -1259,6 +1267,21 @@ const MemberDetailPage: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* ========================================================================= */}
+      {/* SECTION F2: JEJAK KEPENGURUSAN (DATABASE ORGANISASI)                      */}
+      {/* ========================================================================= */}
+      <div className="card" style={{ padding: '16px 20px', background: 'var(--gmh-card-bg)' }}>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12, color: 'var(--gmh-green-dark)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <ShieldCheck size={16} color="var(--gmh-gold)" /> Jejak Kepengurusan &amp; Tugas Struktur
+          </div>
+          <span style={{ fontSize: 11, color: 'var(--gmh-text-muted)', fontWeight: 500 }}>
+            Disinkronkan dari Modul Struktur &amp; Kepengurusan (database)
+          </span>
+        </div>
+        <MemberOrgHistory memberId={member?.id} />
+      </div>
 
 
 

@@ -205,8 +205,12 @@ CREATE TABLE IF NOT EXISTS staff_members (
     bank_account_number VARCHAR(50),
     bank_account_holder VARCHAR(150),
     joined_date DATE NOT NULL,
+    end_date DATE,
+    status VARCHAR(30) DEFAULT 'AKTIF',          -- 'AKTIF' | 'NON_AKTIF' | 'SELESAI'
+    job_description TEXT,
     is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 6. MODUL PENGGAJIAN TERISOLASI / PAYROLL (KHUSUS BENDAHARA YAYASAN)
@@ -487,7 +491,7 @@ CREATE TABLE IF NOT EXISTS committee_records (
     period VARCHAR(100),
     start_date DATE,
     end_date DATE,
-    status VARCHAR(50) DEFAULT 'ACTIVE',
+    status VARCHAR(50) DEFAULT 'AKTIF',
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -529,7 +533,7 @@ CREATE TABLE IF NOT EXISTS division_members (
     period VARCHAR(100) DEFAULT '2024 - Sekarang',
     start_date DATE,
     end_date DATE,
-    status VARCHAR(50) DEFAULT 'ACTIVE',
+    status VARCHAR(50) DEFAULT 'AKTIF',
     notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

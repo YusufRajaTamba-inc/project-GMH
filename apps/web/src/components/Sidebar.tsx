@@ -277,7 +277,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onClose }) => {
                         gap: 2,
                         marginTop: 2,
                         marginBottom: 6,
-                        borderLeft: '1.5px solid rgba(255, 255, 255, 0.1)',
+                        borderLeft: '1.5px solid #e2e8f0',
                         marginLeft: 20,
                       }}
                     >
@@ -301,9 +301,9 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onClose }) => {
                               padding: '7px 10px',
                               borderRadius: 6,
                               border: 'none',
-                              borderLeft: isSubActive ? '2px solid #10b981' : '2px solid transparent',
-                              background: isSubActive ? '#1e293b' : 'transparent',
-                              color: isSubActive ? '#ffffff' : '#94a3b8',
+                              borderLeft: isSubActive ? '2px solid #0284c7' : '2px solid transparent',
+                              background: isSubActive ? '#e0f2fe' : 'transparent',
+                              color: isSubActive ? '#0369a1' : '#64748b',
                               fontSize: 12.5,
                               fontWeight: isSubActive ? 600 : 500,
                               cursor: 'pointer',
@@ -313,21 +313,21 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onClose }) => {
                             }}
                             onMouseEnter={(e) => {
                               if (!isSubActive) {
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
-                                e.currentTarget.style.color = '#ffffff';
+                                e.currentTarget.style.background = '#f8fafc';
+                                e.currentTarget.style.color = '#0f172a';
                               }
                             }}
                             onMouseLeave={(e) => {
                               if (!isSubActive) {
                                 e.currentTarget.style.background = 'transparent';
-                                e.currentTarget.style.color = '#94a3b8';
+                                e.currentTarget.style.color = '#64748b';
                               }
                             }}
                           >
                             {sub.icon && (
                               <span
                                 style={{
-                                  color: isSubActive ? '#10b981' : 'inherit',
+                                  color: isSubActive ? '#0284c7' : 'inherit',
                                   opacity: isSubActive ? 1 : 0.7,
                                   display: 'flex',
                                   alignItems: 'center',
@@ -368,7 +368,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onClose }) => {
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#94a3b8',
+              color: '#64748b',
               cursor: 'pointer',
               padding: '6px',
               borderRadius: '6px',
@@ -378,28 +378,11 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onClose }) => {
               transition: 'all 0.15s ease',
             }}
             onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.background = 'transparent'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = '#64748b'; e.currentTarget.style.background = 'transparent'; }}
           >
             <LogOut size={16} />
           </button>
         </div>
-
-        {!collapsed && (
-          <div
-            style={{
-              paddingTop: 8,
-              marginTop: 8,
-              borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-              fontSize: 9.5,
-              color: '#64748b',
-              textAlign: 'center',
-              lineHeight: 1.3,
-            }}
-          >
-            <span>powered by </span>
-            <strong style={{ color: '#94a3b8', fontWeight: 600 }}>Beyond Quality Management</strong>
-          </div>
-        )}
       </div>
     </aside>
   );

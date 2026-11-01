@@ -408,8 +408,9 @@ export const OrganizationPage: React.FC = () => {
   // --------------------------------------------------------------------------
   const openNewCommitteeModal = () => {
     setEditingCommittee(null);
+    setMemberSearchQuery('');
     setCommitteeForm({
-      member_id: memberOptions[0]?.id || '',
+      member_id: '',
       committee_name: '',
       role_title: '',
       event_year: new Date().getFullYear(),
@@ -575,8 +576,9 @@ export const OrganizationPage: React.FC = () => {
         ];
       });
     }
+    setMemberSearchQuery('');
     setTenureForm({
-      member_id: p.current_member_id || memberOptions[0]?.id || '',
+      member_id: p.current_member_id || '',
       period: p.current_period || '2024 - 2027',
       start_date: new Date().toISOString().split('T')[0],
       end_date: '',
@@ -621,8 +623,9 @@ export const OrganizationPage: React.FC = () => {
   // --------------------------------------------------------------------------
   const openNewStaffModal = () => {
     setEditingStaff(null);
+    setMemberSearchQuery('');
     setStaffForm({
-      member_id: memberOptions[0]?.id || '',
+      member_id: '',
       department_id: divisions[0]?.id || '',
       position_title: '',
       employment_type: 'FULL_TIME',
@@ -771,8 +774,9 @@ export const OrganizationPage: React.FC = () => {
 
   const openAddDivisionMemberModal = (d: Division) => {
     setSelectedDivision(d);
+    setMemberSearchQuery('');
     setDivisionMemberForm({
-      member_id: memberOptions[0]?.id || '',
+      member_id: '',
       role_title: 'Anggota Divisi',
       period: '2024 - Sekarang',
       start_date: new Date().toISOString().split('T')[0],
@@ -1794,13 +1798,13 @@ export const OrganizationPage: React.FC = () => {
       {/* MODAL 1: Catat / Edit Kepanitiaan                                    */}
       {/* ==================================================================== */}
       {committeeModalOpen && (
-        <div className="modal-overlay" style={{ background: 'rgba(15,23,42,0.5)', zIndex: 1000 }}>
-          <div className="modal-content" style={{ maxWidth: 540, width: '90%', padding: 24, borderRadius: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(8, 28, 21, 0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1050, padding: 16 }}>
+          <div className="modal-card modal-content" style={{ maxWidth: 540, width: '100%', padding: 24, borderRadius: 16, background: '#ffffff', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid #e2e8f0', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 1060 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>
               <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0f172a' }}>
                 {editingCommittee ? 'Ubah Record Kepanitiaan' : 'Catat Kepanitiaan Baru'}
               </h3>
-              <button type="button" onClick={() => setCommitteeModalOpen(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#64748b' }}>
+              <button type="button" onClick={() => setCommitteeModalOpen(false)} style={{ border: 'none', background: '#f1f5f9', cursor: 'pointer', color: '#64748b', borderRadius: 8, padding: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={18} />
               </button>
             </div>
@@ -1924,13 +1928,13 @@ export const OrganizationPage: React.FC = () => {
       {/* MODAL 2: Tambah / Ubah Struktur Jabatan Inti (Dinamis)                */}
       {/* ==================================================================== */}
       {positionModalOpen && (
-        <div className="modal-overlay" style={{ background: 'rgba(15,23,42,0.5)', zIndex: 1000 }}>
-          <div className="modal-content" style={{ maxWidth: 520, width: '90%', padding: 24, borderRadius: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(8, 28, 21, 0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1050, padding: 16 }}>
+          <div className="modal-card modal-content" style={{ maxWidth: 520, width: '100%', padding: 24, borderRadius: 16, background: '#ffffff', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid #e2e8f0', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 1060 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>
               <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0f172a' }}>
                 {editingPosition ? 'Ubah Struktur Jabatan' : 'Tambah Struktur Jabatan Baru'}
               </h3>
-              <button type="button" onClick={() => setPositionModalOpen(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#64748b' }}>
+              <button type="button" onClick={() => setPositionModalOpen(false)} style={{ border: 'none', background: '#f1f5f9', cursor: 'pointer', color: '#64748b', borderRadius: 8, padding: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={18} />
               </button>
             </div>
@@ -2010,16 +2014,16 @@ export const OrganizationPage: React.FC = () => {
       {/* MODAL 2B: Tugaskan Pejabat ke Posisi                                 */}
       {/* ==================================================================== */}
       {assignTenureModalOpen && selectedPositionForHistory && (
-        <div className="modal-overlay" style={{ background: 'rgba(15,23,42,0.5)', zIndex: 1000 }}>
-          <div className="modal-content" style={{ maxWidth: 520, width: '90%', padding: 24, borderRadius: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(8, 28, 21, 0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1050, padding: 16 }}>
+          <div className="modal-card modal-content" style={{ maxWidth: 520, width: '100%', padding: 24, borderRadius: 16, background: '#ffffff', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid #e2e8f0', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 1060 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0f172a' }}>
                   Tugaskan Pejabat: {selectedPositionForHistory.title}
                 </h3>
                 <span style={{ fontSize: 12, color: '#64748b' }}>Pilih anggota yayasan yang memegang jabatan ini</span>
               </div>
-              <button type="button" onClick={() => setAssignTenureModalOpen(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#64748b' }}>
+              <button type="button" onClick={() => setAssignTenureModalOpen(false)} style={{ border: 'none', background: '#f1f5f9', cursor: 'pointer', color: '#64748b', borderRadius: 8, padding: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={18} />
               </button>
             </div>
@@ -2129,9 +2133,9 @@ export const OrganizationPage: React.FC = () => {
       {/* MODAL 2C: Riwayat Pejabat Posisi (History Tab 2)                      */}
       {/* ==================================================================== */}
       {historyModalOpen && selectedPositionForHistory && (
-        <div className="modal-overlay" style={{ background: 'rgba(15,23,42,0.5)', zIndex: 1000 }}>
-          <div className="modal-content" style={{ maxWidth: 680, width: '92%', padding: 24, borderRadius: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(8, 28, 21, 0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1050, padding: 16 }}>
+          <div className="modal-card modal-content" style={{ maxWidth: 680, width: '100%', padding: 24, borderRadius: 16, background: '#ffffff', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid #e2e8f0', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 1060 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0f172a' }}>
                   Riwayat Pejabat: {selectedPositionForHistory.title}
@@ -2140,7 +2144,7 @@ export const OrganizationPage: React.FC = () => {
                   Rekam jejak seluruh anggota yang pernah memegang jabatan ini dari masa ke masa
                 </span>
               </div>
-              <button type="button" onClick={() => setHistoryModalOpen(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#64748b' }}>
+              <button type="button" onClick={() => setHistoryModalOpen(false)} style={{ border: 'none', background: '#f1f5f9', cursor: 'pointer', color: '#64748b', borderRadius: 8, padding: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={18} />
               </button>
             </div>
@@ -2253,13 +2257,13 @@ export const OrganizationPage: React.FC = () => {
       {/* MODAL 3: Tambah / Ubah Staf Full-Time                                */}
       {/* ==================================================================== */}
       {staffModalOpen && (
-        <div className="modal-overlay" style={{ background: 'rgba(15,23,42,0.5)', zIndex: 1000 }}>
-          <div className="modal-content" style={{ maxWidth: 540, width: '90%', padding: 24, borderRadius: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(8, 28, 21, 0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1050, padding: 16 }}>
+          <div className="modal-card modal-content" style={{ maxWidth: 540, width: '100%', padding: 24, borderRadius: 16, background: '#ffffff', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid #e2e8f0', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 1060 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>
               <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0f172a' }}>
                 {editingStaff ? 'Ubah Data Staf Full-Time' : 'Tambah Staf Penuh Waktu Baru'}
               </h3>
-              <button type="button" onClick={() => setStaffModalOpen(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#64748b' }}>
+              <button type="button" onClick={() => setStaffModalOpen(false)} style={{ border: 'none', background: '#f1f5f9', cursor: 'pointer', color: '#64748b', borderRadius: 8, padding: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={18} />
               </button>
             </div>
@@ -2389,13 +2393,13 @@ export const OrganizationPage: React.FC = () => {
       {/* MODAL 4: Tambah / Ubah Divisi                                        */}
       {/* ==================================================================== */}
       {divisionModalOpen && (
-        <div className="modal-overlay" style={{ background: 'rgba(15,23,42,0.5)', zIndex: 1000 }}>
-          <div className="modal-content" style={{ maxWidth: 520, width: '90%', padding: 24, borderRadius: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(8, 28, 21, 0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1050, padding: 16 }}>
+          <div className="modal-card modal-content" style={{ maxWidth: 520, width: '100%', padding: 24, borderRadius: 16, background: '#ffffff', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid #e2e8f0', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 1060 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>
               <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0f172a' }}>
                 {editingDivision ? 'Ubah Data Divisi' : 'Tambah Divisi Pelayanan Baru'}
               </h3>
-              <button type="button" onClick={() => setDivisionModalOpen(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#64748b' }}>
+              <button type="button" onClick={() => setDivisionModalOpen(false)} style={{ border: 'none', background: '#f1f5f9', cursor: 'pointer', color: '#64748b', borderRadius: 8, padding: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={18} />
               </button>
             </div>
@@ -2463,9 +2467,9 @@ export const OrganizationPage: React.FC = () => {
       {/* MODAL 4B: Kelola Anggota Divisi & Record History                     */}
       {/* ==================================================================== */}
       {divisionMembersModalOpen && selectedDivision && (
-        <div className="modal-overlay" style={{ background: 'rgba(15,23,42,0.5)', zIndex: 1000 }}>
-          <div className="modal-content" style={{ maxWidth: 720, width: '92%', padding: 24, borderRadius: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(8, 28, 21, 0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1050, padding: 16 }}>
+          <div className="modal-card modal-content" style={{ maxWidth: 720, width: '100%', padding: 24, borderRadius: 16, background: '#ffffff', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid #e2e8f0', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 1060 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0f172a' }}>
                   Anggota & Riwayat Divisi: {selectedDivision.name}
@@ -2474,7 +2478,7 @@ export const OrganizationPage: React.FC = () => {
                   Daftar seluruh anggota yang aktif bertugas maupun yang pernah menjabat di divisi ini
                 </span>
               </div>
-              <button type="button" onClick={() => setDivisionMembersModalOpen(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#64748b' }}>
+              <button type="button" onClick={() => setDivisionMembersModalOpen(false)} style={{ border: 'none', background: '#f1f5f9', cursor: 'pointer', color: '#64748b', borderRadius: 8, padding: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={18} />
               </button>
             </div>
@@ -2615,13 +2619,13 @@ export const OrganizationPage: React.FC = () => {
       {/* MODAL 4C: Tugaskan Anggota ke Divisi                                 */}
       {/* ==================================================================== */}
       {addDivisionMemberModalOpen && selectedDivision && (
-        <div className="modal-overlay" style={{ background: 'rgba(15,23,42,0.5)', zIndex: 1050 }}>
-          <div className="modal-content" style={{ maxWidth: 500, width: '90%', padding: 22, borderRadius: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(8, 28, 21, 0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1060, padding: 16 }}>
+          <div className="modal-card modal-content" style={{ maxWidth: 500, width: '100%', padding: 22, borderRadius: 16, background: '#ffffff', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid #e2e8f0', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 1070 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid #f1f5f9' }}>
               <h3 style={{ margin: 0, fontSize: 15.5, fontWeight: 700, color: '#0f172a' }}>
                 Tugaskan Anggota ke: {selectedDivision.name}
               </h3>
-              <button type="button" onClick={() => setAddDivisionMemberModalOpen(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#64748b' }}>
+              <button type="button" onClick={() => setAddDivisionMemberModalOpen(false)} style={{ border: 'none', background: '#f1f5f9', cursor: 'pointer', color: '#64748b', borderRadius: 8, padding: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={18} />
               </button>
             </div>

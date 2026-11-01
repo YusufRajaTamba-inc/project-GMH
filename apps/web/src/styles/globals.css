@@ -928,7 +928,8 @@ select.select-sm {
 }
 
 .modal,
-.modal-card {
+.modal-card,
+.modal-content {
   background: var(--gmh-white, #ffffff);
   border-radius: var(--radius-xl, 16px);
   width: 100%;

@@ -49,56 +49,56 @@ const navSections: NavSection[] = [
   {
     label: 'Utama',
     items: [
-      { icon: <LayoutDashboard size={16} />, label: 'Dashboard', path: '/' },
+      { icon: <LayoutDashboard size={17} strokeWidth={2.25} />, label: 'Dashboard', path: '/' },
     ],
   },
   {
     label: 'Keanggotaan',
     items: [
-      { icon: <Users size={16} />, label: 'Data Anggota & Alumni', path: '/members' },
-      { icon: <UserPlus size={16} />, label: 'Verifikasi Pendaftaran', path: '/registrations', badge: 3 },
-      { icon: <Award size={16} />, label: 'Struktur & Kepengurusan', path: '/organization' },
+      { icon: <Users size={17} strokeWidth={2.25} />, label: 'Data Anggota & Alumni', path: '/members' },
+      { icon: <UserPlus size={17} strokeWidth={2.25} />, label: 'Verifikasi Pendaftaran', path: '/registrations', badge: 3 },
+      { icon: <Award size={17} strokeWidth={2.25} />, label: 'Struktur & Kepengurusan', path: '/organization' },
     ],
   },
   {
     label: 'Keuangan Yayasan',
     items: [
-      { icon: <DollarSign size={16} />, label: 'Kas Operasional', path: '/finance/operational' },
-      { icon: <Heart size={16} />, label: 'Donasi & Janji Iman', path: '/finance/donations' },
-      { icon: <Building2 size={16} />, label: 'Proyek Yayasan', path: '/building' },
-      { icon: <DollarSign size={16} />, label: 'Penggajian (Payroll)', path: '/payroll' },
+      { icon: <DollarSign size={17} strokeWidth={2.25} />, label: 'Kas Operasional', path: '/finance/operational' },
+      { icon: <Heart size={17} strokeWidth={2.25} />, label: 'Donasi & Janji Iman', path: '/finance/donations' },
+      { icon: <Building2 size={17} strokeWidth={2.25} />, label: 'Proyek Yayasan', path: '/building' },
+      { icon: <DollarSign size={17} strokeWidth={2.25} />, label: 'Penggajian (Payroll)', path: '/payroll' },
     ],
   },
   {
     label: 'Program Yayasan',
     items: [
-      { icon: <Globe size={16} />, label: 'Pelayanan Misi', path: '/missions' },
-      { icon: <Calendar size={16} />, label: 'Program & Persekutuan', path: '/programs' },
-      { icon: <Heart size={16} />, label: 'Permohonan Doa', path: '/prayer', badge: 7 },
+      { icon: <Globe size={17} strokeWidth={2.25} />, label: 'Pelayanan Misi', path: '/missions' },
+      { icon: <Calendar size={17} strokeWidth={2.25} />, label: 'Program & Persekutuan', path: '/programs' },
+      { icon: <Heart size={17} strokeWidth={2.25} />, label: 'Permohonan Doa', path: '/prayer', badge: 7 },
     ],
   },
   {
     label: 'Manajemen',
     items: [
-      { icon: <Package size={16} />, label: 'Inventaris & Aset', path: '/assets' },
-      { icon: <Mail size={16} />, label: 'Sekretariat', path: '/secretariat' },
+      { icon: <Package size={17} strokeWidth={2.25} />, label: 'Inventaris & Aset', path: '/assets' },
+      { icon: <Mail size={17} strokeWidth={2.25} />, label: 'Sekretariat', path: '/secretariat' },
       {
-        icon: <BarChart3 size={16} />,
+        icon: <BarChart3 size={17} strokeWidth={2.25} />,
         label: 'Laporan',
         path: '/reports',
         subItems: [
-          { icon: <FileBarChart2 size={14} />, label: 'Ringkasan', path: '/reports/ringkasan' },
-          { icon: <DollarSign size={14} />, label: 'Laporan Keuangan', path: '/reports/keuangan' },
-          { icon: <Users size={14} />, label: 'Keanggotaan & Demografi', path: '/reports/anggota' },
+          { icon: <FileBarChart2 size={15} strokeWidth={2.2} />, label: 'Ringkasan', path: '/reports/ringkasan' },
+          { icon: <DollarSign size={15} strokeWidth={2.2} />, label: 'Laporan Keuangan', path: '/reports/keuangan' },
+          { icon: <Users size={15} strokeWidth={2.2} />, label: 'Keanggotaan & Demografi', path: '/reports/anggota' },
         ],
       },
       {
-        icon: <Settings size={16} />,
+        icon: <Settings size={17} strokeWidth={2.25} />,
         label: 'Pengaturan Sistem',
         path: '/settings',
         subItems: [
-          { icon: <UserCog size={14} />, label: 'Data Pengguna', path: '/users' },
-          { icon: <Sliders size={14} />, label: 'Sistem Utility', path: '/utility' },
+          { icon: <UserCog size={15} strokeWidth={2.2} />, label: 'Data Pengguna', path: '/users' },
+          { icon: <Sliders size={15} strokeWidth={2.2} />, label: 'Sistem Utility', path: '/utility' },
         ],
       },
     ],
@@ -297,15 +297,15 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onClose }) => {
                             style={{
                               display: 'flex',
                               alignItems: 'center',
-                              gap: 8,
-                              padding: '7px 10px',
+                              gap: 9,
+                              padding: '8px 10px',
                               borderRadius: 6,
                               border: 'none',
-                              borderLeft: isSubActive ? '2px solid #0284c7' : '2px solid transparent',
+                              borderLeft: isSubActive ? '2.5px solid #0284c7' : '2.5px solid transparent',
                               background: isSubActive ? '#e0f2fe' : 'transparent',
-                              color: isSubActive ? '#0369a1' : '#64748b',
+                              color: isSubActive ? '#0369a1' : '#475569',
                               fontSize: 12.5,
-                              fontWeight: isSubActive ? 600 : 500,
+                              fontWeight: isSubActive ? 750 : 650,
                               cursor: 'pointer',
                               textAlign: 'left',
                               width: '100%',
@@ -313,22 +313,22 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onClose }) => {
                             }}
                             onMouseEnter={(e) => {
                               if (!isSubActive) {
-                                e.currentTarget.style.background = '#f8fafc';
-                                e.currentTarget.style.color = '#0f172a';
+                                e.currentTarget.style.background = '#f1f5f9';
+                                e.currentTarget.style.color = '#1e293b';
                               }
                             }}
                             onMouseLeave={(e) => {
                               if (!isSubActive) {
                                 e.currentTarget.style.background = 'transparent';
-                                e.currentTarget.style.color = '#64748b';
+                                e.currentTarget.style.color = '#475569';
                               }
                             }}
                           >
                             {sub.icon && (
                               <span
                                 style={{
-                                  color: isSubActive ? '#0284c7' : 'inherit',
-                                  opacity: isSubActive ? 1 : 0.7,
+                                  color: isSubActive ? '#0284c7' : '#475569',
+                                  opacity: 1,
                                   display: 'flex',
                                   alignItems: 'center',
                                 }}

@@ -174,18 +174,34 @@ input, select, textarea, button { font-family: var(--font-body); }
 
 .sidebar-nav {
   flex: 1;
-  padding: 14px 12px;
+  padding: 14px 10px 14px 12px;
   overflow-y: auto;
-  scrollbar-width: none;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f8fafc;
 }
-.sidebar-nav::-webkit-scrollbar { display: none; }
+.sidebar-nav::-webkit-scrollbar {
+  width: 6px;
+  display: block;
+}
+.sidebar-nav::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 99px;
+}
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 99px;
+}
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
 
 .sidebar-section-label {
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 750;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: #94a3b8;
+  color: #64748b;
   padding: 14px 12px 6px;
   margin-top: 2px;
 }
@@ -193,14 +209,14 @@ input, select, textarea, button { font-family: var(--font-body); }
 .sidebar-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
+  gap: 11px;
+  padding: 9px 12px;
   border-radius: 8px;
   cursor: pointer;
   transition: var(--transition);
   color: #475569;
   font-size: 13.5px;
-  font-weight: 500;
+  font-weight: 650;
   margin-bottom: 2px;
   border: none;
   background: transparent;
@@ -209,14 +225,14 @@ input, select, textarea, button { font-family: var(--font-body); }
 }
 
 .sidebar-item:hover {
-  background: #f8fafc;
-  color: #0f172a;
+  background: #f1f5f9;
+  color: #1e293b;
 }
 
 .sidebar-item.active {
   background: #e0f2fe;
   color: #0369a1;
-  font-weight: 600;
+  font-weight: 700;
   box-shadow: none;
 }
 
@@ -224,8 +240,15 @@ input, select, textarea, button { font-family: var(--font-body); }
   width: 18px;
   height: 18px;
   flex-shrink: 0;
-  color: #64748b;
-  opacity: 0.9;
+  color: #475569;
+  opacity: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-item-icon svg {
+  stroke-width: 2.25px;
 }
 
 .sidebar-item:hover .sidebar-item-icon {
@@ -235,6 +258,10 @@ input, select, textarea, button { font-family: var(--font-body); }
 .sidebar-item.active .sidebar-item-icon {
   color: #0284c7;
   opacity: 1;
+}
+
+.sidebar-item.active .sidebar-item-icon svg {
+  stroke-width: 2.4px;
 }
 
 .sidebar-item-badge {

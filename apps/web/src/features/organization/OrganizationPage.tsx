@@ -1463,22 +1463,56 @@ export const OrganizationPage: React.FC = () => {
                           </div>
 
                           {/* Action Footer: History & Tugaskan */}
-                          <div style={{ display: 'flex', gap: 8, paddingTop: 4, borderTop: '1px solid #f1f5f9' }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: 6,
+                              paddingTop: 8,
+                              borderTop: '1px solid #f1f5f9',
+                              flexWrap: 'wrap',
+                            }}
+                          >
                             <button
                               type="button"
                               className="btn btn-outline btn-xs"
                               onClick={() => openHistoryModal(pos)}
-                              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, fontSize: 11.5 }}
+                              title={`Lihat Riwayat Jabatan (${pos.total_tenures_count})`}
+                              style={{
+                                flex: '1 1 110px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 4,
+                                fontSize: 11,
+                                padding: '5px 6px',
+                                minWidth: 0,
+                                whiteSpace: 'nowrap',
+                              }}
                             >
-                              <History size={13} /> Riwayat Jabatan ({pos.total_tenures_count})
+                              <History size={12} style={{ flexShrink: 0 }} />
+                              <span>Riwayat ({pos.total_tenures_count})</span>
                             </button>
                             <button
                               type="button"
                               className="btn btn-primary btn-xs"
                               onClick={() => openAssignTenureModal(pos)}
-                              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, fontSize: 11.5 }}
+                              title="Tugaskan Pejabat ke Posisi Ini"
+                              style={{
+                                flex: '1 1 120px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 4,
+                                fontSize: 11,
+                                padding: '5px 6px',
+                                minWidth: 0,
+                                whiteSpace: 'nowrap',
+                              }}
                             >
-                              <Plus size={13} /> Tugaskan Pejabat
+                              <Plus size={12} style={{ flexShrink: 0 }} />
+                              <span>Tugaskan Pejabat</span>
                             </button>
                           </div>
                         </div>
@@ -1886,27 +1920,27 @@ export const OrganizationPage: React.FC = () => {
                   </div>
 
                   {/* Stats Counter & Kelola Anggota Button */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, borderTop: '1px solid #f1f5f9' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, paddingTop: 8, borderTop: '1px solid #f1f5f9' }}>
                     <div style={{ fontSize: 12, color: '#475569' }}>
                       <strong style={{ color: '#047857' }}>{div.active_members_count}</strong> aktif · <strong>{div.total_history_count}</strong> riwayat
                     </div>
 
-                    <div style={{ display: 'flex', gap: 6 }}>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       <button
                         type="button"
                         className="btn btn-outline btn-xs"
                         onClick={() => openDivisionMembersModal(div)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5 }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, padding: '5px 8px' }}
                       >
-                        <History size={13} /> Riwayat & Anggota
+                        <History size={12} /> Riwayat & Anggota
                       </button>
                       <button
                         type="button"
                         className="btn btn-primary btn-xs"
                         onClick={() => openAddDivisionMemberModal(div)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11.5 }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, padding: '5px 8px' }}
                       >
-                        <Plus size={13} /> Tugaskan
+                        <Plus size={12} /> Tugaskan
                       </button>
                     </div>
                   </div>

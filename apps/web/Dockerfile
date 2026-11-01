@@ -11,7 +11,7 @@ ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 COPY package*.json ./
 COPY apps/web/package*.json ./apps/web/
 COPY apps/api/package*.json ./apps/api/
-RUN npm ci
+RUN npm ci && npm install @rolldown/binding-linux-x64-musl@1.2.16 --workspace=web --no-save
 
 COPY apps/web ./apps/web
 RUN npm run build --workspace=web

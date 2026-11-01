@@ -29,7 +29,7 @@
     "vite": "^8.3.5"
   },
   "optionalDependencies": {
-    "@rolldown/binding-linux-x64-gnu": "0.156.0",
-    "@rolldown/binding-linux-x64-musl": "0.156.0"
+    "@rolldown/binding-linux-x64-gnu": "^1.2.16",
+    "@rolldown/binding-linux-x64-musl": "^1.2.16"
   }
 }

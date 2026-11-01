@@ -178,18 +178,63 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onClose }) => {
   return (
     <aside className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'open' : ''}`}>
       {/* Brand */}
-      <div className="sidebar-brand">
-        <div className="sidebar-brand-logo">
+      <div className="sidebar-brand" style={{ padding: '16px 14px', alignItems: 'center', gap: 10 }}>
+        <div className="sidebar-brand-logo" style={{ width: 42, height: 42, flexShrink: 0 }}>
           <img
             src="/logo-yayasan.png"
             alt="Logo Yayasan GMH"
-            style={{ width: 34, height: 34, objectFit: 'contain' }}
+            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
           />
         </div>
         {!collapsed && (
-          <div className="sidebar-brand-text">
-            <div className="sidebar-brand-name">Global Mission House</div>
-            <div className="sidebar-brand-sub">PA KMK USU · Yayasan</div>
+          <div className="sidebar-brand-text" style={{ minWidth: 0, flex: 1 }}>
+            <div
+              style={{
+                fontSize: 9.5,
+                fontWeight: 700,
+                color: '#34d399',
+                letterSpacing: '0.04em',
+                lineHeight: 1.2,
+                textTransform: 'uppercase',
+              }}
+            >
+              Organization Management System
+            </div>
+            <div
+              className="sidebar-brand-name"
+              style={{
+                fontSize: 13,
+                fontWeight: 750,
+                color: '#ffffff',
+                lineHeight: 1.25,
+                marginTop: 2,
+              }}
+            >
+              Global Mission House
+            </div>
+            <div
+              className="sidebar-brand-sub"
+              style={{
+                fontSize: 10,
+                color: '#94a3b8',
+                letterSpacing: '0.05em',
+                fontWeight: 600,
+                marginTop: 1,
+              }}
+            >
+              PA KMK USU
+            </div>
+            <div
+              style={{
+                fontSize: 9,
+                color: '#64748b',
+                marginTop: 3,
+                fontWeight: 500,
+                lineHeight: 1.2,
+              }}
+            >
+              powered by <span style={{ color: '#94a3b8', fontWeight: 600 }}>Beyond Quality Management</span>
+            </div>
           </div>
         )}
         {mobileOpen && (
@@ -383,6 +428,23 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onClose }) => {
             <LogOut size={16} />
           </button>
         </div>
+
+        {!collapsed && (
+          <div
+            style={{
+              paddingTop: 8,
+              marginTop: 8,
+              borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+              fontSize: 9.5,
+              color: '#64748b',
+              textAlign: 'center',
+              lineHeight: 1.3,
+            }}
+          >
+            <span>powered by </span>
+            <strong style={{ color: '#94a3b8', fontWeight: 600 }}>Beyond Quality Management</strong>
+          </div>
+        )}
       </div>
     </aside>
   );

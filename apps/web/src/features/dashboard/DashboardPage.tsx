@@ -89,7 +89,7 @@ const DashboardPage: React.FC = () => {
   return (
     <div>
       {/* Top Banner */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
         <div>
           <h2 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: 'var(--gmh-text)' }}>
             Ringkasan Eksekutif Yayasan GMH
@@ -198,7 +198,7 @@ const DashboardPage: React.FC = () => {
         <div className="card">
           <div className="card-header">
             <div className="card-title">Tren Penerimaan Donasi & Kas Operasional</div>
-            <span className="badge badge-primary">Database PostgreSQL</span>
+            <span className="badge badge-primary">Sistem Terpusat</span>
           </div>
           <div style={{ padding: '16px 24px 24px' }}>
             <ResponsiveContainer width="100%" height={200}>

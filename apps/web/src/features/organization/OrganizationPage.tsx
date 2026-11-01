@@ -1046,7 +1046,7 @@ export const OrganizationPage: React.FC = () => {
 
           {loadingCommittees ? (
             <div style={{ padding: 40, textAlign: 'center', color: '#64748b', fontSize: 13 }}>
-              Memuat data kepanitiaan dari database PostgreSQL...
+              Memuat data kepanitiaan...
             </div>
           ) : paginatedCommittees.length === 0 ? (
             <div style={{ padding: 48, textAlign: 'center', color: '#64748b' }}>

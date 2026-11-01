@@ -698,7 +698,7 @@ const FinanceOperationalPage: React.FC = () => {
       // 3. Refresh real system audit logs
       await fetchAuditLogs();
 
-      showToast(`Berhasil menyimpan ${res?.insertedCount || csvPreviewData.length} transaksi kas ke database PostgreSQL & Buku Jurnal!`);
+      showToast(`Berhasil menyimpan ${res?.insertedCount || csvPreviewData.length} transaksi kas ke Buku Jurnal!`);
       setCsvPreviewData([]);
       setCsvFileName('');
       setActiveTab('JURNAL');
@@ -2395,7 +2395,7 @@ const FinanceOperationalPage: React.FC = () => {
                 Log Mutasi Kas & Audit Trail Sistem
               </h3>
               <p style={{ color: 'var(--gmh-text-muted)', fontSize: 13, margin: 0 }}>
-                Audit trail resmi dari database PostgreSQL (<code style={{ fontSize: 12 }}>audit_logs</code>) mencatat setiap aktivitas pencatatan transaksi, pembaruan data, penghapusan, dan import massal oleh petugas secara transparan dan akuntabel.
+                Audit trail resmi sistem mencatat setiap aktivitas pencatatan transaksi, pembaruan data, penghapusan, dan import massal oleh petugas secara transparan dan akuntabel.
               </p>
             </div>
             <button
@@ -2403,7 +2403,7 @@ const FinanceOperationalPage: React.FC = () => {
               id="btn-refresh-audit"
               onClick={fetchAuditLogs}
               disabled={isLoadingLogs}
-              title="Muat ulang log mutasi langsung dari PostgreSQL"
+              title="Muat ulang log mutasi sistem"
             >
               <RefreshCw size={13} className={isLoadingLogs ? 'animate-spin' : ''} />
               {isLoadingLogs ? 'Memuat Log…' : 'Segarkan Log Sistem'}

@@ -2447,7 +2447,7 @@ const AssetsPage: React.FC = () => {
                   }}
                 >
                   <RefreshCw size={13} className="spin" />
-                  <span>Menghubungkan & memuat relasi data aset dari PostgreSQL...</span>
+                  <span>Memuat relasi data aset...</span>
                 </div>
               )}
 

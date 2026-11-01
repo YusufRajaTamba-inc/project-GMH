@@ -482,7 +482,7 @@ const UtilityPage: React.FC = () => {
             className="badge badge-success"
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px' }}
           >
-            <ShieldCheck size={14} /> Full API Sync (PostgreSQL)
+            <ShieldCheck size={14} /> Sinkronisasi Sistem Terpusat
           </span>
         </div>
       </div>
@@ -589,7 +589,7 @@ const UtilityPage: React.FC = () => {
                 <SlidersHorizontal size={18} /> Setup Dinamis Penomoran Otomatis Surat Keluar
               </div>
               <div style={{ fontSize: 12.5, color: '#475569', marginTop: 3 }}>
-                Konfigurasi formula penomoran surat keluar yayasan secara dinamis di database PostgreSQL. Sistem secara otomatis menghasilkan nomor resmi saat surat dibuat.
+                Konfigurasi formula penomoran surat keluar yayasan secara dinamis. Sistem secara otomatis menghasilkan nomor resmi saat surat dibuat.
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -909,7 +909,7 @@ const UtilityPage: React.FC = () => {
           <div>
             <div className="card-title">Konfigurasi Label Form & Metadata ({activeMenuInfo.label})</div>
             <div style={{ fontSize: 12, color: 'var(--gmh-text-muted)', marginTop: 2 }}>
-              Ubah label kolom form secara dinamis di PostgreSQL tanpa koding ulang
+              Ubah label kolom form secara dinamis tanpa koding ulang
             </div>
           </div>
         </div>

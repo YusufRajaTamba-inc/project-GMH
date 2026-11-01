@@ -295,6 +295,7 @@ const Topbar: React.FC<TopbarProps> = ({ title, subtitle, onToggleMobileSidebar 
           {/* Notification Popover Dropdown */}
           {notificationsOpen && (
             <div
+              className="notif-dropdown"
               style={{
                 position: 'absolute',
                 top: 'calc(100% + 8px)',
@@ -545,9 +546,6 @@ const Topbar: React.FC<TopbarProps> = ({ title, subtitle, onToggleMobileSidebar 
                   <span>Buka Halaman Notifikasi</span>
                   <ChevronRight size={14} />
                 </button>
-                <div style={{ fontSize: 11, color: '#64748b', textAlign: 'center' }}>
-                  Notifikasi otomatis disinkronkan langsung dari basis data PostgreSQL yayasan.
-                </div>
               </div>
             </div>
           )}

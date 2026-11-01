@@ -293,7 +293,7 @@ export const NotificationsPage: React.FC = () => {
         <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           {isLoading && notifications.length === 0 ? (
             <div style={{ textAlign: 'center', padding: 40, color: 'var(--gmh-text-muted)' }}>
-              Memuat data notifikasi dari PostgreSQL...
+              Memuat data notifikasi...
             </div>
           ) : filteredList.length === 0 ? (
             <div style={{ textAlign: 'center', padding: 48, color: '#94a3b8' }}>

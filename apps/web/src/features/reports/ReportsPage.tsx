@@ -251,7 +251,7 @@ const ReportsPage: React.FC = () => {
 
       {loading && !report && (
         <div style={{ ...cardStyle, padding: 32, textAlign: 'center', color: '#75877b', fontSize: 13 }}>
-          Memuat data laporan dari database PostgreSQL...
+          Memuat data laporan sistem...
         </div>
       )}
 

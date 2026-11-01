@@ -40,9 +40,9 @@ interface LoanRequestItem {
   borrower_phone: string;
   borrower_email?: string;
   borrower_institution?: string;
-  loan_purpose: string;
+  loan_purpose?: string;
   loan_type: string;
-  rental_fee: number;
+  rental_fee?: number;
   borrowed_at: string;
   expected_return_at: string;
   actual_return_at?: string;
@@ -93,11 +93,13 @@ const PublicAssetLoanPage: React.FC = () => {
   const [availChecking, setAvailChecking] = useState(false);
   const [availResult, setAvailResult] = useState<{ isAvailable: boolean; message: string; availableQuantity?: number } | null>(null);
 
-  // Tracking State
-  const [searchQuery, setSearchQuery] = useState(initialTrackCode);
+  // Tracking State (2-Factor Verification: Ticket Code + 4 Last Digits of Borrower WhatsApp)
+  const [searchTicketCode, setSearchTicketCode] = useState(initialTrackCode);
+  const [searchPhoneSuffix, setSearchPhoneSuffix] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [trackedRequests, setTrackedRequests] = useState<LoanRequestItem[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const [searchErrorMessage, setSearchErrorMessage] = useState<string | null>(null);
 
   // Load available assets
   useEffect(() => {
@@ -200,25 +202,34 @@ const PublicAssetLoanPage: React.FC = () => {
     }
   };
 
-  const handleTrackSearch = async (queryToSearch?: string) => {
-    const q = (queryToSearch || searchQuery).trim();
-    if (!q) {
-      alert('Masukkan nomor tiket pengajuan atau nomor WhatsApp pemohon.');
+  const handleTrackSearch = async (overrideCode?: string, overridePhone?: string) => {
+    const code = (overrideCode ?? searchTicketCode).trim().toUpperCase();
+    const phone = (overridePhone ?? searchPhoneSuffix).trim().replace(/[^0-9]/g, '');
+
+    if (!code) {
+      alert('Masukkan nomor tiket pengajuan Anda (contoh: REQ-AST-XXXX-XXXX).');
+      return;
+    }
+
+    if (!phone || phone.length < 4) {
+      alert('Untuk verifikasi kepemilikan dan perlindungan privasi agenda, masukkan 4 digit terakhir nomor WhatsApp pemohon.');
       return;
     }
 
     setIsSearching(true);
     setHasSearched(true);
+    setSearchErrorMessage(null);
     try {
-      const res: any = await api.assets.trackRequest(q);
-      if (res?.requests) {
+      const res: any = await api.assets.trackRequest(code, phone.slice(-4));
+      if (res?.requests && res.requests.length > 0) {
         setTrackedRequests(res.requests);
       } else {
         setTrackedRequests([]);
+        setSearchErrorMessage('Data permohonan tidak ditemukan. Pastikan kombinasi nomor tiket dan 4 digit terakhir nomor WhatsApp sudah cocok.');
       }
-    } catch (err) {
-      console.error('Tracking failed:', err);
+    } catch (err: any) {
       setTrackedRequests([]);
+      setSearchErrorMessage(err?.message || 'Data permohonan tidak ditemukan. Pastikan nomor tiket dan 4 digit terakhir nomor WhatsApp sesuai.');
     } finally {
       setIsSearching(false);
     }
@@ -488,10 +499,14 @@ const PublicAssetLoanPage: React.FC = () => {
                 <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
                   <button
                     onClick={() => {
-                      setSearchQuery(submittedRequestCode);
+                      if (!submittedRequestCode) return;
+                      const cleanDigits = borrowerPhone.replace(/[^0-9]/g, '');
+                      const suffix = cleanDigits.slice(-4);
+                      setSearchTicketCode(submittedRequestCode);
+                      setSearchPhoneSuffix(suffix);
                       setActiveTab('tracking');
                       setSearchParams({ tab: 'tracking', code: submittedRequestCode });
-                      handleTrackSearch(submittedRequestCode);
+                      handleTrackSearch(submittedRequestCode, suffix);
                     }}
                     style={{
                       background: '#0f172a',
@@ -964,37 +979,73 @@ const PublicAssetLoanPage: React.FC = () => {
                 boxShadow: '0 1px 3px rgba(15,23,42,0.05)',
               }}
             >
-              <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700 }}>
-                Lacak Status & Progres Permohonan Aset
-              </h3>
-              <p style={{ margin: '0 0 16px', color: '#64748b', fontSize: 13 }}>
-                Masukkan nomor tiket pengajuan (contoh: <code>REQ-AST-20261102-001</code>) atau nomor WhatsApp yang Anda gunakan saat mengajukan.
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <ShieldCheck size={18} style={{ color: '#047857' }} />
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
+                  Lacak Status & Progres Permohonan Aset
+                </h3>
+              </div>
+              <p style={{ margin: '0 0 16px', color: '#64748b', fontSize: 13, lineHeight: 1.5 }}>
+                Untuk melindungi privasi agenda persekutuan dan mencegah pelacakan oleh pihak luar, masukkan kombinasi <strong>Nomor Tiket</strong> dan <strong>4 digit terakhir nomor WhatsApp</strong> pemohon.
               </p>
 
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleTrackSearch()}
-                  placeholder="Ketik nomor tiket pengajuan atau nomor WA..."
-                  style={{
-                    flex: 1,
-                    minWidth: 260,
-                    padding: '10px 14px',
-                    borderRadius: 7,
-                    border: '1.5px solid #cbd5e1',
-                    fontSize: 14,
-                    outline: 'none',
-                  }}
-                />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 4 }}>
+                    Nomor Tiket Pengajuan *
+                  </label>
+                  <input
+                    type="text"
+                    value={searchTicketCode}
+                    onChange={(e) => setSearchTicketCode(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => e.key === 'Enter' && handleTrackSearch()}
+                    placeholder="Contoh: REQ-AST-8X9K-4M2P"
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      borderRadius: 7,
+                      border: '1.5px solid #cbd5e1',
+                      fontSize: 13.5,
+                      fontFamily: 'monospace',
+                      fontWeight: 600,
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 4 }}>
+                    4 Digit Terakhir No. WhatsApp *
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={4}
+                    value={searchPhoneSuffix}
+                    onChange={(e) => setSearchPhoneSuffix(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
+                    onKeyDown={(e) => e.key === 'Enter' && handleTrackSearch()}
+                    placeholder="Contoh: 0900"
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      borderRadius: 7,
+                      border: '1.5px solid #cbd5e1',
+                      fontSize: 13.5,
+                      fontFamily: 'monospace',
+                      fontWeight: 600,
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <button
                   onClick={() => handleTrackSearch()}
                   disabled={isSearching}
                   style={{
                     background: '#0f172a',
                     color: '#fff',
-                    padding: '10px 20px',
+                    padding: '10px 22px',
                     borderRadius: 7,
                     border: 'none',
                     fontWeight: 650,
@@ -1030,7 +1081,7 @@ const PublicAssetLoanPage: React.FC = () => {
                       Data Permohonan Tidak Ditemukan
                     </h4>
                     <p style={{ margin: 0, fontSize: 13, maxWidth: 480, marginInline: 'auto' }}>
-                      Tidak ditemukan permohonan dengan kata kunci "{searchQuery}". Pastikan nomor tiket pengajuan atau nomor HP pemohon sudah sesuai.
+                      {searchErrorMessage || `Tidak ditemukan permohonan dengan nomor tiket "${searchTicketCode}" dan 4 digit WhatsApp tersebut. Pastikan nomor tiket dan 4 digit terakhir nomor WhatsApp sudah cocok.`}
                     </p>
                   </div>
                 ) : (
@@ -1329,7 +1380,7 @@ const PublicAssetLoanPage: React.FC = () => {
                             </div>
                           )}
 
-                          {/* Item & Schedule Details */}
+                          {/* Item & Schedule Details (Sanitized: No Private Event Leak, No Fee Leak, No Room Leak) */}
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
                             <div style={{ padding: '10px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
                               <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>ASET YANG DIPINJAM</div>
@@ -1337,7 +1388,7 @@ const PublicAssetLoanPage: React.FC = () => {
                                 [{req.asset_code}] {req.asset_name}
                               </div>
                               <div style={{ fontSize: 12, color: '#475569', marginTop: 1 }}>
-                                {req.quantity_borrowed} Unit · {req.location_room}
+                                {req.quantity_borrowed} Unit {req.category_label ? `· ${req.category_label}` : ''}
                               </div>
                             </div>
 
@@ -1348,18 +1399,26 @@ const PublicAssetLoanPage: React.FC = () => {
                                 {new Date(req.expected_return_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
                               </div>
                               <div style={{ fontSize: 12, color: '#475569', marginTop: 1 }}>
-                                {req.loan_type === 'SEWA' ? `Estimasi Kontribusi: ${formatRupiah(Number(req.rental_fee || 0))}` : 'Bebas Biaya (Pelayanan)'}
+                                {req.loan_type === 'SEWA' ? 'Layanan Sewa Fasilitas' : 'Layanan Pinjaman Pelayanan'}
                               </div>
                             </div>
 
                             <div style={{ padding: '10px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>KEPERLUAN ACARA</div>
-                              <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', marginTop: 2 }}>
-                                {req.loan_purpose}
+                              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>STATUS & TINDAK LANJUT</div>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginTop: 2 }}>
+                                {isPending && 'Dalam Antrean Verifikasi'}
+                                {isApproved && 'Siap Serah Terima Fisik'}
+                                {isActive && 'Sedang Aktif Digunakan'}
+                                {isReturned && 'Telah Selesai & Dikembalikan'}
+                                {isRejected && 'Pengajuan Ditolak'}
                               </div>
-                              {req.notes && (
-                                <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 2 }}>Catatan: {req.notes}</div>
-                              )}
+                              <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 1 }}>
+                                {isPending && 'Pengurus sedang meninjau ketersediaan unit.'}
+                                {isApproved && 'Silakan hubungi sekretariat GMH untuk serah terima aset.'}
+                                {isActive && 'Harap digunakan dengan baik dan dikembalikan tepat waktu.'}
+                                {isReturned && 'Terima kasih telah menggunakan fasilitas yayasan.'}
+                                {isRejected && 'Silakan hubungi pengurus atau ajukan tanggal lain.'}
+                              </div>
                             </div>
                           </div>
                         </article>

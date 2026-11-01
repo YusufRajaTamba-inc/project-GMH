@@ -297,7 +297,10 @@ export const api = {
       return request(`/assets/public/check-availability?${query}`);
     },
     publicRequest: (data: any) => request('/assets/public/request', { method: 'POST', body: JSON.stringify(data) }),
-    trackRequest: (query: string) => request(`/assets/public/track/${encodeURIComponent(query)}`),
+    trackRequest: (code: string, phoneSuffix: string) => {
+      const query = new URLSearchParams({ code, phone: phoneSuffix }).toString();
+      return request(`/assets/public/track?${query}`);
+    },
     approveLoan: (id: string, data?: { approvalNotes?: string }) =>
       request(`/assets/loans/${id}/approve`, { method: 'PUT', body: JSON.stringify(data || {}) }),
     rejectLoan: (id: string, data: { rejectionReason: string }) =>

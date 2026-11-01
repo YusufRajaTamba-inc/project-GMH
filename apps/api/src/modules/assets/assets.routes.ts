@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { Router, Request, Response } from 'express';
 import { db } from '../../config/db.js';
 import { authenticateJwt } from '../../middleware/auth.middleware.js';
@@ -5,6 +6,18 @@ import { authorizePermission } from '../../middleware/permission.middleware.js';
 import { parsePagination, formatPaginationMeta } from '../../utils/pagination.js';
 
 const router = Router();
+
+// Unpredictable Cryptographic Request Code Generator (Anti-Enumeration / Anti-IDOR)
+// Generates codes like: REQ-AST-8X9K-4M2P (Entropy: >1 Trillion combinations)
+function generateSecureRequestCode(): string {
+  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const bytes = crypto.randomBytes(8);
+  let token = '';
+  for (let i = 0; i < 8; i++) {
+    token += chars[bytes[i] % chars.length];
+  }
+  return `REQ-AST-${token.slice(0, 4)}-${token.slice(4, 8)}`;
+}
 
 // ============================================================================
 // PUBLIC ENDPOINTS (Tanpa Token — Form Pinjaman Publik & Tracking Progres)
@@ -198,14 +211,13 @@ router.post('/public/request', async (req: Request, res: Response): Promise<void
     const type = isRent ? 'SEWA' : 'PINJAM';
     const fee = isRent ? (parseFloat(asset.rental_price) * qty || 0) : 0;
 
-    // Generate Request Code: REQ-AST-YYYYMMDD-XXX
-    const todayStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const countRes = await db.query(
-      `SELECT COUNT(*)::int as today_count FROM asset_loans WHERE request_code LIKE $1`,
-      [`REQ-AST-${todayStr}-%`]
-    );
-    const seq = String((countRes.rows[0]?.today_count || 0) + 1).padStart(3, '0');
-    const requestCode = `REQ-AST-${todayStr}-${seq}`;
+    // Generate Cryptographically Random & Unpredictable Request Code: REQ-AST-XXXX-XXXX
+    let requestCode = generateSecureRequestCode();
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const checkCode = await db.query('SELECT id FROM asset_loans WHERE request_code = $1', [requestCode]);
+      if (checkCode.rows.length === 0) break;
+      requestCode = generateSecureRequestCode();
+    }
 
     // Note: status PENDING tidak langsung memotong available_quantity aset fisik.
     // Pemotongan stok riil dilakukan admin saat APPROVE untuk mencegah Denial of Inventory.
@@ -253,27 +265,41 @@ router.post('/public/request', async (req: Request, res: Response): Promise<void
 });
 
 // ----------------------------------------------------------------------------
-// PUBLIC 3: GET /public/track/:query — Lacak Progres (Sanitized PII / Exact Match)
-// Mencegah enumerasi nomor HP / pencurian data peminjam lain
+// PUBLIC 3: GET /public/track — Lacak Progres Aman (2-Factor Verification: Tiket + 4 Digit WA)
+// Mencegah enumerasi nomor tiket / pencurian data peminjam & agenda orang lain
 // ----------------------------------------------------------------------------
-router.get('/public/track/:query', async (req: Request, res: Response): Promise<void> => {
+const handleTrackRequest = async (req: Request, res: Response): Promise<void> => {
   try {
-    const rawQuery = (req.params.query || '').trim();
-    if (!rawQuery) {
-      res.status(400).json({ success: false, message: 'Masukkan nomor kode tiket atau nomor WhatsApp pemohon.' });
+    const rawCode = (req.query.code || req.params.query || '').toString().trim();
+    const rawPhone = (req.query.phone || req.query.phoneSuffix || '').toString().trim();
+
+    if (!rawCode) {
+      res.status(400).json({
+        success: false,
+        message: 'Nomor tiket pengajuan wajib diisi (contoh: REQ-AST-XXXX-XXXX).',
+      });
       return;
     }
 
-    const cleanPhone = rawQuery.replace(/[^0-9]/g, '');
+    const cleanPhoneDigits = rawPhone.replace(/[^0-9]/g, '');
+    if (!cleanPhoneDigits || cleanPhoneDigits.length < 4) {
+      res.status(400).json({
+        success: false,
+        message: 'Untuk perlindungan privasi dan keamanan agenda, masukkan 4 digit terakhir nomor WhatsApp pemohon.',
+      });
+      return;
+    }
 
-    // Sanitized SELECT: Masked borrower name & phone, no location_room, no internal admin notes
+    const phoneSuffix = cleanPhoneDigits.slice(-4);
+
+    // Sanitized SELECT:
+    // 1. TIDAK mengekspos: loan_purpose (agenda pribadi acara), rental_fee (nilai uang), location_room.
+    // 2. Proteksi IDOR: Wajib cocok nomor tiket DAN 4 digit terakhir nomor WhatsApp terdaftar.
     const query = `
       SELECT 
         al.id,
         al.request_code,
         al.loan_type,
-        al.loan_purpose,
-        al.rental_fee,
         al.borrowed_at,
         al.expected_return_at,
         al.quantity_borrowed,
@@ -281,9 +307,9 @@ router.get('/public/track/:query', async (req: Request, res: Response): Promise<
         al.approval_notes,
         al.rejection_reason,
         al.created_at,
-        -- PII Masking: Amankan nama & nomor telepon agar tidak terbongkar ke publik
+        -- PII Masking
         CONCAT(SUBSTRING(al.borrower_name, 1, 3), '***') AS borrower_name,
-        CONCAT(SUBSTRING(al.borrower_phone, 1, 4), '****', SUBSTRING(al.borrower_phone, LENGTH(al.borrower_phone) - 2, 3)) AS borrower_phone,
+        CONCAT(SUBSTRING(al.borrower_phone, 1, 4), '****', RIGHT(al.borrower_phone, 3)) AS borrower_phone,
         a.asset_code,
         a.asset_name,
         a.asset_type,
@@ -291,13 +317,26 @@ router.get('/public/track/:query', async (req: Request, res: Response): Promise<
       FROM asset_loans al
       JOIN assets a ON al.asset_id = a.id
       LEFT JOIN system_lookups sl ON a.category_id = sl.id
-      WHERE UPPER(al.request_code) = UPPER($1)
-         OR (LENGTH($1) >= 10 AND al.borrower_phone = $1)
+      WHERE UPPER(TRIM(al.request_code)) = UPPER(TRIM($1))
+        AND (
+          RIGHT(REGEXP_REPLACE(al.borrower_phone, '[^0-9]', '', 'g'), 4) = $2
+          OR REGEXP_REPLACE(al.borrower_phone, '[^0-9]', '', 'g') = $3
+        )
       ORDER BY al.created_at DESC
-      LIMIT 15
+      LIMIT 1
     `;
 
-    const result = await db.query(query, [rawQuery]);
+    const result = await db.query(query, [rawCode, phoneSuffix, cleanPhoneDigits]);
+
+    if (result.rows.length === 0) {
+      res.status(404).json({
+        success: false,
+        count: 0,
+        requests: [],
+        message: 'Data permohonan tidak ditemukan. Pastikan kombinasi nomor tiket dan 4 digit terakhir nomor WhatsApp pemohon sudah cocok.',
+      });
+      return;
+    }
 
     res.status(200).json({
       success: true,
@@ -307,7 +346,10 @@ router.get('/public/track/:query', async (req: Request, res: Response): Promise<
   } catch (err: any) {
     res.status(500).json({ success: false, message: 'Gagal melacak permohonan aset.', error: err.message });
   }
-});
+};
+
+router.get('/public/track', handleTrackRequest);
+router.get('/public/track/:query', handleTrackRequest);
 
 // ============================================================================
 // ADMIN / INTERNAL PROTECTED ROUTES

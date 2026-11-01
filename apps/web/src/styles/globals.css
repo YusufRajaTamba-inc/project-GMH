@@ -1337,6 +1337,27 @@ select.select-sm {
   width: 100%;
 }
 
+.org-section-header {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #ffffff;
+  box-sizing: border-box;
+}
+
+header.org-section-header {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.org-toolbar-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
 @media (max-width: 768px) {
   .org-header {
     padding: 14px 12px !important;

@@ -994,7 +994,7 @@ export const OrganizationPage: React.FC = () => {
       {activeTab === 'committees' && (
         <section style={{ border: '1px solid #e2e8f0', borderRadius: 10, background: '#ffffff', overflow: 'hidden', boxShadow: '0 1px 3px rgba(15,23,42,0.05)' }}>
           {/* Header & Controls Toolbar */}
-          <header className="org-section-header">
+          <header className="org-section-header" style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
               <div>
                 <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
@@ -1293,6 +1293,8 @@ export const OrganizationPage: React.FC = () => {
               border: '1px solid #e2e8f0',
               borderRadius: 10,
               background: '#ffffff',
+              padding: '16px 20px',
+              boxShadow: '0 1px 3px rgba(15,23,42,0.05)',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
@@ -1532,7 +1534,7 @@ export const OrganizationPage: React.FC = () => {
       {activeTab === 'staff' && (
         <section style={{ border: '1px solid #e2e8f0', borderRadius: 10, background: '#ffffff', overflow: 'hidden', boxShadow: '0 1px 3px rgba(15,23,42,0.05)' }}>
           {/* Header Controls */}
-          <header className="org-section-header">
+          <header className="org-section-header" style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9' }}>
             <div>
               <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
                 Direktori Staf Penuh Waktu (Full-Time Staff Yayasan)
@@ -1796,6 +1798,8 @@ export const OrganizationPage: React.FC = () => {
               border: '1px solid #e2e8f0',
               borderRadius: 10,
               background: '#ffffff',
+              padding: '16px 20px',
+              boxShadow: '0 1px 3px rgba(15,23,42,0.05)',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>

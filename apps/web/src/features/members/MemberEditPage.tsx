@@ -32,6 +32,7 @@ export const MemberEditPage: React.FC = () => {
     gender: 'Laki-laki',
     birthPlace: '',
     birthDate: '',
+    bloodType: '',
     faculty: '',
     major: '',
     entryYear: undefined,
@@ -71,6 +72,7 @@ export const MemberEditPage: React.FC = () => {
       setOriginalMember(fromStore);
       setFormData({
         ...fromStore,
+        bloodType: fromStore.bloodType || '',
         partnerName: fromStore.partnerName || '',
         childrenCount: fromStore.childrenCount !== undefined ? fromStore.childrenCount : 0,
         ministryInterest: fromStore.ministryInterest || '',
@@ -96,6 +98,7 @@ export const MemberEditPage: React.FC = () => {
               gender: row.gender === 'M' ? 'Laki-laki' : row.gender === 'F' ? 'Perempuan' : row.gender,
               birthPlace: row.birthPlace || row.birth_place,
               birthDate: (row.birthDate || row.birth_date)?.split?.('T')[0] || row.birthDate || row.birth_date,
+              bloodType: row.bloodType || row.blood_type || row.custom_fields?.bloodType || row.custom_fields?.blood_type || '',
               faculty: row.faculty || '',
               major: row.major || '-',
               entryYear: Number(row.entryYear || row.entry_year) || undefined,
@@ -419,6 +422,22 @@ export const MemberEditPage: React.FC = () => {
             </div>
 
             <div className="form-group">
+              <label className="form-label">Golongan Darah</label>
+              <select
+                className="form-select"
+                value={formData.bloodType || ''}
+                onChange={(e) => setFormData({ ...formData, bloodType: e.target.value })}
+              >
+                <option value="">-- Pilih Golongan Darah --</option>
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="AB">AB</option>
+                <option value="O">O</option>
+                <option value="Tidak Tahu">Tidak Tahu / Belum Cek</option>
+              </select>
+            </div>
+
+            <div className="form-group">
               <label className="form-label form-required">
                 {fieldLabels['member.maritalStatus'] || fieldLabels['maritalStatus'] || 'Status Pernikahan'}
               </label>
@@ -500,6 +519,7 @@ export const MemberEditPage: React.FC = () => {
                 value={formData.faculty || ''}
                 onChange={(e) => setFormData({ ...formData, faculty: e.target.value })}
               >
+                <option value="">-- Pilih Fakultas Asal USU --</option>
                 {(lookups?.faculties || []).map((f) => (
                   <option key={f} value={f}>
                     {f}
@@ -527,8 +547,9 @@ export const MemberEditPage: React.FC = () => {
                 className="form-input"
                 min={1970}
                 max={2030}
-                value={formData.entryYear || 2020}
-                onChange={(e) => setFormData({ ...formData, entryYear: Number(e.target.value) })}
+                value={formData.entryYear ?? ''}
+                onChange={(e) => setFormData({ ...formData, entryYear: e.target.value ? Number(e.target.value) : undefined })}
+                placeholder="Tahun masuk, misal: 2020"
                 required
               />
             </div>
@@ -540,8 +561,8 @@ export const MemberEditPage: React.FC = () => {
                 className="form-input"
                 min={1970}
                 max={2035}
-                value={formData.graduationYear || 2024}
-                onChange={(e) => setFormData({ ...formData, graduationYear: Number(e.target.value) })}
+                value={formData.graduationYear ?? ''}
+                onChange={(e) => setFormData({ ...formData, graduationYear: e.target.value ? Number(e.target.value) : undefined })}
                 placeholder="Kosongkan bila masih berstatus mahasiswa aktif"
               />
             </div>
@@ -552,17 +573,11 @@ export const MemberEditPage: React.FC = () => {
               </label>
               <input
                 type="text"
-                list="ktb-options"
                 className="form-input"
                 value={formData.ktb || ''}
                 onChange={(e) => setFormData({ ...formData, ktb: e.target.value })}
-                placeholder="Contoh: KTB Filipi, KTB Timotius 2020"
+                placeholder="Contoh: KTB Daniel / KTB Filipi / Pemimpin KTB"
               />
-              <datalist id="ktb-options">
-                {(lookups?.ktbGroups || []).map((k) => (
-                  <option key={k} value={k} />
-                ))}
-              </datalist>
             </div>
 
             <div className="form-group">

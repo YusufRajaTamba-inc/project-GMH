@@ -96,11 +96,14 @@ export async function publicRegisterAlumni(input: PublicRegisterAlumniInput, raw
   const isSingle = (maritalStatus || 'Lajang').toLowerCase().includes('lajang');
   const actualWeddingDate = isSingle ? null : (weddingDate || null);
 
+  const bloodTypeToUse = (rawBody.bloodType || rawBody.blood_type || null) ? String(rawBody.bloodType || rawBody.blood_type).trim() : null;
+
   const payloadObj = {
     ...rawBody,
     nik: cleanNik || null,
     birthPlace: birthPlace ? birthPlace.trim() : (rawBody.birthPlace || null),
     postalCode: postalCode ? postalCode.trim() : (rawBody.postalCode || null),
+    bloodType: bloodTypeToUse,
     graduationYear: graduationYear || gradYear || rawBody.graduationYear || rawBody.gradYear || null,
     partnerName: isSingle ? null : (partnerName ? partnerName.trim() : (rawBody.partnerName || null)),
     childrenCount: isSingle ? 0 : (childrenCount !== undefined && childrenCount !== null ? Number(childrenCount) : (rawBody.childrenCount ? Number(rawBody.childrenCount) : 0)),
@@ -117,11 +120,11 @@ export async function publicRegisterAlumni(input: PublicRegisterAlumniInput, raw
 
   const insertRes = await query(
     `INSERT INTO member_registrations (
-      registration_code, full_name, nik, gender, birth_place, birth_date, wedding_date,
+      registration_code, full_name, nik, gender, birth_place, birth_date, blood_type, wedding_date,
       phone_number, email, home_address, city, province, postal_code,
-      faculty, major, entry_year, current_profession, marital_status,
+      faculty, major, entry_year, graduation_year, current_profession, marital_status,
       member_type, payload_data, status
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, 'PENDING')
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, 'PENDING')
     RETURNING id, registration_code, full_name, status, created_at`,
     [
       registrationCode,
@@ -130,6 +133,7 @@ export async function publicRegisterAlumni(input: PublicRegisterAlumniInput, raw
       gender || 'Laki-laki',
       birthPlace ? birthPlace.trim() : null,
       birthDate || '2000-01-01',
+      bloodTypeToUse,
       actualWeddingDate,
       phoneNumber.trim(),
       email ? email.trim() : null,
@@ -140,6 +144,7 @@ export async function publicRegisterAlumni(input: PublicRegisterAlumniInput, raw
       faculty || null,
       major || null,
       entryYear || null,
+      graduationYear || gradYear || null,
       profession || currentProfession || null,
       maritalStatus || 'Lajang',
       memberType || 'ALUMNI',
@@ -267,13 +272,14 @@ export async function approveRegistration(id: string, actorUserId?: string | nul
 
     const birthPlaceToUse = reg.birth_place || payload.birthPlace || null;
     const postalCodeToUse = reg.postal_code || payload.postalCode || null;
+    const bloodTypeToUse = reg.blood_type || payload.bloodType || payload.blood_type || null;
 
     const memberRes = await client.query(
       `INSERT INTO members (
-        member_number, nik, full_name, gender, birth_place, birth_date, wedding_date,
+        member_number, nik, full_name, gender, birth_place, birth_date, blood_type, wedding_date,
         phone_number, email, home_address, city, province, postal_code,
         member_type, status, custom_fields
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'ACTIVE', $15)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'ACTIVE', $16)
       RETURNING id, member_number, full_name, nik, member_type`,
       [
         memberNumber,
@@ -282,6 +288,7 @@ export async function approveRegistration(id: string, actorUserId?: string | nul
         reg.gender,
         birthPlaceToUse,
         reg.birth_date,
+        bloodTypeToUse,
         actualWeddingDate,
         reg.phone_number,
         reg.email,

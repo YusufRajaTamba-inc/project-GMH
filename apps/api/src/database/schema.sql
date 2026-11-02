@@ -91,6 +91,7 @@ CREATE TABLE IF NOT EXISTS members (
     gender VARCHAR(10) NOT NULL,               -- 'M' / 'F' / 'Laki-laki' / 'Perempuan'
     birth_place VARCHAR(100),
     birth_date DATE NOT NULL,
+    blood_type VARCHAR(10),
     wedding_date DATE,                          -- Kolom utama widget Pengingat Ultah Pernikahan
     phone_number VARCHAR(30) NOT NULL,         -- Format WhatsApp: 628xxxxxxxx
     email VARCHAR(120),
@@ -149,6 +150,7 @@ CREATE TABLE IF NOT EXISTS member_registrations (
     province VARCHAR(100),
     city VARCHAR(100),
     postal_code VARCHAR(10),
+    blood_type VARCHAR(10),
     member_type VARCHAR(30) DEFAULT 'ALUMNI',
     faculty VARCHAR(100),
     major VARCHAR(100),

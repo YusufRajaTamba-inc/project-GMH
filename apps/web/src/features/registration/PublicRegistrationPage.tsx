@@ -30,6 +30,7 @@ const PublicRegistrationPage: React.FC = () => {
     gender: 'Laki-laki',
     birthPlace: '',
     birthDate: '',
+    bloodType: '',
     maritalStatus: 'Lajang',
     weddingDate: '',
     partnerName: '',
@@ -61,7 +62,7 @@ const PublicRegistrationPage: React.FC = () => {
   const [submittedTicket, setSubmittedTicket] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const memberCustomFields = customFields.filter((cf) => cf.module === 'MEMBERS');
+  const memberCustomFields = customFields.filter((cf) => cf.module === 'MEMBERS' && cf.fieldName !== 'blood_type');
 
   // Real-time Duplicate NIK check terhadap database anggota
   const duplicateNikMember = useMemo(() => {
@@ -172,6 +173,7 @@ const PublicRegistrationPage: React.FC = () => {
         gender: formData.gender,
         birthPlace: formData.birthPlace?.trim() || undefined,
         birthDate: formData.birthDate,
+        bloodType: formData.bloodType || undefined,
         weddingDate: formData.maritalStatus === 'Menikah' ? formData.weddingDate : undefined,
         phoneNumber: formData.wa.trim(),
         email: formData.email?.trim() || undefined,
@@ -210,6 +212,7 @@ const PublicRegistrationPage: React.FC = () => {
           gender: formData.gender,
           birthPlace: formData.birthPlace,
           birthDate: formData.birthDate,
+          bloodType: formData.bloodType,
           address: formData.address,
           city: formData.city,
           province: formData.province,
@@ -388,6 +391,7 @@ const PublicRegistrationPage: React.FC = () => {
                     gender: 'Laki-laki',
                     birthPlace: '',
                     birthDate: '',
+                    bloodType: '',
                     maritalStatus: 'Lajang',
                     weddingDate: '',
                     partnerName: '',
@@ -614,6 +618,23 @@ const PublicRegistrationPage: React.FC = () => {
                         style={{ borderColor: formErrors.birthDate ? '#dc2626' : undefined }}
                       />
                       {formErrors.birthDate && <div style={{ color: '#dc2626', fontSize: 11.5, marginTop: 4, fontWeight: 600 }}>{formErrors.birthDate}</div>}
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Golongan Darah</label>
+                      <select
+                        name="bloodType"
+                        className="form-select"
+                        value={formData.bloodType}
+                        onChange={handleChange}
+                      >
+                        <option value="">-- Pilih Golongan Darah --</option>
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="AB">AB</option>
+                        <option value="O">O</option>
+                        <option value="Tidak Tahu">Tidak Tahu / Belum Cek</option>
+                      </select>
                     </div>
 
                     <div className="form-group">
@@ -943,16 +964,10 @@ const PublicRegistrationPage: React.FC = () => {
                         type="text"
                         name="ktb"
                         className="form-input"
-                        list="public-ktb-datalist"
-                        placeholder="Pilih atau ketik KTB saat mahasiswa / Pemimpin KTB"
+                        placeholder="Contoh: KTB Daniel / KTB Filipi / Pemimpin KTB"
                         value={formData.ktb}
                         onChange={handleChange}
                       />
-                      <datalist id="public-ktb-datalist">
-                        {(lookups.ktbGroups || []).map((ktb) => (
-                          <option key={ktb} value={ktb} />
-                        ))}
-                      </datalist>
                     </div>
 
                     <div className="form-group" style={{ gridColumn: 'span 2' }}>

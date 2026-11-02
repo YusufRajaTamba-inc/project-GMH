@@ -711,6 +711,10 @@ const MemberDetailPage: React.FC = () => {
                 </div>
               </div>
               <div>
+                <div style={{ fontSize: 11, color: 'var(--gmh-text-muted)', fontWeight: 600 }}>Golongan Darah</div>
+                <div style={{ fontSize: 13.5, fontWeight: 600 }}>{member.bloodType || member.customValues?.bloodType || member.customValues?.blood_type || '-'}</div>
+              </div>
+              <div>
                 <div style={{ fontSize: 11, color: 'var(--gmh-text-muted)', fontWeight: 600 }}>Status Pernikahan</div>
                 <div style={{ fontSize: 13.5, fontWeight: 600 }}>
                   {member.maritalStatus || 'Lajang'}

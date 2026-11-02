@@ -9,6 +9,7 @@ export interface Member {
   gender?: string;
   birthPlace?: string;
   birthDate?: string;
+  bloodType?: string;
   faculty: string;
   major: string;
   entryYear: number;
@@ -48,6 +49,7 @@ export interface Registration {
   gender?: string;
   birthPlace?: string;
   birthDate?: string;
+  bloodType?: string;
   faculty: string;
   major: string;
   entryYear: number;
@@ -158,6 +160,7 @@ export const MemberStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
             gender: row.gender === 'M' ? 'Laki-laki' : row.gender === 'F' ? 'Perempuan' : row.gender,
             birthPlace: row.birth_place,
             birthDate: row.birth_date ? row.birth_date.split('T')[0] : undefined,
+            bloodType: row.blood_type || row.bloodType || row.custom_fields?.bloodType || row.custom_fields?.blood_type,
             faculty: row.faculty || '-',
             major: row.major || '-',
             entryYear: Number(row.entry_year) || 0,
@@ -196,6 +199,7 @@ export const MemberStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
           gender: row.gender === 'M' ? 'Laki-laki' : row.gender === 'F' ? 'Perempuan' : row.gender,
           birthPlace: row.birth_place || row.payload_data?.birthPlace,
           birthDate: row.birth_date ? row.birth_date.split('T')[0] : (row.payload_data?.birthDate ? row.payload_data.birthDate.split('T')[0] : undefined),
+          bloodType: row.blood_type || row.bloodType || row.payload_data?.bloodType || row.payload_data?.blood_type,
           faculty: row.faculty || row.payload_data?.faculty || '-',
           major: row.major || row.payload_data?.major || '-',
           entryYear: Number(row.entry_year || row.payload_data?.entryYear) || 0,
@@ -281,6 +285,7 @@ export const MemberStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       gender: memberData.gender === 'Perempuan' ? 'F' : 'M',
       birthPlace: memberData.birthPlace,
       birthDate: memberData.birthDate,
+      bloodType: memberData.bloodType,
       email: memberData.email,
       phoneNumber: memberData.phone,
       homeAddress: memberData.address,
@@ -385,6 +390,7 @@ export const MemberStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
         gender: updates.gender,
         birthPlace: updates.birthPlace,
         birthDate: updates.birthDate,
+        bloodType: updates.bloodType,
         weddingDate: updates.maritalStatus === 'Lajang' ? null : (updates.weddingDate || null),
         maritalStatus: updates.maritalStatus,
         phoneNumber: updates.phone,
@@ -447,6 +453,7 @@ export const MemberStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       gender: regData.gender === 'Perempuan' ? 'Perempuan' : 'Laki-laki',
       birthPlace: regData.birthPlace,
       birthDate: regData.birthDate,
+      bloodType: regData.bloodType,
       homeAddress: regData.address,
       city: regData.city,
       province: regData.province || 'Sumatera Utara',
@@ -491,6 +498,7 @@ export const MemberStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       gender: reg.gender,
       birthPlace: reg.birthPlace,
       birthDate: reg.birthDate,
+      bloodType: reg.bloodType,
       faculty: reg.faculty,
       major: reg.major,
       entryYear: reg.entryYear,

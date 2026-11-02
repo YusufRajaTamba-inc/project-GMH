@@ -74,7 +74,7 @@ export async function getMembers(filters: ListMembersQueryInput) {
   let dataQuery = `
     SELECT 
       m.id, m.member_number, m.member_number as nia, m.nik, m.full_name, m.nickname, m.gender,
-      m.birth_place, m.birth_date, m.wedding_date, m.phone_number, m.email,
+      m.birth_place, m.birth_date, m.blood_type, m.wedding_date, m.phone_number, m.email,
       m.home_address, m.city, m.province, m.postal_code, m.member_type, m.status,
       m.custom_fields,
       ap.faculty, ap.major, ap.entry_year, ap.graduation_year, ap.current_profession, ap.company_name, ap.ktb_group_name, ap.ministry_field
@@ -129,6 +129,7 @@ export async function createMember(input: CreateMemberInput, actorUserId?: strin
     gender,
     birthPlace,
     birthDate,
+    bloodType,
     weddingDate,
     maritalStatus,
     partnerName,
@@ -192,10 +193,10 @@ export async function createMember(input: CreateMemberInput, actorUserId?: strin
 
     const memberRes = await client.query(
       `INSERT INTO members (
-        member_number, nik, full_name, gender, birth_place, birth_date, wedding_date,
+        member_number, nik, full_name, gender, birth_place, birth_date, blood_type, wedding_date,
         phone_number, email, home_address, city, province, postal_code,
         member_type, status, custom_fields
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'ACTIVE', $15)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'ACTIVE', $16)
       RETURNING *`,
       [
         memberNumber,
@@ -204,6 +205,7 @@ export async function createMember(input: CreateMemberInput, actorUserId?: strin
         gender,
         birthPlace || null,
         birthDate,
+        bloodType ? bloodType.trim() : null,
         actualWeddingDate,
         phoneNumber.trim(),
         email ? email.trim() : null,
@@ -411,6 +413,7 @@ export async function updateMember(id: string, input: UpdateMemberInput, actorUs
       gender,
       birthPlace,
       birthDate,
+      bloodType,
       weddingDate,
       maritalStatus,
       partnerName,
@@ -467,18 +470,19 @@ export async function updateMember(id: string, input: UpdateMemberInput, actorUs
         gender = COALESCE($3, gender),
         birth_place = COALESCE($4, birth_place),
         birth_date = COALESCE($5, birth_date),
-        wedding_date = $6,
-        phone_number = COALESCE($7, phone_number),
-        email = COALESCE($8, email),
-        home_address = COALESCE($9, home_address),
-        city = COALESCE($10, city),
-        province = COALESCE($11, province),
-        postal_code = COALESCE($12, postal_code),
-        member_type = COALESCE($13, member_type),
-        status = COALESCE($14, status),
-        custom_fields = $15,
+        blood_type = COALESCE($6, blood_type),
+        wedding_date = $7,
+        phone_number = COALESCE($8, phone_number),
+        email = COALESCE($9, email),
+        home_address = COALESCE($10, home_address),
+        city = COALESCE($11, city),
+        province = COALESCE($12, province),
+        postal_code = COALESCE($13, postal_code),
+        member_type = COALESCE($14, member_type),
+        status = COALESCE($15, status),
+        custom_fields = $16,
         updated_at = CURRENT_TIMESTAMP
-       WHERE id = $16
+       WHERE id = $17
        RETURNING *`,
       [
         fullName ? fullName.trim() : null,
@@ -486,6 +490,7 @@ export async function updateMember(id: string, input: UpdateMemberInput, actorUs
         gender || null,
         birthPlace || null,
         birthDate || null,
+        bloodType !== undefined ? (bloodType ? bloodType.trim() : null) : null,
         actualWeddingDate,
         phoneNumber ? phoneNumber.trim() : null,
         email !== undefined ? email : null,

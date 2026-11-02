@@ -124,6 +124,12 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
                 <div style={{ fontSize: 13 }}>{selectedMember.gender || '-'}</div>
               </div>
               <div>
+                <div style={{ fontSize: 11, color: 'var(--gmh-text-muted)', fontWeight: 600 }}>Golongan Darah</div>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>
+                  {selectedMember.bloodType || selectedMember.customValues?.bloodType || selectedMember.customValues?.blood_type || '-'}
+                </div>
+              </div>
+              <div>
                 <div style={{ fontSize: 11, color: 'var(--gmh-text-muted)', fontWeight: 600 }}>
                   <Cake size={11} style={{ display: 'inline', marginRight: 4 }} />
                   Tempat &amp; Tanggal Lahir (Ultah)

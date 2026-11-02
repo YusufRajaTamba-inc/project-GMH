@@ -13,6 +13,7 @@ export const publicRegisterAlumniSchema = z.object({
   gender: z.string().trim().optional().default('Laki-laki'),
   birthPlace: z.string().trim().optional().nullable(),
   birthDate: z.string().trim().optional().default('2000-01-01'),
+  bloodType: z.string().trim().optional().nullable(),
   weddingDate: z.string().trim().optional().nullable(),
   phoneNumber: z
     .string()

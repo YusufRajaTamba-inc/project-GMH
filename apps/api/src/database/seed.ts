@@ -245,14 +245,15 @@ export async function seedDatabase() {
     };
 
     const memRes = await db.query(
-      `INSERT INTO members (member_number, nik, full_name, gender, birth_place, birth_date, wedding_date, phone_number, email, home_address, city, province, postal_code, member_type, custom_fields, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'ACTIVE')
+      `INSERT INTO members (member_number, nik, full_name, gender, birth_place, birth_date, blood_type, wedding_date, phone_number, email, home_address, city, province, postal_code, member_type, custom_fields, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'ACTIVE')
        ON CONFLICT (member_number) DO UPDATE SET 
          full_name = EXCLUDED.full_name,
          nik = EXCLUDED.nik,
          gender = EXCLUDED.gender,
          birth_place = EXCLUDED.birth_place,
          birth_date = EXCLUDED.birth_date,
+         blood_type = EXCLUDED.blood_type,
          wedding_date = EXCLUDED.wedding_date,
          phone_number = EXCLUDED.phone_number,
          email = EXCLUDED.email,
@@ -270,6 +271,7 @@ export async function seedDatabase() {
         m.gender,
         (m as any).birthPlace || 'Medan',
         m.birthDate,
+        (m as any).bloodType || 'O',
         m.weddingDate,
         m.phone,
         m.email,
@@ -1330,6 +1332,157 @@ export async function seedDatabase() {
     [counselorId]
   );
   console.log('[Seeder] Prayer requests seeded.');
+
+  // 14. Seed Sample Member Registrations (Pending verification by admin)
+  const regSamples = [
+    {
+      code: 'REG-GMH-202611-001',
+      name: 'Ruth Maharani Hutagalung',
+      nik: '1271016508990001',
+      gender: 'Perempuan',
+      birthPlace: 'Medan',
+      birthDate: '1999-08-25',
+      bloodType: 'O',
+      phone: '081260789012',
+      email: 'ruth.maharani@gmail.com',
+      address: 'Jl. Jamin Ginting Km 8.5 No. 42',
+      city: 'Medan',
+      province: 'Sumatera Utara',
+      postalCode: '20155',
+      faculty: 'Fakultas Kedokteran',
+      major: 'Pendidikan Dokter',
+      entryYear: 2017,
+      graduationYear: 2023,
+      profession: 'Dokter Umum',
+      company: 'RSUP H. Adam Malik Medan',
+      ktb: 'KTB Debora 2017',
+      ministryInterest: 'Tim Doa Syafaat & Pastoral Care Alumni',
+      maritalStatus: 'Lajang',
+    },
+    {
+      code: 'REG-GMH-202611-002',
+      name: 'Daniel Christian Siregar',
+      nik: '1271021404980002',
+      gender: 'Laki-laki',
+      birthPlace: 'Tarutung',
+      birthDate: '1998-04-14',
+      bloodType: 'A',
+      phone: '081370891234',
+      email: 'daniel.siregar@gmail.com',
+      address: 'Jl. Dr. Mansyur No. 110',
+      city: 'Medan',
+      province: 'Sumatera Utara',
+      postalCode: '20154',
+      faculty: 'Fakultas Teknik',
+      major: 'Teknik Elektro',
+      entryYear: 2016,
+      graduationYear: 2021,
+      profession: 'Electrical Engineer',
+      company: 'PT PLN (Persero) UID Sumut',
+      ktb: 'KTB Paulus 2016',
+      ministryInterest: 'Pengembangan Fasilitas Rumah Persekutuan GMH',
+      maritalStatus: 'Menikah',
+      weddingDate: '2025-06-20',
+      partnerName: 'Grace Simanjuntak',
+      childrenCount: 0,
+    },
+    {
+      code: 'REG-GMH-202611-003',
+      name: 'Ester Novita Simbolon',
+      nik: '1271035201010003',
+      gender: 'Perempuan',
+      birthPlace: 'Pematangsiantar',
+      birthDate: '2001-01-12',
+      bloodType: 'B',
+      phone: '085297123456',
+      email: 'ester.simbolon@gmail.com',
+      address: 'Jl. Iskandar Muda No. 56',
+      city: 'Medan',
+      province: 'Sumatera Utara',
+      postalCode: '20153',
+      faculty: 'Fakultas Ekonomi & Bisnis',
+      major: 'Manajemen',
+      entryYear: 2019,
+      graduationYear: 2023,
+      profession: 'Financial Analyst',
+      company: 'Bank Mandiri Medan',
+      ktb: 'KTB Ester 2019',
+      ministryInterest: 'Profesional Mentorship & Workshop Karir',
+      maritalStatus: 'Lajang',
+    },
+  ];
+
+  for (const reg of regSamples) {
+    const payload = {
+      nik: reg.nik,
+      birthPlace: reg.birthPlace,
+      postalCode: reg.postalCode,
+      bloodType: reg.bloodType,
+      graduationYear: reg.graduationYear,
+      profession: reg.profession,
+      company: reg.company,
+      ktb: reg.ktb,
+      ministryInterest: reg.ministryInterest,
+      maritalStatus: reg.maritalStatus,
+      weddingDate: (reg as any).weddingDate || null,
+      partnerName: (reg as any).partnerName || null,
+      childrenCount: (reg as any).childrenCount || 0,
+    };
+
+    await db.query(
+      `INSERT INTO member_registrations (
+        registration_code, full_name, nik, gender, birth_place, birth_date, blood_type, wedding_date,
+        phone_number, email, home_address, city, province, postal_code,
+        faculty, major, entry_year, graduation_year, current_profession, marital_status,
+        member_type, payload_data, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, 'ALUMNI', $21, 'PENDING')
+      ON CONFLICT (registration_code) DO UPDATE SET
+        full_name = EXCLUDED.full_name,
+        nik = EXCLUDED.nik,
+        gender = EXCLUDED.gender,
+        birth_place = EXCLUDED.birth_place,
+        birth_date = EXCLUDED.birth_date,
+        blood_type = EXCLUDED.blood_type,
+        wedding_date = EXCLUDED.wedding_date,
+        phone_number = EXCLUDED.phone_number,
+        email = EXCLUDED.email,
+        home_address = EXCLUDED.home_address,
+        city = EXCLUDED.city,
+        province = EXCLUDED.province,
+        postal_code = EXCLUDED.postal_code,
+        faculty = EXCLUDED.faculty,
+        major = EXCLUDED.major,
+        entry_year = EXCLUDED.entry_year,
+        graduation_year = EXCLUDED.graduation_year,
+        current_profession = EXCLUDED.current_profession,
+        marital_status = EXCLUDED.marital_status,
+        payload_data = EXCLUDED.payload_data`,
+      [
+        reg.code,
+        reg.name,
+        reg.nik,
+        reg.gender,
+        reg.birthPlace,
+        reg.birthDate,
+        reg.bloodType,
+        (reg as any).weddingDate || null,
+        reg.phone,
+        reg.email,
+        reg.address,
+        reg.city,
+        reg.province,
+        reg.postalCode,
+        reg.faculty,
+        reg.major,
+        reg.entryYear,
+        reg.graduationYear,
+        reg.profession,
+        reg.maritalStatus,
+        JSON.stringify(payload),
+      ]
+    );
+  }
+  console.log('[Seeder] Member registrations seeded.');
 
   console.log('[Seeder] Database seeding finished successfully!');
 }

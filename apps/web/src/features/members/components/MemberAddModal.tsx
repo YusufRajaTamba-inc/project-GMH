@@ -149,6 +149,21 @@ export const MemberAddModal: React.FC<MemberAddModalProps> = ({
                 />
               </div>
               <div>
+                <label className="form-label">Golongan Darah</label>
+                <select
+                  className="form-select"
+                  value={newMemberData.bloodType || ''}
+                  onChange={(e) => setNewMemberData({ ...newMemberData, bloodType: e.target.value })}
+                >
+                  <option value="">-- Pilih Golongan Darah --</option>
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="AB">AB</option>
+                  <option value="O">O</option>
+                  <option value="Tidak Tahu">Tidak Tahu / Belum Cek</option>
+                </select>
+              </div>
+              <div>
                 <label className="form-label">{fieldLabels['member.maritalStatus'] || 'Status Pernikahan'}</label>
                 <select
                   className="form-select"
@@ -385,20 +400,14 @@ export const MemberAddModal: React.FC<MemberAddModalProps> = ({
                 />
               </div>
               <div>
-                <label className="form-label">{fieldLabels['member.ktb'] || 'KTB Asal'}</label>
+                <label className="form-label">{fieldLabels['member.ktb'] || 'Kelompok Tumbuh Bersama (KTB)'}</label>
                 <input
                   type="text"
                   className="form-input"
-                  list="member-ktb-list"
-                  placeholder="Pilih atau ketik KTB..."
+                  placeholder="Contoh: KTB Daniel / KTB Filipi"
                   value={newMemberData.ktb}
                   onChange={(e) => setNewMemberData({ ...newMemberData, ktb: e.target.value })}
                 />
-                <datalist id="member-ktb-list">
-                  {(lookups.ktbGroups || []).map((ktb: string) => (
-                    <option key={ktb} value={ktb} />
-                  ))}
-                </datalist>
               </div>
               <div style={{ gridColumn: 'span 2' }}>
                 <label className="form-label">Minat Keterlibatan Pelayanan Alumni</label>

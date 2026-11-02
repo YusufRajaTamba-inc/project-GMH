@@ -584,6 +584,7 @@ const RegistrationsPage: React.FC = () => {
                   ['Jenis Kelamin', selectedReg.gender || '-'],
                   ['Tempat Lahir', selectedReg.birthPlace || '-'],
                   ['Tanggal Lahir', selectedReg.birthDate || '-'],
+                  ['Golongan Darah', selectedReg.bloodType || '-'],
                   ['Status Pernikahan', selectedReg.maritalStatus || 'Lajang'],
                   ['Tanggal Pernikahan', selectedReg.weddingDate || '-'],
                   ['Nama Pasangan', selectedReg.partnerName || '-'],

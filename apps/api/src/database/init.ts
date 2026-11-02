@@ -33,6 +33,7 @@ export async function initDatabase() {
     -- members: compatibility columns for local & production databases
     ALTER TABLE members ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
     ALTER TABLE members ADD COLUMN IF NOT EXISTS membership_type VARCHAR(50) DEFAULT 'ALUMNI';
+    ALTER TABLE members ADD COLUMN IF NOT EXISTS blood_type VARCHAR(10);
     UPDATE members SET is_active = (COALESCE(status, 'ACTIVE') = 'ACTIVE') WHERE is_active IS NULL;
     UPDATE members SET membership_type = COALESCE(member_type, 'ALUMNI') WHERE membership_type IS NULL;
 
@@ -40,6 +41,7 @@ export async function initDatabase() {
     ALTER TABLE member_registrations ADD COLUMN IF NOT EXISTS nik VARCHAR(20);
     ALTER TABLE member_registrations ADD COLUMN IF NOT EXISTS birth_place VARCHAR(100);
     ALTER TABLE member_registrations ADD COLUMN IF NOT EXISTS postal_code VARCHAR(10);
+    ALTER TABLE member_registrations ADD COLUMN IF NOT EXISTS blood_type VARCHAR(10);
     ALTER TABLE member_registrations ADD COLUMN IF NOT EXISTS member_type VARCHAR(30) DEFAULT 'ALUMNI';
     ALTER TABLE member_registrations ADD COLUMN IF NOT EXISTS graduation_year INT;
 

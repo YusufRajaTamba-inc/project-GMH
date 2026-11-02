@@ -1,11 +1,13 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import { ENV } from './config/env.js';
 import { authRateLimiter, generalRateLimiter } from './middleware/rateLimit.middleware.js';
 import { db } from './config/db.js';
 import { authenticateJwt } from './middleware/auth.middleware.js';
 import { authorizePermission } from './middleware/permission.middleware.js';
+import { sanitizeErrorResponse } from './middleware/sanitizeError.middleware.js';
 
 // Route modules
 import authRoutes from './modules/auth/auth.routes.js';
@@ -25,8 +27,26 @@ import usersRoutes from './modules/users/users.routes.js';
 import organizationRoutes from './modules/organization/organization.routes.js';
 import notificationsRoutes from './modules/notifications/notifications.routes.js';
 import secretariatRoutes from './modules/secretariat/secretariat.routes.js';
+import auditRoutes from './modules/audit/audit.routes.js';
 
 const app = express();
+
+// P1-A: Security headers (helmet).
+// CSP dimatikan karena backend ini hanya melayani JSON (bukan HTML),
+// sedangkan frontend Vite berdiri di origin terpisah dan punya CSP sendiri.
+// CORP dilonggarkan ke cross-origin agar respons API tetap bisa dibaca
+// oleh origin frontend yang berbeda (kebalikan dari default same-origin).
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginEmbedderPolicy: false,
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    frameguard: { action: 'deny' },
+    noSniff: true,
+    xssFilter: true,
+  })
+);
 
 // Percaya 1 hop reverse proxy (nginx container "web") di depan Express.
 // Tanpa ini, req.ip selalu berisi IP nginx sehingga rate limiter
@@ -45,6 +65,16 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
   res.setHeader('Surrogate-Control', 'no-store');
+  next();
+});
+
+// Redaksi pesan error internal (detail SQL/kolom) pada response production.
+app.use(sanitizeErrorResponse);
+
+// Correlation ID per request: memudahkan penelusuran log server saat terjadi error.
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const requestId = req.headers['x-request-id']?.toString() || Math.random().toString(36).slice(2, 12);
+  res.setHeader('X-Request-Id', requestId);
   next();
 });
 
@@ -110,6 +140,7 @@ app.use('/api/v1/secretariat', authenticateJwt, authorizePermission('SECRETARIAT
 app.use('/api/v1/reports', authenticateJwt, authorizePermission('REPORTS'), reportsRoutes);
 app.use('/api/v1/users', usersRoutes); // Internal auth & authorizePermission('USERS')
 app.use('/api/v1/utility', authenticateJwt, authorizePermission('UTILITY'), utilityRoutes);
+app.use('/api/v1/audit-logs', authenticateJwt, authorizePermission('AUDIT_LOGS'), auditRoutes);
 app.use('/api/v1/notifications', authenticateJwt, notificationsRoutes);
 
 // Root greeting

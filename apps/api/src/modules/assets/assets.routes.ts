@@ -3,6 +3,7 @@ import { Router, Request, Response } from 'express';
 import { db } from '../../config/db.js';
 import { authenticateJwt } from '../../middleware/auth.middleware.js';
 import { authorizePermission } from '../../middleware/permission.middleware.js';
+import { publicSubmissionRateLimiter } from '../../middleware/rateLimit.middleware.js';
 import { parsePagination, formatPaginationMeta } from '../../utils/pagination.js';
 
 const router = Router();
@@ -141,9 +142,9 @@ router.get('/public/check-availability', async (req: Request, res: Response): Pr
 });
 
 // ----------------------------------------------------------------------------
-// PUBLIC 2: POST /public/request — Formulir Pengajuan Pinjaman/Sewa Aset (Anti-Hoarding)
+// PUBLIC 2: POST /public/request — Formulir Pengajuan Pinjaman/Sewa Aset (Anti-Hoarding & Anti-Spam)
 // ----------------------------------------------------------------------------
-router.post('/public/request', async (req: Request, res: Response): Promise<void> => {
+router.post('/public/request', publicSubmissionRateLimiter, async (req: Request, res: Response): Promise<void> => {
   try {
     const {
       assetId,
@@ -1000,7 +1001,8 @@ router.put('/:id', async (req: Request, res: Response): Promise<void> => {
     if (quantity !== undefined) {
       newQty = Math.max(1, parseInt(quantity, 10) || 1);
       const diff = newQty - oldQty;
-      newAvail = Math.max(0, oldAvail + diff);
+      // Kunci di rentang [0, newQty] agar konsisten dengan CHECK constraint database.
+      newAvail = Math.min(newQty, Math.max(0, oldAvail + diff));
     }
 
     const updateRes = await db.query(

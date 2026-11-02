@@ -10,6 +10,13 @@ export const pool = new Pool({
   connectionTimeoutMillis: 5000,
 });
 
+// Pool 'error' event harus selalu ditangani. Tanpa listener, error koneksi
+// idle (jaringan putus, PostgreSQL restart) menjadi 'unhandled error event'
+// yang membuat proses Node crash — termasuk saat container production restart.
+pool.on('error', (err: Error) => {
+  console.error('[Database] Idle client error:', err.message);
+});
+
 export const db = {
   query: <T extends pg.QueryResultRow = any>(text: string, params?: any[]): Promise<pg.QueryResult<T>> => {
     return pool.query<T>(text, params);

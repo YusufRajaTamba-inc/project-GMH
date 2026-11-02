@@ -19,6 +19,7 @@ import {
   Sliders,
   Award,
   Mail,
+  ShieldCheck,
   LogOut,
   X,
 } from 'lucide-react';
@@ -99,6 +100,7 @@ const navSections: NavSection[] = [
         subItems: [
           { icon: <UserCog size={15} strokeWidth={2.2} />, label: 'Data Pengguna', path: '/users' },
           { icon: <Sliders size={15} strokeWidth={2.2} />, label: 'Sistem Utility', path: '/utility' },
+          { icon: <ShieldCheck size={15} strokeWidth={2.2} />, label: 'Jejak Audit Sistem', path: '/audit-logs' },
         ],
       },
     ],
@@ -151,6 +153,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onClose }) => {
     if (
       location.pathname.startsWith('/users') ||
       location.pathname.startsWith('/utility') ||
+      location.pathname.startsWith('/audit-logs') ||
       location.pathname.startsWith('/settings')
     ) {
       setOpenMenus((prev) => ({ ...prev, '/settings': true }));

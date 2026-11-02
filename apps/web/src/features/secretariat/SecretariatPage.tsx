@@ -254,7 +254,11 @@ export const SecretariatPage: React.FC = () => {
 
       const res = await api.secretariat.createOutgoing(payload);
       if (res.success) {
-        showToast(res.message || 'Surat keluar berhasil dibuat!');
+        showToast(
+          res.letter?.letter_number
+            ? `Surat keluar berhasil diterbitkan dengan nomor resmi: ${res.letter.letter_number}`
+            : res.message || 'Surat keluar berhasil dibuat!'
+        );
         setShowCreateOutgoingModal(false);
         if (res.letter) {
           setPreviewOutgoing(res.letter);
@@ -1346,8 +1350,8 @@ export const SecretariatPage: React.FC = () => {
                   </div>
 
                   {isAutoNumber ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 12, color: '#166534' }}>Nomor Surat yang akan diterbitkan:</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 12, color: '#166534' }}>Estimasi Nomor (dikonfirmasi atomik saat disimpan):</span>
                       <span
                         style={{
                           fontFamily: 'monospace',

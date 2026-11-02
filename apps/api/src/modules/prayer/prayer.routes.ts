@@ -1,12 +1,13 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../../config/db.js';
 import { authenticateJwt } from '../../middleware/auth.middleware.js';
+import { publicSubmissionRateLimiter } from '../../middleware/rateLimit.middleware.js';
 import { parsePagination, formatPaginationMeta } from '../../utils/pagination.js';
 
 const router = Router();
 
-// Public prayer request submission
-router.post('/public/submit', async (req: Request, res: Response): Promise<void> => {
+// Public prayer request submission (anti-spam rate limited)
+router.post('/public/submit', publicSubmissionRateLimiter, async (req: Request, res: Response): Promise<void> => {
   try {
     const { senderName, senderPhone, senderEmail, isAnonymous, prayerContent } = req.body;
     if (!prayerContent) {

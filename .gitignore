@@ -41,32 +41,48 @@ Thumbs.db
 
 # Deployment scratch / diagnostics
 deploytmp/
+scratch/
+*.local
 
 
 # Deployment scratch / diagnostics
 deploytmp/
+scratch/
+*.local
 
 
 # Deployment scratch / diagnostics
 deploytmp/
+scratch/
+*.local
 
 
 # Deployment scratch / diagnostics
 deploytmp/
+scratch/
+*.local
 
 
 # Deployment scratch / diagnostics
 deploytmp/
+scratch/
+*.local
 
 
 # Deployment scratch / diagnostics
 deploytmp/
+scratch/
+*.local
 
 
 # Deployment scratch / diagnostics
 deploytmp/
+scratch/
+*.local
 
 
 # Deployment scratch / diagnostics
 deploytmp/
+scratch/
+*.local
 

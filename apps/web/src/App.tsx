@@ -26,6 +26,7 @@ import UsersPage from './features/users/UsersPage';
 import OrganizationPage from './features/organization/OrganizationPage';
 import SecretariatPage from './features/secretariat/SecretariatPage';
 import NotificationsPage from './features/notifications/NotificationsPage';
+import AuditLogsPage from './features/audit/AuditLogsPage';
 
 import LoginPage from './features/auth/LoginPage';
 import { useAuth } from './state/AuthContext';
@@ -55,6 +56,7 @@ const PAGE_META: Record<string, { title: string; subtitle?: string }> = {
   '/users': { title: 'Pengaturan · Data Pengguna', subtitle: 'Kelola data pengguna dan hak akses sistem' },
   '/utility': { title: 'Pengaturan · Sistem Utility', subtitle: 'Konfigurasi label, dropdown, dan field dinamis' },
   '/notifications': { title: 'Pusat Notifikasi Operasional', subtitle: 'Monitoring kegiatan H-5, verifikasi pendaftaran mandiri, dan pengembalian aset yayasan' },
+  '/audit-logs': { title: 'Jejak Audit Sistem', subtitle: 'Rekam siapa, kapan, dan apa yang diubah pada seluruh modul yayasan' },
 };
 
 const ProtectedRoute: React.FC<{ path: string; element: React.ReactElement }> = ({ path, element }) => {
@@ -164,6 +166,7 @@ const App: React.FC = () => {
             <Route path="/users" element={<ProtectedRoute path="/users" element={<UsersPage />} />} />
             <Route path="/utility" element={<ProtectedRoute path="/utility" element={<UtilityPage />} />} />
             <Route path="/notifications" element={<NotificationsPage />} />
+            <Route path="/audit-logs" element={<ProtectedRoute path="/audit-logs" element={<AuditLogsPage />} />} />
           </Routes>
         </main>
       </div>

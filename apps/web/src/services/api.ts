@@ -71,6 +71,47 @@ export interface PermissionsMatrixResponse {
   permissions: RolePermissionMatrixItem[];
 }
 
+export interface AuditLogEntry {
+  id: string;
+  action: string;
+  entityName: string;
+  entityLabel: string;
+  entityId: string | null;
+  oldValues: Record<string, any> | null;
+  newValues: Record<string, any> | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
+  operatorName: string;
+  operatorUsername: string;
+  operatorRole: string;
+}
+
+export interface AuditEntityOption {
+  key: string;
+  label: string;
+  total: number;
+}
+
+export interface AuditOperatorOption {
+  id: string;
+  name: string;
+  role: string;
+  total: number;
+}
+
+export interface AuditLogsResponse {
+  success: boolean;
+  count: number;
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  logs: AuditLogEntry[];
+  entities: AuditEntityOption[];
+  operators: AuditOperatorOption[];
+}
+
 export const api = {
   // 1. Auth & RBAC
   auth: {
@@ -507,6 +548,32 @@ export const api = {
     deleteIncoming: (id: string) => request<{ success: boolean; message: string }>(`/secretariat/incoming/${id}`, {
       method: 'DELETE',
     }),
+  },
+
+  // 10. Jejak Audit Sistem (seluruh modul)
+  audit: {
+    getAuditLogs: (params?: {
+      search?: string;
+      action?: string;
+      entity?: string;
+      operator?: string;
+      dateFrom?: string;
+      dateTo?: string;
+      page?: number;
+      limit?: number;
+    }) => {
+      const q = new URLSearchParams();
+      if (params?.search) q.set('search', params.search);
+      if (params?.action && params.action !== 'ALL') q.set('action', params.action);
+      if (params?.entity && params.entity !== 'ALL') q.set('entity', params.entity);
+      if (params?.operator && params.operator !== 'ALL') q.set('operator', params.operator);
+      if (params?.dateFrom) q.set('dateFrom', params.dateFrom);
+      if (params?.dateTo) q.set('dateTo', params.dateTo);
+      if (params?.page) q.set('page', String(params.page));
+      if (params?.limit) q.set('limit', String(params.limit));
+      const qs = q.toString();
+      return request<AuditLogsResponse>(`/audit-logs${qs ? `?${qs}` : ''}`);
+    },
   },
 };
 

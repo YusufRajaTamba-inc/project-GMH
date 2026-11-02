@@ -7,11 +7,12 @@ import {
 } from './registrations.controller.js';
 import { authenticateJwt } from '../../middleware/auth.middleware.js';
 import { authorizePermission } from '../../middleware/permission.middleware.js';
+import { publicSubmissionRateLimiter } from '../../middleware/rateLimit.middleware.js';
 
 const router = Router();
 
-// Flow 1: Public Self-Registration (Terbuka untuk umum tanpa autentikasi)
-router.post('/public/register-alumni', publicRegisterAlumni);
+// Flow 1: Public Self-Registration (Terbuka untuk umum tanpa autentikasi, dibatasi anti-spam)
+router.post('/public/register-alumni', publicSubmissionRateLimiter, publicRegisterAlumni);
 
 // Admin-only review endpoints (Dilindungi oleh izin modul REGISTRATIONS)
 router.use(authenticateJwt);

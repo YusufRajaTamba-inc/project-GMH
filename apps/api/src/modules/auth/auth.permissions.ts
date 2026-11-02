@@ -120,6 +120,13 @@ export const SYSTEM_MODULES: ModuleDefinition[] = [
     description: 'Manajemen akun login operator dan pengaturan matriks hak akses setiap role',
   },
   {
+    key: 'AUDIT_LOGS',
+    label: 'Jejak Audit Sistem',
+    path: '/audit-logs',
+    category: 'Pengaturan Sistem',
+    description: 'Rekam jejak perubahan data seluruh modul: siapa, kapan, dan apa yang diubah',
+  },
+  {
     key: 'UTILITY',
     label: 'Sistem Utility',
     path: '/utility',

@@ -374,7 +374,21 @@ CREATE TABLE IF NOT EXISTS assets (
     is_borrowable BOOLEAN DEFAULT TRUE,
     notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- Invarian stok: unit tersedia tidak boleh negatif dan tidak boleh melebihi total unit.
+    CONSTRAINT chk_assets_quantity_positive CHECK (quantity IS NULL OR quantity >= 0),
+    CONSTRAINT chk_assets_available_non_negative CHECK (available_quantity IS NULL OR available_quantity >= 0),
+    CONSTRAINT chk_assets_available_within_quantity CHECK (
+        available_quantity IS NULL
+        OR quantity IS NULL
+        OR available_quantity <= quantity
+    ),
+    CONSTRAINT chk_assets_physical_condition CHECK (
+        physical_condition IS NULL OR physical_condition IN ('GOOD', 'NEED_REPAIR', 'BROKEN')
+    ),
+    CONSTRAINT chk_assets_borrow_status CHECK (
+        borrow_status IS NULL OR borrow_status IN ('AVAILABLE', 'BORROWED', 'RENTED', 'MAINTENANCE')
+    )
 );
 
 CREATE TABLE IF NOT EXISTS asset_loans (
@@ -401,7 +415,10 @@ CREATE TABLE IF NOT EXISTS asset_loans (
     rejection_reason TEXT,
     status VARCHAR(30) DEFAULT 'PENDING',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_asset_loans_status CHECK (
+        status IS NULL OR status IN ('PENDING', 'APPROVED', 'ACTIVE', 'RETURNED', 'REJECTED')
+    )
 );
 
 -- 10. MODUL SEKRETARIAT & PERSURATAN YAYASAN
@@ -446,15 +463,7 @@ CREATE TABLE IF NOT EXISTS secretariat_incoming_letters (
 );
 
 -- 11. HAK AKSES PERAN (ROLE-BASED ACCESS CONTROL MATRIX)
-CREATE TABLE IF NOT EXISTS role_permissions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    role_id VARCHAR(50) NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
-    module_key VARCHAR(50) NOT NULL,
-    can_access BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uq_role_permission UNIQUE (role_id, module_key)
-);
+-- Definisi role_permissions sudah dibuat di Bagian 1 (Identitas, RBAC & Audit Log).
 
 -- 12. KEGIATAN PELAYANAN MISI
 CREATE TABLE IF NOT EXISTS mission_activities (
@@ -538,5 +547,71 @@ CREATE TABLE IF NOT EXISTS division_members (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+
+-- ============================================================================
+-- 14. INDEKS PENDUKUNG QUERY
+-- Semua kolom foreign key di bawah ini sebelumnya tidak terindeks, sehingga
+-- PostgreSQL melakukan sequential scan pada tabel yang sudah membesar.
+-- ============================================================================
+
+-- Identitas, RBAC & audit
+CREATE INDEX IF NOT EXISTS idx_users_role_id ON users (role_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs (user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs (created_at DESC);
+
+-- Keanggotaan
+CREATE INDEX IF NOT EXISTS idx_members_sector_id ON members (sector_id);
+CREATE INDEX IF NOT EXISTS idx_members_status ON members (status);
+CREATE INDEX IF NOT EXISTS idx_members_member_type ON members (member_type);
+CREATE INDEX IF NOT EXISTS idx_members_full_name ON members (full_name);
+CREATE INDEX IF NOT EXISTS idx_families_head_of_family ON families (head_of_family_id);
+CREATE INDEX IF NOT EXISTS idx_family_members_member_id ON family_members (member_id);
+CREATE INDEX IF NOT EXISTS idx_registrations_code ON member_registrations (registration_code);
+CREATE INDEX IF NOT EXISTS idx_registrations_created_at ON member_registrations (created_at DESC);
+
+-- Departemen, staf & penggajian
+CREATE INDEX IF NOT EXISTS idx_departments_parent_id ON departments (parent_id);
+CREATE INDEX IF NOT EXISTS idx_departments_head_member ON departments (head_member_id);
+CREATE INDEX IF NOT EXISTS idx_staff_members_department_id ON staff_members (department_id);
+CREATE INDEX IF NOT EXISTS idx_payroll_records_period ON payroll_records (payroll_period_id);
+CREATE INDEX IF NOT EXISTS idx_payroll_records_staff ON payroll_records (staff_id);
+
+-- Keuangan & proyek
+CREATE INDEX IF NOT EXISTS idx_coa_parent_id ON chart_of_accounts (parent_id);
+CREATE INDEX IF NOT EXISTS idx_coa_scope ON chart_of_accounts (scope);
+CREATE INDEX IF NOT EXISTS idx_building_projects_account ON building_projects (account_id);
+CREATE INDEX IF NOT EXISTS idx_pledges_building_project ON pledges (building_project_id);
+CREATE INDEX IF NOT EXISTS idx_pledges_member_id ON pledges (member_id);
+CREATE INDEX IF NOT EXISTS idx_pledges_status ON pledges (status);
+CREATE INDEX IF NOT EXISTS idx_tx_account_id ON financial_transactions (account_id);
+CREATE INDEX IF NOT EXISTS idx_tx_pledge_id ON financial_transactions (pledge_id);
+CREATE INDEX IF NOT EXISTS idx_tx_donor_member ON financial_transactions (donor_member_id);
+CREATE INDEX IF NOT EXISTS idx_tx_recorded_by ON financial_transactions (recorded_by);
+
+-- Program, doa & inventaris
+CREATE INDEX IF NOT EXISTS idx_program_rosters_program ON program_rosters (program_id);
+CREATE INDEX IF NOT EXISTS idx_program_rosters_member ON program_rosters (member_id);
+CREATE INDEX IF NOT EXISTS idx_prayer_requests_status ON prayer_requests (status);
+CREATE INDEX IF NOT EXISTS idx_prayer_requests_counselor ON prayer_requests (assigned_counselor_id);
+CREATE INDEX IF NOT EXISTS idx_assets_category_id ON assets (category_id);
+CREATE INDEX IF NOT EXISTS idx_assets_borrow_status ON assets (borrow_status);
+CREATE INDEX IF NOT EXISTS idx_asset_loans_asset_id ON asset_loans (asset_id);
+CREATE INDEX IF NOT EXISTS idx_asset_loans_status ON asset_loans (status);
+
+-- Sekretariat & organisasi
+CREATE INDEX IF NOT EXISTS idx_outgoing_letters_created_by ON secretariat_outgoing_letters (created_by);
+CREATE INDEX IF NOT EXISTS idx_incoming_letters_created_by ON secretariat_incoming_letters (created_by);
+CREATE INDEX IF NOT EXISTS idx_committee_records_member ON committee_records (member_id);
+CREATE INDEX IF NOT EXISTS idx_org_tenures_position ON org_position_tenures (position_id);
+CREATE INDEX IF NOT EXISTS idx_org_tenures_member ON org_position_tenures (member_id);
+CREATE INDEX IF NOT EXISTS idx_division_members_department ON division_members (department_id);
+CREATE INDEX IF NOT EXISTS idx_division_members_member ON division_members (member_id);
+
+-- request_code dipakai sebagai kunci lookup publik pada lacakan peminjaman aset.
+-- Wajib unik agar satu tiket tidak pernah merujuk lebih dari satu peminjaman.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_asset_loans_request_code
+    ON asset_loans (request_code)
+    WHERE request_code IS NOT NULL;
 
 

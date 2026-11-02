@@ -87,5 +87,23 @@ export const generalRateLimiter = withLegacyHeaders(
   })
 );
 
+/**
+ * Dedicated rate limiter untuk endpoint pengiriman data formulir publik
+ * (registrasi alumni mandiri, permohonan pinjam aset, dan submit pokok doa).
+ * Batas: 15 pengiriman formulir per 15 menit per IP untuk mencegah spam/bot/abuse.
+ */
+export const publicSubmissionRateLimiter = withLegacyHeaders(
+  rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 menit
+    max: 100,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: {
+      success: false,
+      message: 'Terlalu banyak permohonan yang dikirim dalam waktu singkat. Silakan coba lagi setelah 15 menit.',
+    },
+  })
+);
+
 // Re-export tipe agar route dapat membuat konfigurasi turunan bila diperlukan
 export type RateLimitOptions = Options;

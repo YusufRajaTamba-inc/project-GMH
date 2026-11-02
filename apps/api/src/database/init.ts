@@ -34,6 +34,7 @@ export async function initDatabase() {
     ALTER TABLE members ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
     ALTER TABLE members ADD COLUMN IF NOT EXISTS membership_type VARCHAR(50) DEFAULT 'ALUMNI';
     ALTER TABLE members ADD COLUMN IF NOT EXISTS blood_type VARCHAR(10);
+    ALTER TABLE members ADD COLUMN IF NOT EXISTS marital_status VARCHAR(50);
     UPDATE members SET is_active = (COALESCE(status, 'ACTIVE') = 'ACTIVE') WHERE is_active IS NULL;
     UPDATE members SET membership_type = COALESCE(member_type, 'ALUMNI') WHERE membership_type IS NULL;
 
@@ -42,8 +43,15 @@ export async function initDatabase() {
     ALTER TABLE member_registrations ADD COLUMN IF NOT EXISTS birth_place VARCHAR(100);
     ALTER TABLE member_registrations ADD COLUMN IF NOT EXISTS postal_code VARCHAR(10);
     ALTER TABLE member_registrations ADD COLUMN IF NOT EXISTS blood_type VARCHAR(10);
+    ALTER TABLE member_registrations ADD COLUMN IF NOT EXISTS marital_status VARCHAR(50);
     ALTER TABLE member_registrations ADD COLUMN IF NOT EXISTS member_type VARCHAR(30) DEFAULT 'ALUMNI';
     ALTER TABLE member_registrations ADD COLUMN IF NOT EXISTS graduation_year INT;
+
+    -- financial_transactions: perlebar payment_method agar menampung nama bank/metode dinamis dari utility
+    ALTER TABLE financial_transactions ALTER COLUMN payment_method TYPE VARCHAR(150);
+
+    -- prayer_requests: kategori pokok doa dinamis dari utility
+    ALTER TABLE prayer_requests ADD COLUMN IF NOT EXISTS category VARCHAR(100);
 
     -- building_projects
     ALTER TABLE building_projects ADD COLUMN IF NOT EXISTS category VARCHAR(100) DEFAULT 'INFRASTRUKTUR';
@@ -260,16 +268,17 @@ export async function initDatabase() {
     END $$;
   `);
 
-  // Enforce enum status CHECK constraints on assets and asset_loans
-  console.log('[Migration] Enforcing enum status CHECK constraints on assets and asset_loans...');
+  // Enforce status constraints on assets and asset_loans; drop physical_condition constraint for dynamic utility values
+  console.log('[Migration] Ensuring dynamic physical_condition and checking asset constraints...');
   await db.query(`
+    -- Drop constraint chk_assets_physical_condition agar kondisi fisik dinamis dari modul utility tidak ditolak DB
+    ALTER TABLE assets DROP CONSTRAINT IF EXISTS chk_assets_physical_condition;
+    ALTER TABLE assets ALTER COLUMN physical_condition TYPE VARCHAR(100);
+    ALTER TABLE assets ALTER COLUMN location_room TYPE VARCHAR(150);
+
     UPDATE assets
     SET borrow_status = 'AVAILABLE'
     WHERE borrow_status IS NOT NULL AND borrow_status NOT IN ('AVAILABLE', 'BORROWED', 'RENTED', 'MAINTENANCE');
-
-    UPDATE assets
-    SET physical_condition = 'GOOD'
-    WHERE physical_condition IS NOT NULL AND physical_condition NOT IN ('GOOD', 'NEED_REPAIR', 'BROKEN');
 
     UPDATE asset_loans
     SET status = 'PENDING'
@@ -277,14 +286,6 @@ export async function initDatabase() {
 
     DO $$
     BEGIN
-      IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint WHERE conname = 'chk_assets_physical_condition'
-      ) THEN
-        ALTER TABLE assets
-          ADD CONSTRAINT chk_assets_physical_condition
-          CHECK (physical_condition IS NULL OR physical_condition IN ('GOOD', 'NEED_REPAIR', 'BROKEN'));
-      END IF;
-
       IF NOT EXISTS (
         SELECT 1 FROM pg_constraint WHERE conname = 'chk_assets_borrow_status'
       ) THEN

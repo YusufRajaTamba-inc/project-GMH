@@ -1,6 +1,16 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Download, FileSpreadsheet, Upload, Plus, CheckCircle } from 'lucide-react';
+import {
+  Download,
+  FileSpreadsheet,
+  Upload,
+  Plus,
+  CheckCircle,
+  Users,
+  GraduationCap,
+  BookOpen,
+  MapPin,
+} from 'lucide-react';
 import { useMemberStore } from '../../state/MemberStoreContext';
 import type { Member } from '../../state/MemberStoreContext';
 import { useDynamicConfig } from '../../state/DynamicConfigContext';
@@ -319,6 +329,47 @@ const MembersPage: React.FC = () => {
     });
     return Array.from(profSet).sort((a, b) => a.localeCompare(b));
   }, [lookups.professions, members]);
+
+  // Ringkasan Data Anggota & Alumni
+  const summaryStats = useMemo(() => {
+    const total = members.length;
+    const active = members.filter((m) => m.status === 'ACTIVE').length;
+    const inactive = total - active;
+    const alumni = members.filter((m) => m.type === 'ALUMNI' || !m.type).length;
+    const students = members.filter((m) => m.type === 'MAHASISWA').length;
+    const ktbCount = members.filter(
+      (m) => m.ktb && m.ktb.trim() !== '' && m.ktb !== '-'
+    ).length;
+    const ktbPercent = total > 0 ? Math.round((ktbCount / total) * 100) : 0;
+
+    const faculties = new Set(
+      members.map((m) => m.faculty?.trim()).filter((f): f is string => Boolean(f && f !== '-'))
+    );
+    const cities = new Set(
+      members.map((m) => m.city?.trim()).filter((c): c is string => Boolean(c && c !== '-'))
+    );
+    const employed = members.filter(
+      (m) =>
+        m.profession &&
+        m.profession.trim() !== '' &&
+        m.profession !== '-' &&
+        !m.profession.toLowerCase().includes('belum') &&
+        !m.profession.toLowerCase().includes('calon wisuda')
+    ).length;
+
+    return {
+      total,
+      active,
+      inactive,
+      alumni,
+      students,
+      ktbCount,
+      ktbPercent,
+      facultyCount: faculties.size,
+      cityCount: cities.size,
+      employed,
+    };
+  }, [members]);
 
   // Filtered members list
   const filtered = useMemo(() => {
@@ -1148,6 +1199,97 @@ const MembersPage: React.FC = () => {
           <span>{toastMsg}</span>
         </div>
       )}
+
+      {/* Ringkasan Data Anggota & Alumni Yayasan */}
+      <div className="stats-grid" style={{ marginBottom: 20 }}>
+        {/* Card 1: Total Anggota Terdaftar */}
+        <div
+          className="stat-card"
+          onClick={() => {
+            if (filterStatus) setFilterStatus('');
+            else setFilterStatus('ACTIVE');
+          }}
+          style={{
+            cursor: 'pointer',
+            borderColor: filterStatus === 'ACTIVE' ? 'var(--gmh-primary)' : undefined,
+            background: filterStatus === 'ACTIVE' ? 'var(--gmh-primary-50, #f0fdf4)' : undefined,
+          }}
+          title="Klik untuk filter anggota aktif"
+        >
+          <div className="stat-card-label">TOTAL ANGGOTA &amp; ALUMNI</div>
+          <div className="stat-card-icon" style={{ color: 'var(--gmh-primary)' }}>
+            <Users size={20} strokeWidth={1.8} />
+          </div>
+          <div className="stat-card-value" style={{ fontSize: 24, color: 'var(--gmh-text)' }}>
+            {summaryStats.total}{' '}
+            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--gmh-text-muted)' }}>Orang</span>
+          </div>
+          <div className="stat-card-meta">
+            <span style={{ color: 'var(--gmh-green)', fontWeight: 600 }}>{summaryStats.active} Aktif</span>
+            {summaryStats.inactive > 0 ? (
+              <span> · {summaryStats.inactive} Non-Aktif</span>
+            ) : (
+              <span> · 100% Aktif Terdata</span>
+            )}
+          </div>
+        </div>
+
+        {/* Card 2: Alumni PA KMK USU */}
+        <div
+          className="stat-card"
+          onClick={() => setFilterType(filterType === 'ALUMNI' ? '' : 'ALUMNI')}
+          style={{
+            cursor: 'pointer',
+            borderColor: filterType === 'ALUMNI' ? 'var(--gmh-gold)' : undefined,
+            background: filterType === 'ALUMNI' ? '#fefce8' : undefined,
+          }}
+          title="Klik untuk filter tipe Alumni"
+        >
+          <div className="stat-card-label">ALUMNI PA KMK USU</div>
+          <div className="stat-card-icon" style={{ color: 'var(--gmh-gold)' }}>
+            <GraduationCap size={20} strokeWidth={1.8} />
+          </div>
+          <div className="stat-card-value" style={{ fontSize: 24, color: 'var(--gmh-text)' }}>
+            {summaryStats.alumni}{' '}
+            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--gmh-text-muted)' }}>Alumni</span>
+          </div>
+          <div className="stat-card-meta">
+            <span>{summaryStats.facultyCount} Fakultas USU terdata</span>
+            {summaryStats.students > 0 && <span> · {summaryStats.students} Mahasiswa</span>}
+          </div>
+        </div>
+
+        {/* Card 3: Kelompok Tumbuh Bersama (KTB) */}
+        <div className="stat-card">
+          <div className="stat-card-label">KELOMPOK TUMBUH BERSAMA</div>
+          <div className="stat-card-icon" style={{ color: 'var(--gmh-green)' }}>
+            <BookOpen size={20} strokeWidth={1.8} />
+          </div>
+          <div className="stat-card-value" style={{ fontSize: 24, color: 'var(--gmh-text)' }}>
+            {summaryStats.ktbCount}{' '}
+            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--gmh-text-muted)' }}>Anggota</span>
+          </div>
+          <div className="stat-card-meta">
+            <span style={{ color: 'var(--gmh-green-dark)', fontWeight: 600 }}>{summaryStats.ktbPercent}%</span>
+            <span> memiliki catatan KTB asal kampus</span>
+          </div>
+        </div>
+
+        {/* Card 4: Sebaran Domisili & Karier */}
+        <div className="stat-card">
+          <div className="stat-card-label">SEBARAN DOMISILI &amp; KARIER</div>
+          <div className="stat-card-icon" style={{ color: '#0284c7' }}>
+            <MapPin size={20} strokeWidth={1.8} />
+          </div>
+          <div className="stat-card-value" style={{ fontSize: 24, color: 'var(--gmh-text)' }}>
+            {summaryStats.cityCount}{' '}
+            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--gmh-text-muted)' }}>Kota</span>
+          </div>
+          <div className="stat-card-meta">
+            <span>{summaryStats.employed} orang berkarier aktif / profesional</span>
+          </div>
+        </div>
+      </div>
 
       {/* Main Table and Filter Toolbar */}
       <MemberListTable

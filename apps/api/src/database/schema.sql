@@ -92,6 +92,7 @@ CREATE TABLE IF NOT EXISTS members (
     birth_place VARCHAR(100),
     birth_date DATE NOT NULL,
     blood_type VARCHAR(10),
+    marital_status VARCHAR(50),
     wedding_date DATE,                          -- Kolom utama widget Pengingat Ultah Pernikahan
     phone_number VARCHAR(30) NOT NULL,         -- Format WhatsApp: 628xxxxxxxx
     email VARCHAR(120),
@@ -284,7 +285,7 @@ CREATE TABLE IF NOT EXISTS financial_transactions (
     transaction_type VARCHAR(20) NOT NULL,         -- 'INCOME', 'EXPENSE'
     account_id VARCHAR(50) NOT NULL REFERENCES chart_of_accounts(id),
     amount DECIMAL(15, 2) NOT NULL,
-    payment_method VARCHAR(30) DEFAULT 'BANK_TRANSFER', -- 'CASH', 'BANK_TRANSFER', 'QRIS'
+    payment_method VARCHAR(150) DEFAULT 'Transfer Bank Mandiri Yayasan', -- Dinamis dari system_lookups
     bank_account_name VARCHAR(50),
     
     -- Batas Otoritas & Klasifikasi
@@ -331,6 +332,7 @@ CREATE TABLE IF NOT EXISTS prayer_requests (
     sender_email VARCHAR(120),
     is_anonymous BOOLEAN DEFAULT FALSE,
     prayer_content TEXT NOT NULL,
+    category VARCHAR(100),                      -- Kategori pokok doa dinamis dari system_lookups
     status VARCHAR(30) DEFAULT 'NEW',           -- 'NEW', 'BEING_PRAYED', 'ANSWERED'
     assigned_counselor_id UUID REFERENCES members(id), -- Staf / Pendoa pendamping yayasan
     counselor_notes TEXT,
@@ -349,9 +351,9 @@ CREATE TABLE IF NOT EXISTS assets (
     purchase_date DATE,
     purchase_price DECIMAL(15, 2) DEFAULT 0,
     rental_price DECIMAL(15, 2) DEFAULT 0,
-    physical_condition VARCHAR(30) DEFAULT 'GOOD',  -- 'GOOD', 'NEED_REPAIR', 'BROKEN'
+    physical_condition VARCHAR(100) DEFAULT 'GOOD',  -- Nilai kondisi fisik dinamis dari system_lookups
     borrow_status VARCHAR(50) DEFAULT 'AVAILABLE',
-    location_room VARCHAR(100),
+    location_room VARCHAR(150),
     is_borrowable BOOLEAN DEFAULT TRUE,
     notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -363,9 +365,6 @@ CREATE TABLE IF NOT EXISTS assets (
         available_quantity IS NULL
         OR quantity IS NULL
         OR available_quantity <= quantity
-    ),
-    CONSTRAINT chk_assets_physical_condition CHECK (
-        physical_condition IS NULL OR physical_condition IN ('GOOD', 'NEED_REPAIR', 'BROKEN')
     ),
     CONSTRAINT chk_assets_borrow_status CHECK (
         borrow_status IS NULL OR borrow_status IN ('AVAILABLE', 'BORROWED', 'RENTED', 'MAINTENANCE')

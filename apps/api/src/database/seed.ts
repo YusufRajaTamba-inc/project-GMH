@@ -245,8 +245,8 @@ export async function seedDatabase() {
     };
 
     const memRes = await db.query(
-      `INSERT INTO members (member_number, nik, full_name, gender, birth_place, birth_date, blood_type, wedding_date, phone_number, email, home_address, city, province, postal_code, member_type, custom_fields, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'ACTIVE')
+      `INSERT INTO members (member_number, nik, full_name, gender, birth_place, birth_date, blood_type, marital_status, wedding_date, phone_number, email, home_address, city, province, postal_code, member_type, custom_fields, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 'ACTIVE')
        ON CONFLICT (member_number) DO UPDATE SET 
          full_name = EXCLUDED.full_name,
          nik = EXCLUDED.nik,
@@ -254,6 +254,7 @@ export async function seedDatabase() {
          birth_place = EXCLUDED.birth_place,
          birth_date = EXCLUDED.birth_date,
          blood_type = EXCLUDED.blood_type,
+         marital_status = EXCLUDED.marital_status,
          wedding_date = EXCLUDED.wedding_date,
          phone_number = EXCLUDED.phone_number,
          email = EXCLUDED.email,
@@ -272,6 +273,7 @@ export async function seedDatabase() {
         (m as any).birthPlace || 'Medan',
         m.birthDate,
         (m as any).bloodType || 'O',
+        isSingle ? 'Lajang' : 'Menikah',
         m.weddingDate,
         m.phone,
         m.email,
@@ -1214,127 +1216,83 @@ export async function seedDatabase() {
   // dana, jadi keduanya harus dikelola terpisah agar tidak saling menimpa.
   console.log('[Seeder] Financial figures reconciled from actual transactions.');
 
-  // 10. Seed Sample Pending Registrations
-  await db.query(
-    `INSERT INTO member_registrations (
-       registration_code, full_name, nik, gender, birth_place, birth_date, wedding_date,
-       phone_number, email, faculty, major, entry_year, graduation_year,
-       home_address, city, province, postal_code, current_profession, member_type,
-       payload_data, status
-     )
-     VALUES
-     (
-       'REG-GMH-202610-001', 'Josua Hutapea', '1271010105010001', 'Laki-laki', 'Medan', '2001-05-14', null,
-       '081298765431', 'josua.h@gmail.com', 'Fakultas Teknik', 'Teknik Mesin', 2021, 2025,
-       'Jl. Padang Bulan Gg. Bersama No. 4', 'Medan', 'Sumatera Utara', '20155', 'Calon Wisudawan', 'ALUMNI',
-       '{"maritalStatus":"Lajang","ktb":"KTB Filipi","ministryInterest":"Pelayanan Pembinaan Mahasiswa & Mentor KTB","socialMedia":{"linkedin":"linkedin.com/in/josuahutapea","instagram":"@josua_h"}}'::jsonb,
-       'PENDING'
-     ),
-     (
-       'REG-GMH-202610-002', 'Ruth Christine Simamora', '1271010105990002', 'Perempuan', 'Tarutung', '1999-12-08', '2025-06-15',
-       '081298765432', 'ruth.simamora@gmail.com', 'Fakultas Kedokteran Gigi', 'Pendidikan Dokter Gigi', 2019, 2024,
-       'Jl. Sei Batang Hari No. 78', 'Medan', 'Sumatera Utara', '20121', 'Dokter Gigi Muda', 'ALUMNI',
-       '{"maritalStatus":"Menikah","weddingDate":"2025-06-15","partnerName":"dr. Samuel Siregar","childrenCount":0,"ktb":"KTB Debora","ministryInterest":"Tim Doa Syafaat & Pastoral Care Alumni","socialMedia":{"linkedin":"linkedin.com/in/ruthsimamora","instagram":"@ruth_simamora"}}'::jsonb,
-       'PENDING'
-     ),
-     (
-       'REG-GMH-202610-003', 'Daniel Marpaung', '1271010105980003', 'Laki-laki', 'Balige', '1998-03-22', null,
-       '081298765433', 'daniel.m@gmail.com', 'Fakultas Ekonomi & Bisnis', 'Manajemen', 2018, 2022,
-       'Jl. Gading Serpong Boulevard', 'Tangerang', 'Banten', '15810', 'Business Analyst', 'ALUMNI',
-       '{"maritalStatus":"Lajang","ktb":"KTB Timotius","ministryInterest":"Profesional Mentorship & Workshop Karir","socialMedia":{"linkedin":"linkedin.com/in/danielmarpaung","instagram":"@daniel_marpaung"}}'::jsonb,
-       'PENDING'
-     )
-     ON CONFLICT (registration_code) DO UPDATE SET
-       full_name = EXCLUDED.full_name,
-       nik = EXCLUDED.nik,
-       gender = EXCLUDED.gender,
-       birth_place = EXCLUDED.birth_place,
-       birth_date = EXCLUDED.birth_date,
-       wedding_date = EXCLUDED.wedding_date,
-       phone_number = EXCLUDED.phone_number,
-       email = EXCLUDED.email,
-       faculty = EXCLUDED.faculty,
-       major = EXCLUDED.major,
-       entry_year = EXCLUDED.entry_year,
-       graduation_year = EXCLUDED.graduation_year,
-       home_address = EXCLUDED.home_address,
-       city = EXCLUDED.city,
-       province = EXCLUDED.province,
-       postal_code = EXCLUDED.postal_code,
-       current_profession = EXCLUDED.current_profession,
-       member_type = EXCLUDED.member_type,
-       payload_data = EXCLUDED.payload_data,
-       status = EXCLUDED.status`
-  );
-
-  // 11. Seed Foundation Programs
-  await db.query(
-    `INSERT INTO foundation_programs (program_title, program_category, event_datetime, location, theme, speaker_name)
-     VALUES
-     ('Persekutuan Doa Alumni Bulanan (Online & Onsite)', 'PERSEKUTUAN_ALUMNI', '2026-11-07 19:30:00', 'Gedung GMH & Zoom Meeting', 'Setia Melayani di Tengah Dunia Kerja', 'Pdt. Dr. J. Sirait'),
-     ('Retret Pembinaan Calon Alumni PA KMK 2026', 'PEMBINAAN_KAMPUS', '2026-11-20 08:00:00', 'Retreat Center Sukamakmur, Sibolangit', 'Integritas dan Misi Kerajaan Allah', 'Tim Pembinaan Yayasan')
-     ON CONFLICT DO NOTHING`
-  );
-
-  // 12. Seed Sample Assets & Loans
-  const soundLookupRes = await db.query(`SELECT id FROM system_lookups WHERE category = 'DONATION_TYPE' LIMIT 1`);
-  const lookupId = soundLookupRes.rows[0]?.id;
-
-  const assetList = [
-    { code: 'AST-GMH-001', name: 'Sound System Mixer Yamaha 16-Channel', price: 12500000.00, rental: 250000.00, room: 'Ruang Ibadah & Doa Lt. 1', borrowable: true, type: 'OPERATIONAL' },
-    { code: 'AST-GMH-002', name: 'Proyektor Laser Epson 4000 Lumens', price: 18000000.00, rental: 300000.00, room: 'Aula Serbaguna Lt. 2', borrowable: true, type: 'OPERATIONAL' },
-    { code: 'AST-GMH-003', name: 'Genset Silent 5000 Watt', price: 22000000.00, rental: 0.00, room: 'Ruang Utilitas Luar', borrowable: false, type: 'FACILITY' },
-    { code: 'AST-GMH-004', name: 'Kamera Video Sony 4K & Tripod Profesional', price: 15500000.00, rental: 200000.00, room: 'Studio Media Lt. 1', borrowable: true, type: 'OPERATIONAL' },
-  ];
-
-  for (const ast of assetList) {
-    await db.query(
-      `INSERT INTO assets (asset_code, asset_name, category_id, purchase_date, purchase_price, rental_price, physical_condition, location_room, is_borrowable, asset_type, quantity, available_quantity)
-       VALUES ($1, $2, $3, '2024-05-10', $4, $5, 'GOOD', $6, $7, $8, 1, 1)
-       ON CONFLICT (asset_code) DO UPDATE 
-       SET asset_name = EXCLUDED.asset_name, rental_price = EXCLUDED.rental_price, asset_type = EXCLUDED.asset_type`,
-      [ast.code, ast.name, lookupId, ast.price, ast.rental, ast.room, ast.borrowable, ast.type]
-    );
-  }
-
-  // Seed 1 Sample Loan for Proyektor Laser Epson
-  const proyektorRes = await db.query(`SELECT id FROM assets WHERE asset_code = 'AST-GMH-002'`);
-  const yusufMemRes = await db.query(`SELECT id FROM members WHERE member_number = 'GMH-2026-00001'`);
-  if (proyektorRes.rows.length > 0 && yusufMemRes.rows.length > 0) {
-    const assetId = proyektorRes.rows[0].id;
-    const borrowerMemberId = yusufMemRes.rows[0].id;
-    const existingLoan = await db.query(`SELECT id FROM asset_loans WHERE request_code = $1`, ['REQ-AST-202610-001']);
-    if (existingLoan.rows.length === 0) {
-      await db.query(
-        `INSERT INTO asset_loans (
-          asset_id, borrower_member_id, borrower_name, borrower_phone, borrower_email, borrower_institution,
-          loan_purpose, loan_type, rental_fee, quantity_borrowed, request_code,
-          borrowed_at, expected_return_at, status
-        ) VALUES ($1, $2, 'Yusuf Panjaitan', '081234567801', 'yusuf.panjaitan@gmail.com', 'Alumni PA KMK',
-          'Peminjaman proyektor untuk persekutuan doa wilayah Medan Baru', 'PINJAM', 0.00, 1, 'REQ-AST-202610-001',
-          NOW(), NOW() + INTERVAL '2 days', 'PENDING')`,
-        [assetId, borrowerMemberId]
-      );
-    }
-  }
-  console.log('[Seeder] Assets and sample asset loan seeded.');
-
-  // 13. Seed Prayer Requests
-  const counselorRes = await db.query(`SELECT id FROM members WHERE member_number = 'GMH-2026-00009'`);
-  const counselorId = counselorRes.rows[0]?.id || null;
-
-  await db.query(
-    `INSERT INTO prayer_requests (sender_name, sender_phone, sender_email, is_anonymous, prayer_content, status, assigned_counselor_id)
-     VALUES 
-     ('Alumni Stambuk 2018', '081233445566', 'alumni2018@gmail.com', false, 'Mohon dukungan doa bagi rekan-rekan alumni yang baru memulai usaha rintisan di bidang teknologi agar senantiasa berintegritas.', 'BEING_PRAYED', $1),
-     ('Saudara dalam Kristus', null, null, true, 'Doa syafaat untuk kelancaran pembangunan Rumah Persekutuan GMH dan pos misi pedesaan yang sedang dirintis di Nias Selatan.', 'NEW', $1)
-     ON CONFLICT DO NOTHING`,
-    [counselorId]
-  );
-  console.log('[Seeder] Prayer requests seeded.');
-
-  // 14. Seed Sample Member Registrations (Pending verification by admin)
+  // 10. Seed Sample Pending Registrations (Integrated with full member schema)
   const regSamples = [
+    {
+      code: 'REG-GMH-202610-001',
+      name: 'Josua Hutapea',
+      nik: '1271010105010001',
+      gender: 'Laki-laki',
+      birthPlace: 'Medan',
+      birthDate: '2001-05-14',
+      bloodType: 'O',
+      phone: '081298765431',
+      email: 'josua.h@gmail.com',
+      address: 'Jl. Padang Bulan Gg. Bersama No. 4',
+      city: 'Medan',
+      province: 'Sumatera Utara',
+      postalCode: '20155',
+      faculty: 'Fakultas Teknik',
+      major: 'Teknik Mesin',
+      entryYear: 2021,
+      graduationYear: 2025,
+      profession: 'Calon Wisudawan & Freelancer',
+      company: 'Mandiri Digital',
+      ktb: 'KTB Filipi 2021',
+      ministryInterest: 'Pelayanan Pembinaan Mahasiswa & Mentor KTB',
+      maritalStatus: 'Lajang',
+    },
+    {
+      code: 'REG-GMH-202610-002',
+      name: 'Ruth Christine Simamora',
+      nik: '1271010105990002',
+      gender: 'Perempuan',
+      birthPlace: 'Tarutung',
+      birthDate: '1999-12-08',
+      bloodType: 'B',
+      phone: '081298765432',
+      email: 'ruth.simamora@gmail.com',
+      address: 'Jl. Sei Batang Hari No. 78',
+      city: 'Medan',
+      province: 'Sumatera Utara',
+      postalCode: '20121',
+      faculty: 'Fakultas Kedokteran Gigi',
+      major: 'Pendidikan Dokter Gigi',
+      entryYear: 2019,
+      graduationYear: 2024,
+      profession: 'Dokter Gigi Muda',
+      company: 'Klinik Gigi Sehat',
+      ktb: 'KTB Debora 2019',
+      ministryInterest: 'Tim Doa Syafaat & Pastoral Care Alumni',
+      maritalStatus: 'Menikah',
+      weddingDate: '2025-06-15',
+      partnerName: 'dr. Samuel Siregar',
+      childrenCount: 0,
+    },
+    {
+      code: 'REG-GMH-202610-003',
+      name: 'Daniel Marpaung',
+      nik: '1271010105980003',
+      gender: 'Laki-laki',
+      birthPlace: 'Balige',
+      birthDate: '1998-03-22',
+      bloodType: 'A',
+      phone: '081298765433',
+      email: 'daniel.m@gmail.com',
+      address: 'Jl. Gading Serpong Boulevard',
+      city: 'Tangerang',
+      province: 'Banten',
+      postalCode: '15810',
+      faculty: 'Fakultas Ekonomi dan Bisnis',
+      major: 'Manajemen',
+      entryYear: 2018,
+      graduationYear: 2022,
+      profession: 'Business Analyst',
+      company: 'PT Global Finansial',
+      ktb: 'KTB Timotius 2018',
+      ministryInterest: 'Profesional Mentorship & Workshop Karir',
+      maritalStatus: 'Lajang',
+    },
     {
       code: 'REG-GMH-202611-001',
       name: 'Ruth Maharani Hutagalung',
@@ -1355,8 +1313,8 @@ export async function seedDatabase() {
       graduationYear: 2023,
       profession: 'Dokter Umum',
       company: 'RSUP H. Adam Malik Medan',
-      ktb: 'KTB Debora 2017',
-      ministryInterest: 'Tim Doa Syafaat & Pastoral Care Alumni',
+      ktb: 'KTB Ester 2017',
+      ministryInterest: 'Tim Doa Syafaat & Tim Medis Misi GMH',
       maritalStatus: 'Lajang',
     },
     {
@@ -1400,13 +1358,13 @@ export async function seedDatabase() {
       city: 'Medan',
       province: 'Sumatera Utara',
       postalCode: '20153',
-      faculty: 'Fakultas Ekonomi & Bisnis',
-      major: 'Manajemen',
+      faculty: 'Fakultas Ekonomi dan Bisnis',
+      major: 'Manajemen Keuangan',
       entryYear: 2019,
       graduationYear: 2023,
       profession: 'Financial Analyst',
       company: 'Bank Mandiri Medan',
-      ktb: 'KTB Ester 2019',
+      ktb: 'KTB Rut 2019',
       ministryInterest: 'Profesional Mentorship & Workshop Karir',
       maritalStatus: 'Lajang',
     },
@@ -1482,7 +1440,125 @@ export async function seedDatabase() {
       ]
     );
   }
-  console.log('[Seeder] Member registrations seeded.');
+  console.log(`[Seeder] Seeded ${regSamples.length} integrated member registrations.`);
+
+  // 11. Seed Foundation Programs (Aligned with PROGRAM_CATEGORY lookups)
+  await db.query(
+    `INSERT INTO foundation_programs (program_title, program_category, event_datetime, location, theme, speaker_name)
+     VALUES
+     ('Persekutuan Doa Alumni Bulanan (Online & Onsite)', 'FELLOWSHIP', '2026-11-07 19:30:00', 'Gedung GMH & Zoom Meeting', 'Setia Melayani di Tengah Dunia Kerja', 'Pdt. Dr. J. Sirait'),
+     ('Retret Pembinaan Calon Alumni PA KMK 2026', 'SEMINAR', '2026-11-20 08:00:00', 'Retreat Center Sukamakmur, Sibolangit', 'Integritas dan Misi Kerajaan Allah', 'Tim Pembinaan Yayasan'),
+     ('Rapat Kerja Tahunan Pengurus & Evaluasi Program GMH', 'ADMIN', '2026-12-05 09:00:00', 'Kantor Sekretariat Yayasan GMH', 'Sinergi Pelayanan Menatap Tahun 2027', 'BPH Yayasan GMH')
+     ON CONFLICT DO NOTHING`
+  );
+  console.log('[Seeder] Foundation programs seeded.');
+
+  // 12. Seed Assets & Loans (Aligned with ASSET_CATEGORY & members)
+  const soundLookupRes = await db.query(`SELECT id FROM system_lookups WHERE category = 'ASSET_CATEGORY' AND code = 'SOUND_MUSIC' LIMIT 1`);
+  const soundCatId = soundLookupRes.rows[0]?.id || null;
+
+  const mmLookupRes = await db.query(`SELECT id FROM system_lookups WHERE category = 'ASSET_CATEGORY' AND code = 'MULTIMEDIA' LIMIT 1`);
+  const mmCatId = mmLookupRes.rows[0]?.id || soundCatId;
+
+  const itLookupRes = await db.query(`SELECT id FROM system_lookups WHERE category = 'ASSET_CATEGORY' AND code = 'IT_COMP' LIMIT 1`);
+  const itCatId = itLookupRes.rows[0]?.id || soundCatId;
+
+  const furnLookupRes = await db.query(`SELECT id FROM system_lookups WHERE category = 'ASSET_CATEGORY' AND code = 'FURNITURE' LIMIT 1`);
+  const furnCatId = furnLookupRes.rows[0]?.id || soundCatId;
+
+  const assetList = [
+    { code: 'AST-GMH-001', name: 'Sound System Mixer Yamaha 16-Channel', catId: soundCatId, price: 12500000.00, rental: 250000.00, room: 'Aula Persekutuan Utama', borrowable: true, type: 'OPERATIONAL' },
+    { code: 'AST-GMH-002', name: 'Proyektor Laser Epson 4000 Lumens', catId: mmCatId, price: 18000000.00, rental: 300000.00, room: 'Aula Persekutuan Utama', borrowable: true, type: 'OPERATIONAL' },
+    { code: 'AST-GMH-003', name: 'Genset Silent 5000 Watt', catId: soundCatId, price: 22000000.00, rental: 0.00, room: 'Gudang Sarana', borrowable: false, type: 'FACILITY' },
+    { code: 'AST-GMH-004', name: 'Kamera Video Sony 4K & Tripod Profesional', catId: mmCatId, price: 15500000.00, rental: 200000.00, room: 'Ruang Sekretariat Lantai 1', borrowable: true, type: 'OPERATIONAL' },
+    { code: 'AST-GMH-005', name: 'Paket Meja Rapat & Kursi Kantor Ergonomis', catId: furnCatId, price: 8500000.00, rental: 0.00, room: 'Ruang Sekretariat Lantai 1', borrowable: false, type: 'FACILITY' },
+    { code: 'AST-GMH-006', name: 'PC Komputer Desain & Multimedia i7', catId: itCatId, price: 14000000.00, rental: 150000.00, room: 'Ruang Sekretariat Lantai 1', borrowable: true, type: 'OPERATIONAL' },
+  ];
+
+  for (const ast of assetList) {
+    await db.query(
+      `INSERT INTO assets (asset_code, asset_name, category_id, purchase_date, purchase_price, rental_price, physical_condition, location_room, is_borrowable, asset_type, quantity, available_quantity)
+       VALUES ($1, $2, $3, '2024-05-10', $4, $5, 'GOOD', $6, $7, $8, 1, 1)
+       ON CONFLICT (asset_code) DO UPDATE 
+       SET asset_name = EXCLUDED.asset_name, rental_price = EXCLUDED.rental_price, asset_type = EXCLUDED.asset_type, category_id = EXCLUDED.category_id, location_room = EXCLUDED.location_room`,
+      [ast.code, ast.name, ast.catId, ast.price, ast.rental, ast.room, ast.borrowable, ast.type]
+    );
+  }
+
+  // Seed 1 Sample Loan for Proyektor Laser Epson linked to Yusuf Panjaitan (GMH-2026-00001)
+  const proyektorRes = await db.query(`SELECT id FROM assets WHERE asset_code = 'AST-GMH-002'`);
+  const yusufMemRes = await db.query(`SELECT id FROM members WHERE member_number = 'GMH-2026-00001'`);
+  if (proyektorRes.rows.length > 0 && yusufMemRes.rows.length > 0) {
+    const assetId = proyektorRes.rows[0].id;
+    const borrowerMemberId = yusufMemRes.rows[0].id;
+    const existingLoan = await db.query(`SELECT id FROM asset_loans WHERE request_code = $1`, ['REQ-AST-202610-001']);
+    if (existingLoan.rows.length === 0) {
+      await db.query(
+        `INSERT INTO asset_loans (
+          asset_id, borrower_member_id, borrower_name, borrower_phone, borrower_email, borrower_institution,
+          loan_purpose, loan_type, rental_fee, quantity_borrowed, request_code,
+          borrowed_at, expected_return_at, status
+        ) VALUES ($1, $2, 'Yusuf Panjaitan', '081234567801', 'yusuf.panjaitan@gmail.com', 'Alumni PA KMK',
+          'Peminjaman proyektor untuk persekutuan doa wilayah Medan Baru', 'PINJAM', 0.00, 1, 'REQ-AST-202610-001',
+          NOW(), NOW() + INTERVAL '2 days', 'PENDING')`,
+        [assetId, borrowerMemberId]
+      );
+    }
+  }
+  console.log('[Seeder] Assets and sample asset loan seeded with valid relational links.');
+
+  // 13. Seed Prayer Requests (Fully integrated with members, PRAYER_CATEGORY & PRAYER_STATUS)
+  const counselorRes = await db.query(`SELECT id FROM members WHERE member_number = 'GMH-2026-00009'`);
+  const counselorId = counselorRes.rows[0]?.id || null;
+
+  const prayerSeeds = [
+    {
+      name: 'Yusuf Panjaitan',
+      phone: '081234567801',
+      email: 'yusuf.panjaitan@gmail.com',
+      anon: false,
+      content: 'Mohon dukungan doa bagi rekan-rekan alumni muda yang baru merintis usaha di bidang teknologi agar senantiasa menjunjung tinggi integritas Kristiani.',
+      category: 'PEKERJAAN',
+      status: 'BEING_PRAYED',
+    },
+    {
+      name: 'Mariana Hutabarat',
+      phone: '081234567802',
+      email: 'mariana.h@gmail.com',
+      anon: false,
+      content: 'Doa syafaat untuk kelancaran pembangunan fisik Rumah Persekutuan GMH serta pos-pos misi pedesaan yang sedang dirintis di Nias Selatan dan Simalungun.',
+      category: 'GEDUNG',
+      status: 'NEW',
+    },
+    {
+      name: 'dr. Jekson Simanjuntak',
+      phone: '081234567803',
+      email: 'jekson.sim@gmail.com',
+      anon: false,
+      content: 'Mohon dukungan doa bagi pelayanan medis pos misi dan pemulihan kesehatan bagi adik-adik binaan di daerah pelosok.',
+      category: 'KESEHATAN',
+      status: 'BEING_PRAYED',
+    },
+    {
+      name: 'Anonim',
+      phone: null,
+      email: null,
+      anon: true,
+      content: 'Ucapan syukur atas penyertaan Tuhan bagi adik-adik mahasiswa binaan PA KMK USU yang baru menyelesaikan sidang tugas akhir dan wisuda.',
+      category: 'SYUKUR',
+      status: 'ANSWERED',
+    },
+  ];
+
+  for (const pr of prayerSeeds) {
+    await db.query(
+      `INSERT INTO prayer_requests (sender_name, sender_phone, sender_email, is_anonymous, prayer_content, category, status, assigned_counselor_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       ON CONFLICT DO NOTHING`,
+      [pr.name, pr.phone, pr.email, pr.anon, pr.content, pr.category, pr.status, counselorId]
+    );
+  }
+  console.log('[Seeder] Prayer requests seeded with integrated categories and counselors.');
 
   console.log('[Seeder] Database seeding finished successfully!');
 }

@@ -273,13 +273,14 @@ export async function approveRegistration(id: string, actorUserId?: string | nul
     const birthPlaceToUse = reg.birth_place || payload.birthPlace || null;
     const postalCodeToUse = reg.postal_code || payload.postalCode || null;
     const bloodTypeToUse = reg.blood_type || payload.bloodType || payload.blood_type || null;
+    const maritalStatusToUse = reg.marital_status || payload.maritalStatus || (actualWeddingDate ? 'Menikah' : 'Lajang');
 
     const memberRes = await client.query(
       `INSERT INTO members (
-        member_number, nik, full_name, gender, birth_place, birth_date, blood_type, wedding_date,
+        member_number, nik, full_name, gender, birth_place, birth_date, blood_type, marital_status, wedding_date,
         phone_number, email, home_address, city, province, postal_code,
         member_type, status, custom_fields
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'ACTIVE', $16)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'ACTIVE', $17)
       RETURNING id, member_number, full_name, nik, member_type`,
       [
         memberNumber,
@@ -289,6 +290,7 @@ export async function approveRegistration(id: string, actorUserId?: string | nul
         birthPlaceToUse,
         reg.birth_date,
         bloodTypeToUse,
+        maritalStatusToUse,
         actualWeddingDate,
         reg.phone_number,
         reg.email,

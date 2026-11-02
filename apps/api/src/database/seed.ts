@@ -232,21 +232,80 @@ export async function seedDatabase() {
   ];
 
   for (const m of sampleMembers) {
+    const isSingle = !m.weddingDate;
+    const customFields = {
+      maritalStatus: isSingle ? 'Lajang' : 'Menikah',
+      partnerName: isSingle ? null : ((m as any).partnerName || `Ny. ${m.name.split(' ')[0]}`),
+      childrenCount: isSingle ? 0 : ((m as any).childrenCount ?? 1),
+      ministryInterest: (m as any).ministryInterest || 'Pelayanan Pembinaan Mahasiswa & Mentor KTB',
+      socialMedia: (m as any).socialMedia || {
+        linkedin: `linkedin.com/in/${m.name.toLowerCase().replace(/[^a-z]/g, '')}`,
+        instagram: `@${m.name.toLowerCase().replace(/[^a-z]/g, '')}`,
+      },
+    };
+
     const memRes = await db.query(
-      `INSERT INTO members (member_number, nik, full_name, gender, birth_date, wedding_date, phone_number, email, home_address, city, province, member_type, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'ACTIVE')
-       ON CONFLICT (member_number) DO UPDATE SET full_name = EXCLUDED.full_name
+      `INSERT INTO members (member_number, nik, full_name, gender, birth_place, birth_date, wedding_date, phone_number, email, home_address, city, province, postal_code, member_type, custom_fields, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'ACTIVE')
+       ON CONFLICT (member_number) DO UPDATE SET 
+         full_name = EXCLUDED.full_name,
+         nik = EXCLUDED.nik,
+         gender = EXCLUDED.gender,
+         birth_place = EXCLUDED.birth_place,
+         birth_date = EXCLUDED.birth_date,
+         wedding_date = EXCLUDED.wedding_date,
+         phone_number = EXCLUDED.phone_number,
+         email = EXCLUDED.email,
+         home_address = EXCLUDED.home_address,
+         city = EXCLUDED.city,
+         province = EXCLUDED.province,
+         postal_code = EXCLUDED.postal_code,
+         member_type = EXCLUDED.member_type,
+         custom_fields = EXCLUDED.custom_fields
        RETURNING id`,
-      [m.nia, m.nik, m.name, m.gender, m.birthDate, m.weddingDate, m.phone, m.email, m.address, m.city, m.province, m.type]
+      [
+        m.nia,
+        m.nik,
+        m.name,
+        m.gender,
+        (m as any).birthPlace || 'Medan',
+        m.birthDate,
+        m.weddingDate,
+        m.phone,
+        m.email,
+        m.address,
+        m.city,
+        m.province,
+        (m as any).postalCode || '20155',
+        m.type,
+        JSON.stringify(customFields),
+      ]
     );
     const memberId = memRes.rows[0].id;
 
     await db.query(
-      `INSERT INTO alumni_profiles (member_id, faculty, major, entry_year, current_profession, company_name)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO alumni_profiles (member_id, faculty, major, entry_year, graduation_year, current_profession, company_name, ktb_group_name, ministry_field)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        ON CONFLICT (member_id) DO UPDATE 
-       SET faculty = EXCLUDED.faculty, major = EXCLUDED.major, entry_year = EXCLUDED.entry_year, current_profession = EXCLUDED.current_profession`,
-      [memberId, m.faculty, m.major, m.entryYear, m.profession, m.company]
+       SET faculty = EXCLUDED.faculty,
+           major = EXCLUDED.major,
+           entry_year = EXCLUDED.entry_year,
+           graduation_year = EXCLUDED.graduation_year,
+           current_profession = EXCLUDED.current_profession,
+           company_name = EXCLUDED.company_name,
+           ktb_group_name = EXCLUDED.ktb_group_name,
+           ministry_field = EXCLUDED.ministry_field`,
+      [
+        memberId,
+        m.faculty,
+        m.major,
+        m.entryYear,
+        (m as any).graduationYear || (m.entryYear + 4),
+        m.profession,
+        m.company,
+        (m as any).ktb || 'KTB Pemuridan Alumni',
+        customFields.ministryInterest,
+      ]
     );
   }
   console.log(`[Seeder] Seeded ${sampleMembers.length} members with alumni profiles.`);
@@ -370,21 +429,80 @@ export async function seedDatabase() {
   ];
 
   for (const m of additionalMembers) {
+    const isSingle = !m.weddingDate;
+    const customFields = {
+      maritalStatus: isSingle ? 'Lajang' : 'Menikah',
+      partnerName: isSingle ? null : ((m as any).partnerName || `Ny. ${m.name.split(' ')[0]}`),
+      childrenCount: isSingle ? 0 : ((m as any).childrenCount ?? 1),
+      ministryInterest: (m as any).ministryInterest || 'Pelayanan Pembinaan Mahasiswa & Mentor KTB',
+      socialMedia: (m as any).socialMedia || {
+        linkedin: `linkedin.com/in/${m.name.toLowerCase().replace(/[^a-z]/g, '')}`,
+        instagram: `@${m.name.toLowerCase().replace(/[^a-z]/g, '')}`,
+      },
+    };
+
     const memRes = await db.query(
-      `INSERT INTO members (member_number, nik, full_name, gender, birth_date, wedding_date, phone_number, email, home_address, city, province, member_type, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'ACTIVE')
-       ON CONFLICT (member_number) DO UPDATE SET full_name = EXCLUDED.full_name
+      `INSERT INTO members (member_number, nik, full_name, gender, birth_place, birth_date, wedding_date, phone_number, email, home_address, city, province, postal_code, member_type, custom_fields, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'ACTIVE')
+       ON CONFLICT (member_number) DO UPDATE SET 
+         full_name = EXCLUDED.full_name,
+         nik = EXCLUDED.nik,
+         gender = EXCLUDED.gender,
+         birth_place = EXCLUDED.birth_place,
+         birth_date = EXCLUDED.birth_date,
+         wedding_date = EXCLUDED.wedding_date,
+         phone_number = EXCLUDED.phone_number,
+         email = EXCLUDED.email,
+         home_address = EXCLUDED.home_address,
+         city = EXCLUDED.city,
+         province = EXCLUDED.province,
+         postal_code = EXCLUDED.postal_code,
+         member_type = EXCLUDED.member_type,
+         custom_fields = EXCLUDED.custom_fields
        RETURNING id`,
-      [m.nia, m.nik, m.name, m.gender, m.birthDate, m.weddingDate, m.phone, m.email, m.address, m.city, m.province, m.type]
+      [
+        m.nia,
+        m.nik,
+        m.name,
+        m.gender,
+        (m as any).birthPlace || 'Medan',
+        m.birthDate,
+        m.weddingDate,
+        m.phone,
+        m.email,
+        m.address,
+        m.city,
+        m.province,
+        (m as any).postalCode || '20155',
+        m.type,
+        JSON.stringify(customFields),
+      ]
     );
     const memberId = memRes.rows[0].id;
 
     await db.query(
-      `INSERT INTO alumni_profiles (member_id, faculty, major, entry_year, current_profession, company_name)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO alumni_profiles (member_id, faculty, major, entry_year, graduation_year, current_profession, company_name, ktb_group_name, ministry_field)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        ON CONFLICT (member_id) DO UPDATE 
-       SET faculty = EXCLUDED.faculty, major = EXCLUDED.major, entry_year = EXCLUDED.entry_year, current_profession = EXCLUDED.current_profession`,
-      [memberId, m.faculty, m.major, m.entryYear, m.profession, m.company]
+       SET faculty = EXCLUDED.faculty,
+           major = EXCLUDED.major,
+           entry_year = EXCLUDED.entry_year,
+           graduation_year = EXCLUDED.graduation_year,
+           current_profession = EXCLUDED.current_profession,
+           company_name = EXCLUDED.company_name,
+           ktb_group_name = EXCLUDED.ktb_group_name,
+           ministry_field = EXCLUDED.ministry_field`,
+      [
+        memberId,
+        m.faculty,
+        m.major,
+        m.entryYear,
+        (m as any).graduationYear || (m.entryYear + 4),
+        m.profession,
+        m.company,
+        (m as any).ktb || 'KTB Pemuridan Alumni',
+        customFields.ministryInterest,
+      ]
     );
   }
   console.log(`[Seeder] Seeded ${sampleMembers.length + additionalMembers.length} members with alumni profiles.`);
@@ -1096,12 +1214,55 @@ export async function seedDatabase() {
 
   // 10. Seed Sample Pending Registrations
   await db.query(
-    `INSERT INTO member_registrations (registration_code, full_name, gender, birth_date, wedding_date, phone_number, email, faculty, major, entry_year, home_address, city, province, current_profession, status)
+    `INSERT INTO member_registrations (
+       registration_code, full_name, nik, gender, birth_place, birth_date, wedding_date,
+       phone_number, email, faculty, major, entry_year, graduation_year,
+       home_address, city, province, postal_code, current_profession, member_type,
+       payload_data, status
+     )
      VALUES
-     ('REG-GMH-202610-001', 'Josua Hutapea', 'Laki-laki', '2001-05-14', null, '081298765431', 'josua.h@gmail.com', 'Fakultas Teknik', 'Teknik Mesin', 2021, 'Jl. Padang Bulan Gg. Bersama No. 4', 'Medan', 'Sumatera Utara', 'Calon Wisudawan', 'PENDING'),
-     ('REG-GMH-202610-002', 'Ruth Christine Simamora', 'Perempuan', '1999-12-08', '2025-06-15', '081298765432', 'ruth.simamora@gmail.com', 'Fakultas Kedokteran Gigi', 'Pendidikan Dokter Gigi', 2019, 'Jl. Sei Batang Hari No. 78', 'Medan', 'Sumatera Utara', 'Dokter Gigi Muda', 'PENDING'),
-     ('REG-GMH-202610-003', 'Daniel Marpaung', 'Laki-laki', '1998-03-22', null, '081298765433', 'daniel.m@gmail.com', 'Fakultas Ekonomi & Bisnis', 'Manajemen', 2018, 'Jl. Gading Serpong Boulevard', 'Tangerang', 'Banten', 'Business Analyst', 'PENDING')
-     ON CONFLICT (registration_code) DO NOTHING`
+     (
+       'REG-GMH-202610-001', 'Josua Hutapea', '1271010105010001', 'Laki-laki', 'Medan', '2001-05-14', null,
+       '081298765431', 'josua.h@gmail.com', 'Fakultas Teknik', 'Teknik Mesin', 2021, 2025,
+       'Jl. Padang Bulan Gg. Bersama No. 4', 'Medan', 'Sumatera Utara', '20155', 'Calon Wisudawan', 'ALUMNI',
+       '{"maritalStatus":"Lajang","ktb":"KTB Filipi","ministryInterest":"Pelayanan Pembinaan Mahasiswa & Mentor KTB","socialMedia":{"linkedin":"linkedin.com/in/josuahutapea","instagram":"@josua_h"}}'::jsonb,
+       'PENDING'
+     ),
+     (
+       'REG-GMH-202610-002', 'Ruth Christine Simamora', '1271010105990002', 'Perempuan', 'Tarutung', '1999-12-08', '2025-06-15',
+       '081298765432', 'ruth.simamora@gmail.com', 'Fakultas Kedokteran Gigi', 'Pendidikan Dokter Gigi', 2019, 2024,
+       'Jl. Sei Batang Hari No. 78', 'Medan', 'Sumatera Utara', '20121', 'Dokter Gigi Muda', 'ALUMNI',
+       '{"maritalStatus":"Menikah","weddingDate":"2025-06-15","partnerName":"dr. Samuel Siregar","childrenCount":0,"ktb":"KTB Debora","ministryInterest":"Tim Doa Syafaat & Pastoral Care Alumni","socialMedia":{"linkedin":"linkedin.com/in/ruthsimamora","instagram":"@ruth_simamora"}}'::jsonb,
+       'PENDING'
+     ),
+     (
+       'REG-GMH-202610-003', 'Daniel Marpaung', '1271010105980003', 'Laki-laki', 'Balige', '1998-03-22', null,
+       '081298765433', 'daniel.m@gmail.com', 'Fakultas Ekonomi & Bisnis', 'Manajemen', 2018, 2022,
+       'Jl. Gading Serpong Boulevard', 'Tangerang', 'Banten', '15810', 'Business Analyst', 'ALUMNI',
+       '{"maritalStatus":"Lajang","ktb":"KTB Timotius","ministryInterest":"Profesional Mentorship & Workshop Karir","socialMedia":{"linkedin":"linkedin.com/in/danielmarpaung","instagram":"@daniel_marpaung"}}'::jsonb,
+       'PENDING'
+     )
+     ON CONFLICT (registration_code) DO UPDATE SET
+       full_name = EXCLUDED.full_name,
+       nik = EXCLUDED.nik,
+       gender = EXCLUDED.gender,
+       birth_place = EXCLUDED.birth_place,
+       birth_date = EXCLUDED.birth_date,
+       wedding_date = EXCLUDED.wedding_date,
+       phone_number = EXCLUDED.phone_number,
+       email = EXCLUDED.email,
+       faculty = EXCLUDED.faculty,
+       major = EXCLUDED.major,
+       entry_year = EXCLUDED.entry_year,
+       graduation_year = EXCLUDED.graduation_year,
+       home_address = EXCLUDED.home_address,
+       city = EXCLUDED.city,
+       province = EXCLUDED.province,
+       postal_code = EXCLUDED.postal_code,
+       current_profession = EXCLUDED.current_profession,
+       member_type = EXCLUDED.member_type,
+       payload_data = EXCLUDED.payload_data,
+       status = EXCLUDED.status`
   );
 
   // 11. Seed Foundation Programs

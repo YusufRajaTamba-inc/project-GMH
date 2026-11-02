@@ -29,7 +29,8 @@ const PayrollPage: React.FC = () => {
 
   const [payrollData, setPayrollData] = useState<StaffPayroll[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [period, setPeriod] = useState('Oktober 2026');
+  const defaultPeriod = new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(new Date());
+  const [period, setPeriod] = useState(defaultPeriod);
   const [isProcessed, setIsProcessed] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedSlip, setSelectedSlip] = useState<StaffPayroll | null>(null);
@@ -55,10 +56,10 @@ const PayrollPage: React.FC = () => {
           id: s.id,
           name: s.full_name || 'Staf Yayasan',
           role: s.position_title || 'Staf Yayasan GMH',
-          base: Number(s.base_salary || 4500000),
-          mission: s.position_title?.toLowerCase().includes('pekabar') ? 1000000 : 0,
-          transport: 500000,
-          deduction: 0,
+          base: Number(s.base_salary || 0),
+          mission: Number(s.mission_allowance || (s.position_title?.toLowerCase().includes('pekabar') ? 1000000 : 0)),
+          transport: Number(s.transport_allowance || 0),
+          deduction: Number(s.deductions || 0),
         }));
         setPayrollData(mapped);
       } else {

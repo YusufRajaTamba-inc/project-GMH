@@ -471,7 +471,18 @@ const RegistrationsPage: React.FC = () => {
                       </td>
                       <td>
                         <div>
-                          <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--gmh-green-dark)' }}>{r.name}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--gmh-green-dark)' }}>{r.name}</span>
+                            {r.memberType === 'MAHASISWA' ? (
+                              <span className="badge badge-info" style={{ fontSize: 10, padding: '1px 6px' }}>Mahasiswa</span>
+                            ) : r.memberType === 'STAF_YAYASAN' ? (
+                              <span className="badge badge-warning" style={{ fontSize: 10, padding: '1px 6px' }}>Staf Yayasan</span>
+                            ) : r.memberType === 'MITRA' ? (
+                              <span className="badge badge-neutral" style={{ fontSize: 10, padding: '1px 6px', background: '#fff7ed', color: '#c2410c', borderColor: '#ffedd5' }}>Mitra</span>
+                            ) : (
+                              <span className="badge badge-success" style={{ fontSize: 10, padding: '1px 6px' }}>Alumni</span>
+                            )}
+                          </div>
                           <div style={{ fontSize: 11.5, color: 'var(--gmh-text-muted)', marginTop: 2 }}>{r.email}</div>
                         </div>
                       </td>
@@ -568,21 +579,31 @@ const RegistrationsPage: React.FC = () => {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 {[
                   ['Nama Lengkap', selectedReg.name],
-                  ['NIK', selectedReg.nik || '-'],
+                  ['Tipe Keanggotaan', selectedReg.memberType === 'MAHASISWA' ? 'Mahasiswa Aktif' : selectedReg.memberType === 'STAF_YAYASAN' ? 'Staf / Pengurus Yayasan' : selectedReg.memberType === 'MITRA' ? 'Mitra / Donatur Yayasan' : 'Alumni PA KMK USU'],
+                  ['NIK (16 Digit)', selectedReg.nik || '-'],
                   ['Jenis Kelamin', selectedReg.gender || '-'],
-                  ['Fakultas Asal USU', selectedReg.faculty],
-                  ['Program Studi / Jurusan', selectedReg.major],
-                  ['Stambuk / Tahun Masuk', String(selectedReg.entryYear)],
-                  ['Kelompok KTB Asal', selectedReg.ktb || '-'],
-                  ['Kota Domisili', selectedReg.city],
-                  ['Alamat Domisili', selectedReg.address || '-'],
-                  ['Nomor WhatsApp', selectedReg.wa],
-                  ['Alamat Email', selectedReg.email],
-                  ['Profesi Saat Ini', selectedReg.profession || '-'],
-                  ['Instansi / Perusahaan', selectedReg.company || '-'],
+                  ['Tempat Lahir', selectedReg.birthPlace || '-'],
+                  ['Tanggal Lahir', selectedReg.birthDate || '-'],
                   ['Status Pernikahan', selectedReg.maritalStatus || 'Lajang'],
                   ['Tanggal Pernikahan', selectedReg.weddingDate || '-'],
                   ['Nama Pasangan', selectedReg.partnerName || '-'],
+                  ['Jumlah Anak', selectedReg.childrenCount !== undefined ? `${selectedReg.childrenCount} Orang` : '-'],
+                  ['Alamat Domisili', selectedReg.address || '-'],
+                  ['Kota Domisili', selectedReg.city],
+                  ['Wilayah / Kring Alumni', selectedReg.province || '-'],
+                  ['Kode Pos', selectedReg.postalCode || '-'],
+                  ['Nomor WhatsApp', selectedReg.wa],
+                  ['Alamat Email', selectedReg.email],
+                  ['LinkedIn', selectedReg.socialMedia?.linkedin || '-'],
+                  ['Instagram', selectedReg.socialMedia?.instagram || '-'],
+                  ['Fakultas Asal USU', selectedReg.faculty],
+                  ['Program Studi / Jurusan', selectedReg.major],
+                  ['Stambuk / Tahun Masuk', String(selectedReg.entryYear)],
+                  ['Tahun Kelulusan', selectedReg.gradYear || selectedReg.graduationYear ? String(selectedReg.gradYear || selectedReg.graduationYear) : '-'],
+                  ['Kelompok KTB Asal', selectedReg.ktb || '-'],
+                  ['Profesi Saat Ini', selectedReg.profession || '-'],
+                  ['Instansi / Perusahaan', selectedReg.company || '-'],
+                  ['Minat Pelayanan Alumni', selectedReg.ministryInterest || '-'],
                   ['Tanggal Pengajuan', selectedReg.submittedAt],
                   ['Status Saat Ini', selectedReg.status],
                 ].map(([k, v]) => (

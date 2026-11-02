@@ -22,6 +22,8 @@ import {
   ShieldCheck,
   LogOut,
   X,
+  Compass,
+  TrendingUp,
 } from 'lucide-react';
 import { useAuth } from '../state/AuthContext';
 
@@ -50,7 +52,17 @@ const navSections: NavSection[] = [
   {
     label: 'Utama',
     items: [
-      { icon: <LayoutDashboard size={17} strokeWidth={2.25} />, label: 'Dashboard', path: '/' },
+      {
+        icon: <LayoutDashboard size={17} strokeWidth={2.25} />,
+        label: 'Dashboard',
+        path: '/',
+        subItems: [
+          { icon: <BarChart3 size={15} strokeWidth={2.2} />, label: 'Ringkasan Eksekutif', path: '/?tab=overview' },
+          { icon: <Compass size={15} strokeWidth={2.2} />, label: 'Tren Pelayanan & Misi', path: '/?tab=ministry' },
+          { icon: <TrendingUp size={15} strokeWidth={2.2} />, label: 'Pertumbuhan Anggota', path: '/?tab=growth' },
+          { icon: <Building2 size={15} strokeWidth={2.2} />, label: 'Portofolio Proyek Fisik', path: '/?tab=projects' },
+        ],
+      },
     ],
   },
   {
@@ -142,11 +154,28 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onClose }) => {
 
   // Keep submenu open if currently on that route
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({
+    '/': true,
     '/reports': true,
     '/settings': true,
   });
 
+  const checkSubActive = (subPath: string) => {
+    if (subPath.startsWith('/?tab=')) {
+      if (location.pathname !== '/') return false;
+      const currentTab = new URLSearchParams(location.search).get('tab')?.toLowerCase() || 'overview';
+      return subPath === `/?tab=${currentTab}`;
+    }
+    return (
+      location.pathname === subPath ||
+      (subPath !== '/' && location.pathname.startsWith(subPath)) ||
+      (subPath === '/reports/ringkasan' && location.pathname === '/reports')
+    );
+  };
+
   useEffect(() => {
+    if (location.pathname === '/') {
+      setOpenMenus((prev) => ({ ...prev, '/': true }));
+    }
     if (location.pathname.startsWith('/reports')) {
       setOpenMenus((prev) => ({ ...prev, '/reports': true }));
     }
@@ -165,12 +194,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onClose }) => {
       const willOpen = !prev[item.path];
       const isSubActive =
         item.subItems &&
-        item.subItems.some(
-          (s) =>
-            location.pathname === s.path ||
-            (s.path !== '/' && location.pathname.startsWith(s.path)) ||
-            (s.path === '/reports/ringkasan' && location.pathname === '/reports')
-        );
+        item.subItems.some((s) => checkSubActive(s.path));
       if (willOpen && !isSubActive && item.subItems && item.subItems.length > 0) {
         navigate(item.subItems[0].path);
       }
@@ -229,12 +253,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onClose }) => {
               const hasSubItems = item.subItems && item.subItems.length > 0;
               const isAnySubActive =
                 hasSubItems &&
-                item.subItems!.some(
-                  (s) =>
-                    location.pathname === s.path ||
-                    (s.path !== '/' && location.pathname.startsWith(s.path)) ||
-                    (s.path === '/reports/ringkasan' && location.pathname === '/reports')
-                );
+                item.subItems!.some((s) => checkSubActive(s.path));
               const isOpen = openMenus[item.path] ?? isAnySubActive;
               const active = !hasSubItems && (
                 location.pathname === item.path ||
@@ -285,10 +304,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onClose }) => {
                       }}
                     >
                       {item.subItems!.map((sub) => {
-                        const isSubActive =
-                          location.pathname === sub.path ||
-                          (sub.path !== '/' && location.pathname.startsWith(sub.path)) ||
-                          (sub.path === '/reports/ringkasan' && location.pathname === '/reports');
+                        const isSubActive = checkSubActive(sub.path);
 
                         return (
                           <button

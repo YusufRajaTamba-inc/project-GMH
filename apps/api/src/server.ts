@@ -8,6 +8,8 @@ import { db } from './config/db.js';
 import { authenticateJwt } from './middleware/auth.middleware.js';
 import { authorizePermission } from './middleware/permission.middleware.js';
 import { sanitizeErrorResponse } from './middleware/sanitizeError.middleware.js';
+import { isHttpError } from './shared/httpError.js';
+import { logger } from './shared/logger.js';
 
 // Route modules
 import authRoutes from './modules/auth/auth.routes.js';
@@ -75,6 +77,7 @@ app.use(sanitizeErrorResponse);
 app.use((req: Request, res: Response, next: NextFunction) => {
   const requestId = req.headers['x-request-id']?.toString() || Math.random().toString(36).slice(2, 12);
   res.setHeader('X-Request-Id', requestId);
+  res.locals.requestId = requestId;
   next();
 });
 
@@ -101,9 +104,18 @@ app.use('/api/v1', generalRateLimiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Request logger
-app.use((req: Request, _res: Response, next: NextFunction) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+// Request logger (structured JSON)
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const startedAt = Date.now();
+  res.on('finish', () => {
+    logger.info('Request completed', {
+      requestId: res.locals.requestId,
+      method: req.method,
+      url: req.originalUrl,
+      status: res.statusCode,
+      durationMs: Date.now() - startedAt,
+    });
+  });
   next();
 });
 
@@ -160,11 +172,43 @@ app.use((_req: Request, res: Response) => {
 });
 
 // Central Error Handler
-app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-  console.error('[Unhandled Error]', err);
-  res.status(err.status || 500).json({
+// Semua error yang dilempar handler (termasuk HttpError dari shared/httpError.ts)
+// diteruskan ke sini agar format error konsisten di seluruh API.
+app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
+  const requestId = res.locals.requestId;
+
+  if (isHttpError(err)) {
+    logger.warn('Request rejected', {
+      requestId,
+      method: req.method,
+      url: req.originalUrl,
+      status: err.status,
+      code: err.code,
+      message: err.message,
+    });
+    res.status(err.status).json({
+      success: false,
+      message: err.message,
+      code: err.code,
+      requestId,
+    });
+    return;
+  }
+
+  logger.error('Unhandled Error', {
+    requestId,
+    method: req.method,
+    url: req.originalUrl,
+    errorName: err?.name,
+    errorMessage: err?.message,
+    stack: ENV.IS_PRODUCTION ? undefined : err?.stack,
+  });
+
+  res.status(500).json({
     success: false,
-    message: err.message || 'Terjadi kesalahan internal pada server.',
+    message: 'Terjadi kesalahan internal pada server.',
+    code: 'INTERNAL_ERROR',
+    requestId,
   });
 });
 

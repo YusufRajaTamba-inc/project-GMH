@@ -31,7 +31,7 @@ interface TopbarProps {
 interface NotificationItem {
   id: string;
   rawId: string;
-  type: 'PROGRAM' | 'REGISTRATION' | 'ASSET_LOAN';
+  type: 'PROGRAM' | 'REGISTRATION' | 'ASSET_LOAN' | 'BIRTHDAY';
   title: string;
   category?: string;
   description: string;
@@ -64,13 +64,20 @@ const Topbar: React.FC<TopbarProps> = ({ title, subtitle, onToggleMobileSidebar 
   // Notifications State
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifLoading, setNotifLoading] = useState(false);
-  const [notifFilter, setNotifFilter] = useState<'ALL' | 'PROGRAM' | 'REGISTRATION' | 'ASSET_LOAN'>('ALL');
+  const [notifFilter, setNotifFilter] = useState<'ALL' | 'PROGRAM' | 'REGISTRATION' | 'ASSET_LOAN' | 'BIRTHDAY'>('ALL');
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [notifCounts, setNotifCounts] = useState({
+  const [notifCounts, setNotifCounts] = useState<{
+    total: number;
+    programs: number;
+    registrations: number;
+    loans: number;
+    birthdays?: number;
+  }>({
     total: 0,
     programs: 0,
     registrations: 0,
     loans: 0,
+    birthdays: 0,
   });
 
   // Profile State
@@ -374,6 +381,7 @@ const Topbar: React.FC<TopbarProps> = ({ title, subtitle, onToggleMobileSidebar 
               >
                 {[
                   { key: 'ALL', label: 'Semua', count: notifCounts.total },
+                  { key: 'BIRTHDAY', label: 'Ulang Tahun 🎂', count: notifCounts.birthdays || 0 },
                   { key: 'PROGRAM', label: 'Kegiatan (≤ 5 Hari)', count: notifCounts.programs },
                   { key: 'REGISTRATION', label: 'Verifikasi', count: notifCounts.registrations },
                   { key: 'ASSET_LOAN', label: 'Pinjaman Aset', count: notifCounts.loans },

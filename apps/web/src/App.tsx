@@ -118,7 +118,18 @@ const App: React.FC = () => {
   }
 
   let meta = PAGE_META[location.pathname];
-  if (!meta && location.pathname.startsWith('/members/')) {
+  if (location.pathname === '/') {
+    const tab = new URLSearchParams(location.search).get('tab');
+    if (tab === 'ministry') {
+      meta = { title: 'Dashboard · Tren Pelayanan & Misi', subtitle: 'Monitoring frekuensi ibadah, pembinaan, misi, dan aksi sosial yayasan' };
+    } else if (tab === 'growth') {
+      meta = { title: 'Dashboard · Pertumbuhan Anggota', subtitle: 'Tren pendaftaran anggota baru dan sebaran fakultas asal USU' };
+    } else if (tab === 'projects') {
+      meta = { title: 'Dashboard · Portofolio Proyek Fisik', subtitle: 'Monitoring progres fisik, fundraising, dan tahapan proyek strategis yayasan' };
+    } else {
+      meta = { title: 'Dashboard · Ringkasan Eksekutif', subtitle: 'Ikhtisar operasional, keuangan kas yayasan, proyek fisik, dan pastoral care' };
+    }
+  } else if (!meta && location.pathname.startsWith('/members/')) {
     if (location.pathname.endsWith('/edit')) {
       meta = { title: 'Ubah Data Anggota', subtitle: 'Formulir pembaruan biodata, akademik, kontak, dan karier anggota' };
     } else {

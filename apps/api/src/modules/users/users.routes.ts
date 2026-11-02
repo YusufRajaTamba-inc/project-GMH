@@ -1,617 +1,154 @@
 import { Router, Request, Response } from 'express';
-import bcrypt from 'bcryptjs';
-import { db } from '../../config/db.js';
 import { authenticateJwt } from '../../middleware/auth.middleware.js';
 import { authorizePermission } from '../../middleware/permission.middleware.js';
-
-import { SYSTEM_MODULES, getSignedRolePermissions } from '../auth/auth.permissions.js';
-import { logAudit } from '../../middleware/audit.interceptor.js';
+import { asyncHandler, validate } from '../../shared/index.js';
+import {
+  listUsersQuerySchema,
+  createRoleSchema,
+  updateRolePermissionsSchema,
+  createUserSchema,
+  updateUserSchema,
+} from './users.schema.js';
+import * as usersService from './users.service.js';
 
 const router = Router();
 
 router.use(authenticateJwt);
 router.use(authorizePermission('USERS'));
 
-// ----------------------------------------------------------------------------
 // 1. GET / — Daftar Seluruh Pengguna & KPI Statistik Akun
-// ----------------------------------------------------------------------------
-router.get('/', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { search, roleId, status } = req.query;
-
-    const whereConditions: string[] = [];
-    const params: any[] = [];
-
-    if (search) {
-      params.push(`%${search}%`);
-      whereConditions.push(
-        `(u.full_name ILIKE $${params.length} OR u.username ILIKE $${params.length} OR u.email ILIKE $${params.length} OR u.phone_number ILIKE $${params.length})`
-      );
-    }
-
-    if (roleId && roleId !== 'ALL') {
-      params.push(roleId);
-      whereConditions.push(`u.role_id = $${params.length}`);
-    }
-
-    if (status === 'active') {
-      whereConditions.push(`u.is_active = true`);
-    } else if (status === 'inactive') {
-      whereConditions.push(`u.is_active = false`);
-    }
-
-    const whereClause = whereConditions.length > 0 ? ` WHERE ${whereConditions.join(' AND ')}` : '';
-
-    const usersQuery = `
-      SELECT 
-        u.id,
-        u.username,
-        u.email,
-        u.phone_number,
-        u.full_name,
-        u.role_id,
-        u.is_active,
-        u.position_title,
-        u.birth_date,
-        u.last_login_at,
-        u.created_at,
-        u.updated_at,
-        r.name as role_name,
-        r.description as role_description
-      FROM users u
-      LEFT JOIN roles r ON u.role_id = r.id
-      ${whereClause}
-      ORDER BY u.created_at DESC
-    `;
-
-    const [usersRes, statsRes, rolesRes] = await Promise.all([
-      db.query(usersQuery, params),
-      db.query(`
-        SELECT 
-          COUNT(*)::int as total,
-          COUNT(CASE WHEN is_active = true THEN 1 END)::int as active,
-          COUNT(CASE WHEN is_active = false THEN 1 END)::int as inactive
-        FROM users
-      `),
-      db.query(`SELECT id, name, description FROM roles WHERE id NOT IN ('ANGGOTA_ALUMNI', 'ALUMNI_ANGGOTA') ORDER BY name ASC`),
-    ]);
-
-    const stats = statsRes.rows[0] || { total: 0, active: 0, inactive: 0 };
-
+router.get(
+  '/',
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const filters = validate(listUsersQuerySchema, req.query);
+    const result = await usersService.listUsers(filters);
     res.status(200).json({
       success: true,
-      count: usersRes.rows.length,
-      users: usersRes.rows,
-      data: usersRes.rows,
-      stats,
-      roles: rolesRes.rows,
+      ...result,
     });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: 'Gagal memuat data pengguna.', error: err.message });
-  }
-});
+  })
+);
 
-// ----------------------------------------------------------------------------
 // 2. GET /roles — Daftar Peran Sistem
-// ----------------------------------------------------------------------------
-router.get('/roles', async (_req: Request, res: Response): Promise<void> => {
-  try {
-    const rolesRes = await db.query(`SELECT id, name, description FROM roles WHERE id NOT IN ('ANGGOTA_ALUMNI', 'ALUMNI_ANGGOTA') ORDER BY name ASC`);
-    res.status(200).json({ success: true, roles: rolesRes.rows });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: 'Gagal memuat daftar peran.', error: err.message });
-  }
-});
+router.get(
+  '/roles',
+  asyncHandler(async (_req: Request, res: Response): Promise<void> => {
+    const roles = await usersService.listRoles();
+    res.status(200).json({ success: true, roles });
+  })
+);
 
-// ----------------------------------------------------------------------------
 // 2A. POST /roles — Buat Peran (Role) Baru
-// Hanya Super Admin (IT) yang boleh menambah peran baru ke sistem.
-// ----------------------------------------------------------------------------
-router.post('/roles', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const actorUser = req.user;
-    const { id, name, description, copyFromRoleId } = req.body || {};
-
-    if (!actorUser || actorUser.roleId !== 'SUPER_ADMIN') {
-      res.status(403).json({
-        success: false,
-        code: 'FORBIDDEN_ROLE_MANAGEMENT',
-        message: 'Hanya Super Admin (IT) yang dapat menambah peran baru.',
-      });
-      return;
-    }
-
-    const cleanId = String(id || '').trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_');
-    const cleanName = String(name || '').trim();
-    const cleanDesc = String(description || '').trim() || null;
-
-    if (!cleanId || !cleanName) {
-      res.status(400).json({
-        success: false,
-        message: 'Kode peran (id) dan nama peran wajib diisi.',
-      });
-      return;
-    }
-
-    if (!/^[A-Z][A-Z0-9_]{2,49}$/.test(cleanId)) {
-      res.status(400).json({
-        success: false,
-        message: 'Kode peran harus huruf kapital/angka/underscore, minimal 3 karakter (contoh: STAF_KEUANGAN).',
-      });
-      return;
-    }
-
-    const dupCheck = await db.query(`SELECT id FROM roles WHERE id = $1`, [cleanId]);
-    if (dupCheck.rows.length > 0) {
-      res.status(409).json({
-        success: false,
-        message: `Kode peran "${cleanId}" sudah digunakan.`,
-      });
-      return;
-    }
-
-    await db.query(
-      `INSERT INTO roles (id, name, description, created_at)
-       VALUES ($1, $2, $3, CURRENT_TIMESTAMP)`,
-      [cleanId, cleanName, cleanDesc]
-    );
-
-    // Inisialisasi matriks hak akses: salin dari role sumber bila ada, selain itu semua modul non-USERS/DASHBOARD di-nonaktifkan.
-    const copySource = copyFromRoleId ? String(copyFromRoleId) : null;
-    if (copySource) {
-      const sourceCheck = await db.query(`SELECT id FROM roles WHERE id = $1`, [copySource]);
-      if (sourceCheck.rows.length === 0) {
-        res.status(400).json({
-          success: false,
-          message: `Role sumber "${copySource}" tidak ditemukan.`,
-        });
-        return;
-      }
-      await db.query(
-        `INSERT INTO role_permissions (role_id, module_key, can_access, updated_at)
-         SELECT $1, module_key, can_access, CURRENT_TIMESTAMP
-         FROM role_permissions WHERE role_id = $2
-         ON CONFLICT (role_id, module_key) DO NOTHING`,
-        [cleanId, copySource]
-      );
-    } else {
-      for (const mod of SYSTEM_MODULES) {
-        const canAccess = mod.key === 'DASHBOARD';
-        await db.query(
-          `INSERT INTO role_permissions (role_id, module_key, can_access, updated_at)
-           VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
-           ON CONFLICT (role_id, module_key) DO NOTHING`,
-          [cleanId, mod.key, canAccess]
-        );
-      }
-    }
-
-    // Tanda tangan kriptografis awal untuk peran baru
-    const signedPayload = await getSignedRolePermissions(cleanId);
-
-    await logAudit(
-      actorUser.id,
-      'CREATE_ROLE',
-      'roles',
-      cleanId,
-      null,
-      { roleId: cleanId, roleName: cleanName, copyFromRoleId: copySource, createdBy: actorUser.username },
-      req.ip,
-      req.headers['user-agent']
-    );
-
+router.post(
+  '/roles',
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const input = validate(createRoleSchema, req.body);
+    const result = await usersService.createRole(input, req.user, req.ip, req.headers['user-agent']);
     res.status(201).json({
       success: true,
-      message: `Peran "${cleanName}" (${cleanId}) berhasil dibuat.`,
-      role: { id: cleanId, name: cleanName, description: cleanDesc || '' },
-      permissions: signedPayload,
+      message: `Peran "${result.role.name}" (${result.role.id}) berhasil dibuat.`,
+      ...result,
     });
-  } catch (err: any) {
-    res.status(500).json({
-      success: false,
-      message: 'Gagal membuat peran baru.',
-      error: err.message,
-    });
-  }
-});
+  })
+);
 
-// ----------------------------------------------------------------------------
-// 2B. DELETE /roles/:roleId — Hapus Peran (hanya jika belum dipakai pengguna)
-// ----------------------------------------------------------------------------
-router.delete('/roles/:roleId', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const actorUser = req.user;
-    const roleId = String(req.params.roleId).trim().toUpperCase();
-
-    if (!actorUser || actorUser.roleId !== 'SUPER_ADMIN') {
-      res.status(403).json({
-        success: false,
-        code: 'FORBIDDEN_ROLE_MANAGEMENT',
-        message: 'Hanya Super Admin (IT) yang dapat menghapus peran.',
-      });
-      return;
-    }
-
-    if (roleId === 'SUPER_ADMIN') {
-      res.status(400).json({ success: false, message: 'Peran SUPER_ADMIN tidak dapat dihapus.' });
-      return;
-    }
-
-    const inUse = await db.query(`SELECT COUNT(*)::int as total FROM users WHERE role_id = $1`, [roleId]);
-    if ((inUse.rows[0]?.total || 0) > 0) {
-      res.status(409).json({
-        success: false,
-        message: `Peran "${roleId}" masih digunakan oleh ${inUse.rows[0].total} pengguna. Pindahkan pengguna terlebih dahulu.`,
-      });
-      return;
-    }
-
-    const del = await db.query(`DELETE FROM roles WHERE id = $1 RETURNING id, name`, [roleId]);
-    if (del.rows.length === 0) {
-      res.status(404).json({ success: false, message: `Peran "${roleId}" tidak ditemukan.` });
-      return;
-    }
-
-    await logAudit(
-      actorUser.id,
-      'DELETE_ROLE',
-      'roles',
-      roleId,
-      { id: roleId, name: del.rows[0].name },
-      { roleId, deletedBy: actorUser.username },
-      req.ip,
-      req.headers['user-agent']
-    );
-
+// 2B. DELETE /roles/:roleId — Hapus Peran
+router.delete(
+  '/roles/:roleId',
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const result = await usersService.deleteRole(req.params.roleId, req.user, req.ip, req.headers['user-agent']);
     res.status(200).json({
       success: true,
-      message: `Peran "${del.rows[0].name}" berhasil dihapus.`,
+      message: `Peran "${result.name}" berhasil dihapus.`,
     });
-  } catch (err: any) {
-    res.status(500).json({
-      success: false,
-      message: 'Gagal menghapus peran.',
-      error: err.message,
-    });
-  }
-});
-// ----------------------------------------------------------------------------
+  })
+);
+
 // 2C. GET /permissions — Matriks Hak Akses Modul Seluruh Role
-// ----------------------------------------------------------------------------
-router.get('/permissions', async (_req: Request, res: Response): Promise<void> => {
-  try {
-    const [rolesRes, permsRes] = await Promise.all([
-      db.query(`SELECT id, name, description FROM roles WHERE id NOT IN ('ANGGOTA_ALUMNI', 'ALUMNI_ANGGOTA') ORDER BY name ASC`),
-      db.query(`SELECT role_id, module_key, can_access FROM role_permissions ORDER BY role_id, module_key`),
-    ]);
-
+router.get(
+  '/permissions',
+  asyncHandler(async (_req: Request, res: Response): Promise<void> => {
+    const matrix = await usersService.getPermissionsMatrix();
     res.status(200).json({
       success: true,
-      roles: rolesRes.rows,
-      modules: SYSTEM_MODULES,
-      permissions: permsRes.rows,
+      ...matrix,
     });
-  } catch (err: any) {
-    res.status(500).json({
-      success: false,
-      message: 'Gagal memuat matriks hak akses.',
-      error: err.message,
-    });
-  }
-});
+  })
+);
 
-// ----------------------------------------------------------------------------
-// 2C. PUT /permissions — Update Hak Akses Modul untuk Suatu Role
-// ----------------------------------------------------------------------------
-router.put('/permissions', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { roleId, permissions } = req.body;
-    const actorUser = req.user;
-
-    if (!roleId || !permissions || typeof permissions !== 'object') {
-      res.status(400).json({
-        success: false,
-        message: 'roleId dan object permissions { [moduleKey]: boolean } wajib disertakan.',
-      });
-      return;
-    }
-
-    // Role check
-    const roleCheck = await db.query(`SELECT id, name FROM roles WHERE id = $1`, [roleId]);
-    if (roleCheck.rows.length === 0) {
-      res.status(404).json({ success: false, message: `Role "${roleId}" tidak ditemukan.` });
-      return;
-    }
-
-    // Keamanan: Super Admin tidak boleh dicabut modul USERS dan DASHBOARD
-    if (roleId === 'SUPER_ADMIN') {
-      permissions['USERS'] = true;
-      permissions['DASHBOARD'] = true;
-    }
-
-    // Upsert permissions
-    for (const mod of SYSTEM_MODULES) {
-      const canAccess = permissions[mod.key] !== undefined ? Boolean(permissions[mod.key]) : false;
-      await db.query(
-        `INSERT INTO role_permissions (role_id, module_key, can_access, updated_at)
-         VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
-         ON CONFLICT (role_id, module_key)
-         DO UPDATE SET can_access = $3, updated_at = CURRENT_TIMESTAMP`,
-        [roleId, mod.key, canAccess]
-      );
-    }
-
-    // Generate fresh HMAC signature & integrity hash for this updated role
-    const signedPayload = await getSignedRolePermissions(roleId);
-
-    // Audit log
-    if (actorUser?.id) {
-      await logAudit(
-        actorUser.id,
-        'UPDATE_ROLE_PERMISSIONS',
-        'role_permissions',
-        roleId,
-        null,
-        { roleId, updatedBy: actorUser.username, allowedModulesCount: signedPayload.allowedModules.length },
-        req.ip,
-        req.headers['user-agent']
-      );
-    }
-
+// 2D. PUT /permissions — Update Hak Akses Modul untuk Suatu Role
+router.put(
+  '/permissions',
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const input = validate(updateRolePermissionsSchema, req.body);
+    const result = await usersService.updateRolePermissions(input, req.user, req.ip, req.headers['user-agent']);
     res.status(200).json({
       success: true,
-      message: `Hak akses untuk peran "${roleCheck.rows[0].name}" berhasil diperbarui.`,
-      roleId,
-      permissions: signedPayload,
+      message: `Hak akses untuk peran "${result.roleName}" berhasil diperbarui.`,
+      roleId: result.roleId,
+      permissions: result.permissions,
     });
-  } catch (err: any) {
-    res.status(500).json({
-      success: false,
-      message: 'Gagal memperbarui hak akses peran.',
-      error: err.message,
-    });
-  }
-});
+  })
+);
 
-// ----------------------------------------------------------------------------
 // 3. GET /:id — Detail Pengguna Tunggal
-// ----------------------------------------------------------------------------
-router.get('/:id', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params;
-    const userRes = await db.query(
-      `SELECT 
-        u.id, u.username, u.email, u.phone_number, u.full_name,
-        u.role_id, u.is_active, u.position_title, u.birth_date,
-        u.last_login_at, u.created_at, u.updated_at,
-        r.name as role_name, r.description as role_description
-       FROM users u
-       LEFT JOIN roles r ON u.role_id = r.id
-       WHERE u.id = $1`,
-      [id]
-    );
+router.get(
+  '/:id',
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const user = await usersService.getUserById(req.params.id);
+    res.status(200).json({ success: true, user });
+  })
+);
 
-    if (userRes.rows.length === 0) {
-      res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan.' });
-      return;
-    }
-
-    res.status(200).json({ success: true, user: userRes.rows[0] });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: 'Gagal memuat detail pengguna.', error: err.message });
-  }
-});
-
-// ----------------------------------------------------------------------------
 // 4. POST / — Tambah Akun Pengguna Baru
-// ----------------------------------------------------------------------------
-router.post('/', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const {
-      username,
-      fullName,
-      email,
-      phoneNumber,
-      password,
-      roleId,
-      positionTitle,
-      birthDate,
-      isActive,
-    } = req.body;
-
-    if (!username || !fullName || !email || !roleId) {
-      res.status(400).json({
-        success: false,
-        message: 'Username, Nama Lengkap, Email, dan Role wajib diisi.',
-      });
-      return;
-    }
-
-    // Check duplicate username or email
-    const duplicateCheck = await db.query(
-      `SELECT id FROM users WHERE username = $1 OR email = $2`,
-      [username.trim(), email.trim()]
-    );
-    if (duplicateCheck.rows.length > 0) {
-      res.status(400).json({
-        success: false,
-        message: 'Username atau Email sudah terdaftar dalam sistem.',
-      });
-      return;
-    }
-
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(password ? password.trim() : 'gmh12345', salt);
-
-    const insertRes = await db.query(
-      `INSERT INTO users (
-        username, email, phone_number, password_hash, full_name,
-        role_id, is_active, position_title, birth_date, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-      RETURNING id, username, email, phone_number, full_name, role_id, is_active, position_title, birth_date, created_at`,
-      [
-        username.trim(),
-        email.trim().toLowerCase(),
-        phoneNumber ? phoneNumber.trim() : null,
-        passwordHash,
-        fullName.trim(),
-        roleId,
-        isActive !== undefined ? Boolean(isActive) : true,
-        positionTitle ? positionTitle.trim() : null,
-        birthDate || null,
-      ]
-    );
-
+router.post(
+  '/',
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const input = validate(createUserSchema, req.body);
+    const user = await usersService.createUser(input);
     res.status(201).json({
       success: true,
-      message: `Akun pengguna "${fullName.trim()}" berhasil dibuat.`,
-      user: insertRes.rows[0],
+      message: `Akun pengguna "${user.full_name}" berhasil dibuat.`,
+      user,
     });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: 'Gagal membuat pengguna baru.', error: err.message });
-  }
-});
+  })
+);
 
-// ----------------------------------------------------------------------------
-// 5. PUT /:id — Ubah Data Pengguna & Hak Akses
-// ----------------------------------------------------------------------------
-router.put('/:id', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params;
-    const {
-      username,
-      fullName,
-      email,
-      phoneNumber,
-      password,
-      roleId,
-      positionTitle,
-      birthDate,
-      isActive,
-    } = req.body;
-
-    const existingRes = await db.query(`SELECT id, password_hash FROM users WHERE id = $1`, [id]);
-    if (existingRes.rows.length === 0) {
-      res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan.' });
-      return;
-    }
-
-    // Check duplicate username or email for other users
-    if (username || email) {
-      const dupRes = await db.query(
-        `SELECT id FROM users WHERE (username = $1 OR email = $2) AND id != $3`,
-        [username?.trim(), email?.trim()?.toLowerCase(), id]
-      );
-      if (dupRes.rows.length > 0) {
-        res.status(400).json({ success: false, message: 'Username atau Email sudah dipakai pengguna lain.' });
-        return;
-      }
-    }
-
-    let passwordHash = existingRes.rows[0].password_hash;
-    if (password && password.trim().length > 0) {
-      const salt = await bcrypt.genSalt(10);
-      passwordHash = await bcrypt.hash(password.trim(), salt);
-    }
-
-    const updateRes = await db.query(
-      `UPDATE users
-       SET username = COALESCE($1, username),
-           full_name = COALESCE($2, full_name),
-           email = COALESCE($3, email),
-           phone_number = COALESCE($4, phone_number),
-           password_hash = $5,
-           role_id = COALESCE($6, role_id),
-           position_title = COALESCE($7, position_title),
-           birth_date = COALESCE($8, birth_date),
-           is_active = COALESCE($9, is_active),
-           updated_at = CURRENT_TIMESTAMP
-       WHERE id = $10
-       RETURNING id, username, email, phone_number, full_name, role_id, is_active, position_title, birth_date, updated_at`,
-      [
-        username ? username.trim() : null,
-        fullName ? fullName.trim() : null,
-        email ? email.trim().toLowerCase() : null,
-        phoneNumber !== undefined ? (phoneNumber ? phoneNumber.trim() : null) : null,
-        passwordHash,
-        roleId || null,
-        positionTitle !== undefined ? (positionTitle ? positionTitle.trim() : null) : null,
-        birthDate !== undefined ? (birthDate || null) : null,
-        isActive !== undefined ? Boolean(isActive) : null,
-        id,
-      ]
-    );
-
+// 5. PUT /:id — Ubah Data Pengguna
+router.put(
+  '/:id',
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const input = validate(updateUserSchema, req.body);
+    const user = await usersService.updateUser(req.params.id, input);
     res.status(200).json({
       success: true,
       message: 'Data pengguna berhasil diperbarui.',
-      user: updateRes.rows[0],
+      user,
     });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: 'Gagal memperbarui pengguna.', error: err.message });
-  }
-});
+  })
+);
 
-// ----------------------------------------------------------------------------
 // 6. PATCH /:id/toggle-status — Ubah Status Aktif / Non-Aktif
-// ----------------------------------------------------------------------------
-router.patch('/:id/toggle-status', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params;
-    const updateRes = await db.query(
-      `UPDATE users
-       SET is_active = NOT is_active,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE id = $1
-       RETURNING id, full_name, username, is_active`,
-      [id]
-    );
-
-    if (updateRes.rows.length === 0) {
-      res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan.' });
-      return;
-    }
-
-    const updatedUser = updateRes.rows[0];
-    const statusText = updatedUser.is_active ? 'diaktifkan' : 'dinonaktifkan';
-
+router.patch(
+  '/:id/toggle-status',
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const user = await usersService.toggleUserStatus(req.params.id);
+    const statusText = user.is_active ? 'diaktifkan' : 'dinonaktifkan';
     res.status(200).json({
       success: true,
-      message: `Akun pengguna ${updatedUser.full_name} berhasil ${statusText}.`,
-      user: updatedUser,
+      message: `Akun pengguna ${user.full_name} berhasil ${statusText}.`,
+      user,
     });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: 'Gagal mengubah status pengguna.', error: err.message });
-  }
-});
+  })
+);
 
-// ----------------------------------------------------------------------------
 // 7. DELETE /:id — Hapus Akun Pengguna
-// ----------------------------------------------------------------------------
-router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params;
-
-    // Check if user is superadmin
-    const userRes = await db.query(`SELECT username, role_id FROM users WHERE id = $1`, [id]);
-    if (userRes.rows.length === 0) {
-      res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan.' });
-      return;
-    }
-
-    if (userRes.rows[0].username === 'superadmin') {
-      res.status(400).json({
-        success: false,
-        message: 'Akun Super Admin sistem utama tidak dapat dihapus.',
-      });
-      return;
-    }
-
-    await db.query(`DELETE FROM users WHERE id = $1`, [id]);
+router.delete(
+  '/:id',
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    await usersService.deleteUser(req.params.id);
     res.status(200).json({ success: true, message: 'Pengguna berhasil dihapus dari sistem.' });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: 'Gagal menghapus pengguna.', error: err.message });
-  }
-});
+  })
+);
 
 export default router;

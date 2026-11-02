@@ -96,74 +96,12 @@ const formatDateId = (dateStr?: string | null) => {
   }
 };
 
-// Exactly 3 Seed Projects
-const SEED_3_PROJECTS: FoundationProject[] = [
-  {
-    id: 'a0000000-0000-0000-0000-000000000001',
-    project_name: 'Pembangunan Rumah Persekutuan GMH PA KMK',
-    category: 'INFRASTRUKTUR',
-    target_budget: 1800000000,
-    current_funds: 1234000000,
-    progress_percentage: 78,
-    status: 'ON_PROGRESS',
-    description: 'Pusat pembinaan mahasiswa, asrama pembinaan rohani, ruang ibadah & doa terpadu, serta kantor sekretariat Yayasan GMH PA KMK USU.',
-    pic_name: 'Ir. P. Simanjuntak (Panitia Pembangunan)',
-    target_completion_date: '2026-12-31',
-    milestones: [
-      { id: 1, label: 'Peletakan Batu Pertama', date: 'Jadwal Target: Maret 2024', status: 'DONE', pct: 100 },
-      { id: 2, label: 'Fondasi & Struktur Bawah', date: 'Jadwal Target: Agustus 2024', status: 'DONE', pct: 100 },
-      { id: 3, label: 'Struktur Kolom & Balok Lt.1', date: 'Jadwal Target: Februari 2025', status: 'DONE', pct: 100 },
-      { id: 4, label: 'Atap & Dinding Eksterior', date: 'Jadwal Target: Agustus 2025', status: 'DONE', pct: 100 },
-      { id: 5, label: 'Finishing Interior & MEP', date: 'Jadwal Target: April 2026', status: 'IN_PROGRESS', pct: 65 },
-      { id: 6, label: 'Furnitur & Peresmian Gedung', date: 'Jadwal Target: Desember 2026', status: 'PENDING', pct: 0 },
-    ],
-  },
-  {
-    id: 'a0000000-0000-0000-0000-000000000002',
-    project_name: 'Renovasi & Audio Visual Ruang Doa Kampus',
-    category: 'FASILITAS',
-    target_budget: 150000000,
-    current_funds: 112500000,
-    progress_percentage: 75,
-    status: 'ON_PROGRESS',
-    description: 'Renovasi tata ruang akustik, instalasi peredam suara, dan sistem audio visual live streaming persekutuan doa kampus USU.',
-    pic_name: 'Departemen Sarana & Prasarana GMH',
-    target_completion_date: '2026-11-30',
-    milestones: [
-      { id: 1, label: 'Pengukuran & Desain Akustik Ruangan', date: 'Jadwal Target: Januari 2026', status: 'DONE', pct: 100 },
-      { id: 2, label: 'Pemasangan Karpet & Panel Insulasi Akustik', date: 'Jadwal Target: Maret 2026', status: 'DONE', pct: 100 },
-      { id: 3, label: 'Pengadaan Mixer Digital, Mic & Sound System', date: 'Jadwal Target: Mei 2026', status: 'DONE', pct: 100 },
-      { id: 4, label: 'Instalasi Kamera PTZ & Uji Live Streaming', date: 'Jadwal Target: Juli 2026', status: 'IN_PROGRESS', pct: 70 },
-      { id: 5, label: 'Serah Terima & Ibadah Doa Syukur Bersama', date: 'Jadwal Target: November 2026', status: 'PENDING', pct: 0 },
-    ],
-  },
-  {
-    id: 'a0000000-0000-0000-0000-000000000003',
-    project_name: 'Pengadaan Mobil Operasional Pelayanan Misi Daerah',
-    category: 'MISI',
-    target_budget: 350000000,
-    current_funds: 210000000,
-    progress_percentage: 60,
-    status: 'ON_PROGRESS',
-    description: 'Pengadaan unit armada minibus operasional untuk mobilisasi tim penginjilan, pembinaan adik binaan, dan kunjungan pos misi daerah Sumatera Utara.',
-    pic_name: 'Koordinator Pelayanan Misi Daerah',
-    target_completion_date: '2027-02-28',
-    milestones: [
-      { id: 1, label: 'Survei Kebutuhan Spesifikasi Armada Minibus', date: 'Jadwal Target: Februari 2026', status: 'DONE', pct: 100 },
-      { id: 2, label: 'Penggalangan Komitmen Donatur & Alumni', date: 'Jadwal Target: Mei 2026', status: 'DONE', pct: 100 },
-      { id: 3, label: 'Pemesanan Unit & Karoseri Interior Pelayanan', date: 'Jadwal Target: Agustus 2026', status: 'IN_PROGRESS', pct: 60 },
-      { id: 4, label: 'Pelunasan & Pengurusan STNK/BPKB Plat Yayasan', date: 'Jadwal Target: Desember 2026', status: 'PENDING', pct: 0 },
-      { id: 5, label: 'Dedikasi Kendaraan & Pelayanan Misi Perdana', date: 'Jadwal Target: Februari 2027', status: 'PENDING', pct: 0 },
-    ],
-  },
-];
-
 const BuildingProjectPage: React.FC = () => {
   const { lookups, fieldLabels } = useDynamicConfig();
   // Navigation View: 'list' (Daftar Proyek) or 'detail' (Halaman Detail Proyek)
   const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
-  const [projects, setProjects] = useState<FoundationProject[]>(SEED_3_PROJECTS);
-  const [selectedProjectId, setSelectedProjectId] = useState<string>('a0000000-0000-0000-0000-000000000001');
+  const [projects, setProjects] = useState<FoundationProject[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
@@ -215,21 +153,32 @@ const BuildingProjectPage: React.FC = () => {
     setIsLoading(true);
     try {
       const res = await api.building.getProjects().catch(() => null);
-      if (res?.projects && Array.isArray(res.projects) && res.projects.length > 0) {
+      if (res?.projects && Array.isArray(res.projects)) {
         setProjects(res.projects);
-        if (!selectedProjectId || !res.projects.find((p: any) => p.id === selectedProjectId)) {
-          setSelectedProjectId(res.projects[0].id);
+        if (res.projects.length > 0) {
+          if (!selectedProjectId || !res.projects.find((p: any) => p.id === selectedProjectId)) {
+            setSelectedProjectId(res.projects[0].id);
+          }
+        } else {
+          setSelectedProjectId('');
         }
       } else {
         const single = await api.building.getProject().catch(() => null);
-        if (single?.projects && Array.isArray(single.projects) && single.projects.length > 0) {
+        if (single?.projects && Array.isArray(single.projects)) {
           setProjects(single.projects);
+          if (single.projects.length > 0) setSelectedProjectId(single.projects[0].id);
         } else if (single?.project) {
           setProjects([single.project]);
+          setSelectedProjectId(single.project.id);
+        } else {
+          setProjects([]);
+          setSelectedProjectId('');
         }
       }
     } catch (err) {
-      console.warn('Gagal memuat data proyek dari API, menggunakan data lokal:', err);
+      console.warn('Gagal memuat data proyek dari API:', err);
+      setProjects([]);
+      setSelectedProjectId('');
     } finally {
       setIsLoading(false);
     }
@@ -279,15 +228,10 @@ const BuildingProjectPage: React.FC = () => {
 
   // Milestones of active project
   const activeMilestones: Milestone[] = useMemo(() => {
-    if (activeProject?.milestones && Array.isArray(activeProject.milestones) && activeProject.milestones.length > 0) {
+    if (activeProject?.milestones && Array.isArray(activeProject.milestones)) {
       return activeProject.milestones;
     }
-    return [
-      { id: 1, label: 'Tahap 1: Perencanaan & Persiapan', date: 'Jadwal Target: Kuartal 1', status: 'DONE', pct: 100 },
-      { id: 2, label: 'Tahap 2: Penggalangan Komitmen Donasi', date: 'Jadwal Target: Kuartal 2', status: 'DONE', pct: 100 },
-      { id: 3, label: 'Tahap 3: Pelaksanaan di Lapangan', date: 'Jadwal Target: Kuartal 3', status: 'IN_PROGRESS', pct: 60 },
-      { id: 4, label: 'Tahap 4: Serah Terima & Dedikasi', date: 'Jadwal Target: Kuartal 4', status: 'PENDING', pct: 0 },
-    ];
+    return [];
   }, [activeProject]);
 
   // Portfolio Totals

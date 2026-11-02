@@ -61,22 +61,21 @@ Semua akun terdaftar memiliki kata sandi default: **`admin123`** (di-hash dengan
 5. **`form_field_configs`**: Konfigurasi label kustom formulir (`field_key`, `field_label`).
 6. **`members`**: Master anggota yayasan/alumni (dengan nomor `nia` unik `GMH-YYYY-XXXXX`).
 7. **`alumni_profiles`**: Profil khusus alumni USU (Fakultas, Jurusan, Stambuk, KTB, Profesi).
-8. **`families`**: Data keluarga alumni & tanggal pernikahan.
-9. **`family_members`**: Hubungan relasional antar anggota keluarga.
-10. **`member_registrations`**: Tiket pendaftaran mandiri publik (`REG-GMH-YYYYMM-XXXX`).
-11. **`departments`**: Struktur departemen yayasan.
-12. **`staff_members`**: Profil karyawan tetap, kontrak, dan part-time yayasan.
-13. **`payroll_periods`**: Periode penggajian bulanan.
-14. **`payroll_records`**: Rincian gaji (gaji pokok, tunjangan, potongan PPh, status pencairan).
-15. **`chart_of_accounts`**: Bagan akun akuntansi yayasan (COA 1-xxxx s/d 5-xxxx).
-16. **`building_projects`**: Tracking pembangunan fisik Rumah Persekutuan GMH.
-17. **`pledges`**: Komitmen Janji Iman donatur untuk proyek fisik.
-18. **`financial_transactions`**: Transaksi kas operasional dan kas pusat berstandar akuntansi.
-19. **`foundation_programs`**: Program kerja persekutuan dan pembinaan alumni.
-20. **`program_rosters`**: Jadwal penugasan pembicara dan pelayan program.
-21. **`prayer_requests`**: Permohonan pokok doa dari anggota/alumni.
-22. **`assets`**: Inventaris sarana prasarana yayasan.
-23. **`asset_loans`**: Riwayat peminjaman aset dan sarana kantor.
+8. **`member_registrations`**: Tiket pendaftaran mandiri publik (`REG-GMH-YYYYMM-XXXX`).
+9. **`departments`**: Struktur departemen yayasan.
+10. **`staff_members`**: Profil karyawan tetap, kontrak, dan part-time yayasan.
+11. **`payroll_periods`**: Periode penggajian bulanan.
+12. **`payroll_records`**: Rincian gaji (gaji pokok, tunjangan, potongan PPh, status pencairan).
+13. **`chart_of_accounts`**: Bagan akun akuntansi yayasan (COA 1-xxxx s/d 5-xxxx).
+14. **`building_projects`**: Tracking pembangunan fisik Rumah Persekutuan GMH.
+15. **`pledges`**: Komitmen Janji Iman donatur untuk proyek fisik.
+16. **`financial_transactions`**: Transaksi kas operasional dan kas pusat berstandar akuntansi.
+17. **`foundation_programs`**: Program kerja persekutuan dan pembinaan alumni (terintegrasi JSONB panitia & tasks).
+18. **`prayer_requests`**: Permohonan pokok doa dari anggota/alumni.
+19. **`assets`**: Inventaris sarana prasarana yayasan.
+20. **`asset_loans`**: Riwayat peminjaman aset dan sarana kantor.
+21. **`secretariat_incoming_letters` & `secretariat_outgoing_letters`**: Tata kelola surat-menyurat yayasan.
+22. **`audit_logs`**: Rekam jejak audit keamanan dan perubahan sistem.
 
 ---
 

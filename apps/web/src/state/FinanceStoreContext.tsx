@@ -131,8 +131,11 @@ export const FinanceStoreProvider: React.FC<{ children: React.ReactNode }> = ({
     period?: string,
     periodName?: string
   ) => {
-    const p = period || (periodType === 'ANNUAL' ? '2026' : '2026-10');
-    const pName = periodName || (periodType === 'ANNUAL' ? `Tahun Anggaran ${p}` : 'Oktober 2026');
+    const now = new Date();
+    const currentYearStr = String(now.getFullYear());
+    const currentYearMonthStr = `${currentYearStr}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const p = period || (periodType === 'ANNUAL' ? currentYearStr : currentYearMonthStr);
+    const pName = periodName || (periodType === 'ANNUAL' ? `Tahun Anggaran ${p}` : new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(now));
     const newBgt: BudgetCategoryDef = {
       id: `bgt-${Date.now()}`,
       category: category.trim(),
@@ -223,13 +226,9 @@ export const FinanceStoreProvider: React.FC<{ children: React.ReactNode }> = ({
             return row.source_module !== 'PAYROLL' && !accName.includes('gaji') && !notes.includes('pencairan gaji');
           })
           .map((row: any, idx: number) => {
-            let partyGuess = 'Pihak Relasi';
-            if (row.notes?.includes('Simamora')) partyGuess = 'Kel. H. Simamora';
-            else if (row.notes?.includes('Sinurat')) partyGuess = 'Kel. Sinurat';
-            else if (row.notes?.includes('Internet')) partyGuess = 'PT Telkom Indonesia';
-            else if (row.notes?.includes('ATK')) partyGuess = 'Toko ATK Gramedia USU';
+            const partyReal = row.donor_name || row.party || '-';
 
-            let dateStr = '2026-10-28';
+            let dateStr = new Date().toISOString().split('T')[0];
             if (row.transaction_date) {
               const d = new Date(row.transaction_date);
               if (!isNaN(d.getTime())) {
@@ -248,7 +247,7 @@ export const FinanceStoreProvider: React.FC<{ children: React.ReactNode }> = ({
             date: dateStr,
             desc: row.notes || row.description || row.account_name || 'Transaksi Kas Yayasan',
             category: row.account_name || row.category_name || 'Operasional Kantor',
-            party: row.donor_name || row.party || partyGuess,
+            party: partyReal,
             amount: Number(row.amount) || 0,
             type: (row.transaction_type === 'EXPENSE' || row.transaction_type === 'DEBIT') ? 'DEBIT' : 'CREDIT',
             account: (row.scope === 'OPERASIONAL' || row.coa_scope === 'OPERASIONAL_KANTOR')
@@ -269,10 +268,10 @@ export const FinanceStoreProvider: React.FC<{ children: React.ReactNode }> = ({
           };
         });
 
-        // Use live database transactions from PostgreSQL backend
-        if (mappedTrx.length > 0) {
-          setTransactions(mappedTrx);
-        }
+        // Use live database transactions from backend
+        setTransactions(mappedTrx);
+      } else {
+        setTransactions([]);
       }
     } catch (err) {
       console.warn('API finance refresh fallback to cached store:', err);
@@ -390,12 +389,15 @@ export const FinanceStoreProvider: React.FC<{ children: React.ReactNode }> = ({
     return getOperationalBalance() + getBankBalance();
   };
 
-  const getMonthlyStats = (monthYear = '2026-10') => {
+  const getMonthlyStats = (monthYear?: string) => {
+    const now = new Date();
+    const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const targetMonth = monthYear || currentYearMonth;
     const monthly = transactions.filter(
       (t) =>
         t &&
         t.account === 'KAS_OPERASIONAL' &&
-        (!monthYear || (t.date && t.date.startsWith(monthYear)))
+        (!targetMonth || (t.date && t.date.startsWith(targetMonth)))
     );
 
     const totalIn = monthly

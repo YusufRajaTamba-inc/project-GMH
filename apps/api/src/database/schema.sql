@@ -133,39 +133,27 @@ CREATE TABLE IF NOT EXISTS alumni_profiles (
 CREATE INDEX IF NOT EXISTS idx_alumni_entry_year ON alumni_profiles (entry_year);
 CREATE INDEX IF NOT EXISTS idx_alumni_faculty ON alumni_profiles (faculty);
 
-CREATE TABLE IF NOT EXISTS families (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    family_card_number VARCHAR(50) UNIQUE,      -- Nomor KK Anggota Yayasan
-    family_name VARCHAR(150) NOT NULL,          -- Misal: Keluarga Alumni Silalahi / Panjaitan
-    head_of_family_id UUID REFERENCES members(id),
-    address TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS family_members (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    family_id UUID NOT NULL REFERENCES families(id) ON DELETE CASCADE,
-    member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
-    relationship VARCHAR(30) NOT NULL,          -- 'KEPALA_KELUARGA', 'PASANGAN', 'ANAK', 'ORANG_TUA'
-    CONSTRAINT uq_family_member UNIQUE (family_id, member_id)
-);
-
 -- 4. MODUL REGISTRASI MANDIRI (STAGING PUBLIK & APPROVAL ADMIN)
 CREATE TABLE IF NOT EXISTS member_registrations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     registration_code VARCHAR(30) UNIQUE NOT NULL, -- Kode Registrasi Publik (e.g. REG-GMH-202610-001)
     full_name VARCHAR(150) NOT NULL,
+    nik VARCHAR(20),
     gender VARCHAR(10) NOT NULL,
+    birth_place VARCHAR(100),
     birth_date DATE NOT NULL,
     wedding_date DATE,
     phone_number VARCHAR(30) NOT NULL,
     email VARCHAR(120),
-    faculty VARCHAR(100),
-    major VARCHAR(100),
-    entry_year INT,                             -- Stambuk
     home_address TEXT NOT NULL,
     province VARCHAR(100),
     city VARCHAR(100),
+    postal_code VARCHAR(10),
+    member_type VARCHAR(30) DEFAULT 'ALUMNI',
+    faculty VARCHAR(100),
+    major VARCHAR(100),
+    entry_year INT,                             -- Stambuk
+    graduation_year INT,                        -- Tahun Wisuda/Kelulusan
     current_profession VARCHAR(150),
     marital_status VARCHAR(30),
     
@@ -332,15 +320,6 @@ CREATE TABLE IF NOT EXISTS foundation_programs (
     committees JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS program_rosters (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    program_id UUID NOT NULL REFERENCES foundation_programs(id) ON DELETE CASCADE,
-    member_id UUID NOT NULL REFERENCES members(id),
-    role_in_event VARCHAR(50) NOT NULL,         -- 'PEMBICARA', 'MC_LITURGOS', 'PEMIMPIN_PUJIAN', 'MUSIK', 'DOKUMENTASI', 'TIM_DOA'
-    confirmation_status VARCHAR(20) DEFAULT 'PENDING',
-    CONSTRAINT uq_program_member_role UNIQUE (program_id, member_id, role_in_event)
 );
 
 CREATE TABLE IF NOT EXISTS prayer_requests (
@@ -565,8 +544,6 @@ CREATE INDEX IF NOT EXISTS idx_members_sector_id ON members (sector_id);
 CREATE INDEX IF NOT EXISTS idx_members_status ON members (status);
 CREATE INDEX IF NOT EXISTS idx_members_member_type ON members (member_type);
 CREATE INDEX IF NOT EXISTS idx_members_full_name ON members (full_name);
-CREATE INDEX IF NOT EXISTS idx_families_head_of_family ON families (head_of_family_id);
-CREATE INDEX IF NOT EXISTS idx_family_members_member_id ON family_members (member_id);
 CREATE INDEX IF NOT EXISTS idx_registrations_code ON member_registrations (registration_code);
 CREATE INDEX IF NOT EXISTS idx_registrations_created_at ON member_registrations (created_at DESC);
 
@@ -589,9 +566,6 @@ CREATE INDEX IF NOT EXISTS idx_tx_pledge_id ON financial_transactions (pledge_id
 CREATE INDEX IF NOT EXISTS idx_tx_donor_member ON financial_transactions (donor_member_id);
 CREATE INDEX IF NOT EXISTS idx_tx_recorded_by ON financial_transactions (recorded_by);
 
--- Program, doa & inventaris
-CREATE INDEX IF NOT EXISTS idx_program_rosters_program ON program_rosters (program_id);
-CREATE INDEX IF NOT EXISTS idx_program_rosters_member ON program_rosters (member_id);
 CREATE INDEX IF NOT EXISTS idx_prayer_requests_status ON prayer_requests (status);
 CREATE INDEX IF NOT EXISTS idx_prayer_requests_counselor ON prayer_requests (assigned_counselor_id);
 CREATE INDEX IF NOT EXISTS idx_assets_category_id ON assets (category_id);

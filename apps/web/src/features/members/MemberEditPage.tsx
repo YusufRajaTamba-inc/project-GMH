@@ -32,13 +32,13 @@ export const MemberEditPage: React.FC = () => {
     gender: 'Laki-laki',
     birthPlace: '',
     birthDate: '',
-    faculty: lookups?.faculties?.[0] || 'Fakultas Teknik',
+    faculty: '',
     major: '',
-    entryYear: 2020,
-    graduationYear: 2024,
+    entryYear: undefined,
+    graduationYear: undefined,
     address: '',
-    city: 'Medan',
-    province: 'Sumatera Utara',
+    city: '',
+    province: '',
     postalCode: '',
     phone: '',
     email: '',
@@ -71,6 +71,10 @@ export const MemberEditPage: React.FC = () => {
       setOriginalMember(fromStore);
       setFormData({
         ...fromStore,
+        partnerName: fromStore.partnerName || '',
+        childrenCount: fromStore.childrenCount !== undefined ? fromStore.childrenCount : 0,
+        ministryInterest: fromStore.ministryInterest || '',
+        postalCode: fromStore.postalCode || '',
         socialMedia: {
           linkedin: fromStore.socialMedia?.linkedin || '',
           instagram: fromStore.socialMedia?.instagram || '',
@@ -82,14 +86,47 @@ export const MemberEditPage: React.FC = () => {
       api.members
         .getById(id)
         .then((res: any) => {
-          if (res?.data) {
-            setOriginalMember(res.data);
+          const row = res?.data || res?.member || res;
+          if (row) {
+            const normalizedMember: Member = {
+              id: row.id,
+              nia: row.nia || row.member_number || '-',
+              name: row.name || row.full_name || '-',
+              nik: row.nik,
+              gender: row.gender === 'M' ? 'Laki-laki' : row.gender === 'F' ? 'Perempuan' : row.gender,
+              birthPlace: row.birthPlace || row.birth_place,
+              birthDate: (row.birthDate || row.birth_date)?.split?.('T')[0] || row.birthDate || row.birth_date,
+              faculty: row.faculty || '',
+              major: row.major || '-',
+              entryYear: Number(row.entryYear || row.entry_year) || undefined,
+              graduationYear: (row.graduationYear || row.graduation_year) ? Number(row.graduationYear || row.graduation_year) : undefined,
+              address: row.address || row.home_address,
+              city: row.city || '',
+              province: row.province || '',
+              postalCode: row.postalCode || row.postal_code,
+              phone: row.phone || row.phone_number,
+              email: row.email,
+              profession: row.profession || row.current_profession || '',
+              company: row.company || row.company_name,
+              ktb: row.ktb || row.ktb_group_name,
+              maritalStatus: row.maritalStatus || row.custom_fields?.maritalStatus || (row.wedding_date ? 'Menikah' : (row.marital_status || 'Lajang')),
+              weddingDate: (row.weddingDate || row.wedding_date)?.split?.('T')[0] || row.weddingDate || row.wedding_date,
+              partnerName: row.partnerName || row.partner_name || row.custom_fields?.partnerName || '',
+              childrenCount: row.childrenCount ?? row.children_count ?? row.custom_fields?.childrenCount ?? 0,
+              ministryInterest: row.ministryInterest || row.ministry_interest || row.custom_fields?.ministryInterest || '',
+              socialMedia: row.socialMedia || row.custom_fields?.socialMedia || {},
+              status: row.status || 'ACTIVE',
+              type: row.type || row.member_type || 'ALUMNI',
+              createdAt: (row.createdAt || row.created_at)?.split?.('T')[0] || row.createdAt || row.created_at,
+              customValues: row.customValues || row.custom_fields,
+            };
+            setOriginalMember(normalizedMember);
             setFormData({
-              ...res.data,
+              ...normalizedMember,
               socialMedia: {
-                linkedin: res.data.socialMedia?.linkedin || '',
-                instagram: res.data.socialMedia?.instagram || '',
-                facebook: res.data.socialMedia?.facebook || '',
+                linkedin: normalizedMember.socialMedia?.linkedin || '',
+                instagram: normalizedMember.socialMedia?.instagram || '',
+                facebook: normalizedMember.socialMedia?.facebook || '',
               },
             });
           }
@@ -119,6 +156,11 @@ export const MemberEditPage: React.FC = () => {
         name: formData.name.trim(),
         nik: formData.nik?.trim() || undefined,
         weddingDate: isSingle ? undefined : formData.weddingDate,
+        partnerName: isSingle ? undefined : formData.partnerName,
+        childrenCount: isSingle ? undefined : formData.childrenCount,
+        ministryInterest: formData.ministryInterest,
+        postalCode: formData.postalCode,
+        socialMedia: formData.socialMedia,
       };
 
       updateMember(id, updatedMember);
@@ -394,16 +436,40 @@ export const MemberEditPage: React.FC = () => {
             </div>
 
             {formData.maritalStatus !== 'Lajang' && (
-              <div className="form-group">
-                <label className="form-label">Tanggal Pernikahan (HUT Pernikahan)</label>
-                <input
-                  type="date"
-                  className="form-input"
-                  value={formData.weddingDate || ''}
-                  onChange={(e) => setFormData({ ...formData, weddingDate: e.target.value })}
-                />
-                <div className="form-hint">Digunakan untuk ucapan selamat hari ulang tahun pernikahan</div>
-              </div>
+              <>
+                <div className="form-group">
+                  <label className="form-label">Tanggal Pernikahan (HUT Pernikahan)</label>
+                  <input
+                    type="date"
+                    className="form-input"
+                    value={formData.weddingDate || ''}
+                    onChange={(e) => setFormData({ ...formData, weddingDate: e.target.value })}
+                  />
+                  <div className="form-hint">Digunakan untuk ucapan selamat hari ulang tahun pernikahan</div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Nama Lengkap Pasangan</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Nama Suami / Istri"
+                    value={formData.partnerName || ''}
+                    onChange={(e) => setFormData({ ...formData, partnerName: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Jumlah Anak</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    min={0}
+                    value={formData.childrenCount !== undefined ? formData.childrenCount : 0}
+                    onChange={(e) => setFormData({ ...formData, childrenCount: Number(e.target.value) })}
+                  />
+                </div>
+              </>
             )}
           </div>
         </div>
@@ -509,6 +575,7 @@ export const MemberEditPage: React.FC = () => {
                 <option value="ALUMNI">Alumni PA KMK USU</option>
                 <option value="MAHASISWA">Mahasiswa Aktif</option>
                 <option value="STAF_YAYASAN">Staf / Pengurus Yayasan</option>
+                <option value="MITRA">Mitra / Donatur Yayasan</option>
               </select>
             </div>
           </div>
@@ -585,6 +652,18 @@ export const MemberEditPage: React.FC = () => {
               </select>
             </div>
 
+            <div className="form-group">
+              <label className="form-label">Kode Pos</label>
+              <input
+                type="text"
+                className="form-input"
+                maxLength={5}
+                value={formData.postalCode || ''}
+                onChange={(e) => setFormData({ ...formData, postalCode: e.target.value.replace(/[^0-9]/g, '') })}
+                placeholder="Contoh: 20155"
+              />
+            </div>
+
             <div className="form-group" style={{ gridColumn: 'span 2' }}>
               <label className="form-label">Alamat Lengkap Domisili</label>
               <textarea
@@ -635,6 +714,22 @@ export const MemberEditPage: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, company: e.target.value })}
                 placeholder="Contoh: PT Telkom Indonesia, RS Adam Malik, dsb."
               />
+            </div>
+
+            <div className="form-group" style={{ gridColumn: 'span 2' }}>
+              <label className="form-label">Minat Keterlibatan Pelayanan Alumni</label>
+              <select
+                className="form-select"
+                value={formData.ministryInterest || ''}
+                onChange={(e) => setFormData({ ...formData, ministryInterest: e.target.value })}
+              >
+                <option value="">-- Belum Memilih / Belum Menentukan --</option>
+                <option value="Pelayanan Pembinaan Mahasiswa & Mentor KTB">Pelayanan Pembinaan Mahasiswa & Mentor KTB</option>
+                <option value="Dukungan Misi Daerah & Pengutusan Pekabar Injil">Dukungan Misi Daerah & Pengutusan Pekabar Injil</option>
+                <option value="Pengembangan Fasilitas Rumah Persekutuan GMH">Pengembangan Fasilitas Rumah Persekutuan GMH</option>
+                <option value="Tim Doa Syafaat & Pastoral Care Alumni">Tim Doa Syafaat & Pastoral Care Alumni</option>
+                <option value="Profesional Mentorship & Workshop Karir">Profesional Mentorship & Workshop Karir</option>
+              </select>
             </div>
           </div>
         </div>

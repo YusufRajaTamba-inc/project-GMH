@@ -129,12 +129,44 @@ const MemberDetailPage: React.FC = () => {
       setMember(fromStore);
       setIsLoadingMember(false);
     } else {
-      // Fallback API
+      // Fallback API jika belum ada di store / reload langsung
       api.members
         .getById(id)
         .then((res: any) => {
-          if (res?.data) {
-            setMember(res.data);
+          const row = res?.data || res?.member || res;
+          if (row) {
+            setMember({
+              id: row.id,
+              nia: row.nia || row.member_number || '-',
+              name: row.name || row.full_name || '-',
+              nik: row.nik,
+              gender: row.gender === 'M' ? 'Laki-laki' : row.gender === 'F' ? 'Perempuan' : row.gender,
+              birthPlace: row.birthPlace || row.birth_place,
+              birthDate: (row.birthDate || row.birth_date)?.split?.('T')[0] || row.birthDate || row.birth_date,
+              faculty: row.faculty || '-',
+              major: row.major || '-',
+              entryYear: Number(row.entryYear || row.entry_year) || 0,
+              graduationYear: (row.graduationYear || row.graduation_year) ? Number(row.graduationYear || row.graduation_year) : undefined,
+              address: row.address || row.home_address,
+              city: row.city || '-',
+              province: row.province || '-',
+              postalCode: row.postalCode || row.postal_code,
+              phone: row.phone || row.phone_number,
+              email: row.email,
+              profession: row.profession || row.current_profession || '-',
+              company: row.company || row.company_name,
+              ktb: row.ktb || row.ktb_group_name,
+              maritalStatus: row.maritalStatus || row.custom_fields?.maritalStatus || (row.wedding_date ? 'Menikah' : (row.marital_status || 'Lajang')),
+              weddingDate: (row.weddingDate || row.wedding_date)?.split?.('T')[0] || row.weddingDate || row.wedding_date,
+              partnerName: row.partnerName || row.partner_name || row.custom_fields?.partnerName,
+              childrenCount: row.childrenCount ?? row.children_count ?? row.custom_fields?.childrenCount,
+              ministryInterest: row.ministryInterest || row.ministry_interest || row.custom_fields?.ministryInterest,
+              socialMedia: row.socialMedia || row.custom_fields?.socialMedia || {},
+              status: row.status || 'ACTIVE',
+              type: row.type || row.member_type || 'ALUMNI',
+              createdAt: (row.createdAt || row.created_at)?.split?.('T')[0] || row.createdAt || row.created_at,
+              customValues: row.customValues || row.custom_fields,
+            });
           }
         })
         .catch((err) => {
@@ -689,6 +721,18 @@ const MemberDetailPage: React.FC = () => {
                   )}
                 </div>
               </div>
+              {member.maritalStatus && member.maritalStatus !== 'Lajang' && (
+                <>
+                  <div>
+                    <div style={{ fontSize: 11, color: 'var(--gmh-text-muted)', fontWeight: 600 }}>Nama Pasangan (Suami/Istri)</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600 }}>{member.partnerName || '-'}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, color: 'var(--gmh-text-muted)', fontWeight: 600 }}>Jumlah Anak</div>
+                    <div style={{ fontSize: 13.5 }}>{member.childrenCount !== undefined && member.childrenCount !== null ? `${member.childrenCount} Orang` : '-'}</div>
+                  </div>
+                </>
+              )}
               <div style={{ gridColumn: 'span 2' }}>
                 <div style={{ fontSize: 11, color: 'var(--gmh-text-muted)', fontWeight: 600 }}>Alamat Lengkap Domisili</div>
                 <div style={{ fontSize: 13.5 }}>
@@ -847,6 +891,10 @@ const MemberDetailPage: React.FC = () => {
               <div>
                 <div style={{ fontSize: 11, color: 'var(--gmh-text-muted)', fontWeight: 600 }}>Nama Perusahaan / Instansi</div>
                 <div style={{ fontSize: 13.5 }}>{member.company || '-'}</div>
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <div style={{ fontSize: 11, color: 'var(--gmh-text-muted)', fontWeight: 600 }}>Minat Keterlibatan Pelayanan Alumni</div>
+                <div style={{ fontSize: 13.5, fontWeight: 500 }}>{member.ministryInterest || 'Belum Menentukan'}</div>
               </div>
             </div>
           </div>

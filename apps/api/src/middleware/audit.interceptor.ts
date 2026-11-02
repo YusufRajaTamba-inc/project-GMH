@@ -1,6 +1,12 @@
-import { Request, Response, NextFunction } from 'express';
 import { db } from '../config/db.js';
+import { logger } from '../shared/logger.js';
 
+/**
+ * Penulis audit trail (Fase 1 — Audit Infrastruktur).
+ *
+ * Kegagalan pencatatan audit tidak boleh menggagalkan operasi bisnis,
+ * karena itu error ditelan dan hanya dicatat ke log terstruktur.
+ */
 export async function logAudit(
   userId: string | null,
   action: string,
@@ -26,7 +32,12 @@ export async function logAudit(
         userAgent || null,
       ]
     );
-  } catch (err: any) {
-    console.error('[Audit Logger Error]', err.message);
+  } catch (err: unknown) {
+    logger.error('Audit logger failed', {
+      action,
+      entityName,
+      entityId,
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
 }

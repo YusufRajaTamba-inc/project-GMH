@@ -247,7 +247,7 @@ export const api = {
 
   // 7. Dashboard, Building, Programs, Prayer, Assets
   dashboard: {
-    getSummary: () => request('/dashboard/summary'),
+    getSummary: (projectId?: string) => request(projectId ? `/dashboard/summary?projectId=${encodeURIComponent(projectId)}` : '/dashboard/summary'),
   },
   reports: {
     getConsolidated: (year: number) => request(`/reports/consolidated?year=${year}`),
@@ -439,11 +439,11 @@ export const api = {
       request<{
         success: boolean;
         totalCount: number;
-        counts: { total: number; programs: number; registrations: number; loans: number };
+        counts: { total: number; programs: number; registrations: number; loans: number; birthdays?: number };
         notifications: Array<{
           id: string;
           rawId: string;
-          type: 'PROGRAM' | 'REGISTRATION' | 'ASSET_LOAN';
+          type: 'PROGRAM' | 'REGISTRATION' | 'ASSET_LOAN' | 'BIRTHDAY';
           title: string;
           category?: string;
           description: string;
@@ -458,6 +458,7 @@ export const api = {
           programs: any[];
           registrations: any[];
           loans: any[];
+          birthdays?: any[];
         };
       }>('/notifications'),
   },

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   CheckCircle,
@@ -6,45 +6,53 @@ import {
   UserCheck,
   Calendar,
   Building,
-  Heart,
-  Globe,
   ArrowLeft,
   FileCheck,
   AlertCircle,
+  AlertTriangle,
   RefreshCw,
+  Phone,
+  MapPin,
 } from 'lucide-react';
 import { useMemberStore } from '../../state/MemberStoreContext';
 import { useDynamicConfig } from '../../state/DynamicConfigContext';
 import { api } from '../../services/api';
 
 const PublicRegistrationPage: React.FC = () => {
-  const { submitPublicRegistration } = useMemberStore();
+  const { members, submitPublicRegistration } = useMemberStore();
   const { lookups, fieldLabels, customFields } = useDynamicConfig();
 
-  // Form State
+  // Form State - 100% selaras dengan form admin (MemberAddModal)
   const [formData, setFormData] = useState({
     name: '',
+    type: 'ALUMNI',
     nik: '',
     gender: 'Laki-laki',
     birthPlace: '',
     birthDate: '',
-    wa: '',
-    email: '',
-    address: '',
-    city: 'Medan',
-    province: 'Sumatera Utara',
-    faculty: lookups.faculties[0] || 'Fakultas Teknik',
-    major: '',
-    entryYear: 2020,
-    gradYear: 2024,
-    ktb: '',
-    profession: '',
-    company: '',
-    ministryInterest: 'Pelayanan Mahasiswa & KTB',
     maritalStatus: 'Lajang',
     weddingDate: '',
     partnerName: '',
     childrenCount: 0,
+    address: '',
+    city: '',
+    province: '',
+    postalCode: '',
+    wa: '',
+    email: '',
+    socialMedia: {
+      linkedin: '',
+      instagram: '',
+      facebook: '',
+    },
+    faculty: '',
+    major: '',
+    entryYear: '' as any,
+    graduationYear: '' as any,
+    profession: '',
+    company: '',
+    ktb: '',
+    ministryInterest: '',
   });
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -54,6 +62,13 @@ const PublicRegistrationPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const memberCustomFields = customFields.filter((cf) => cf.module === 'MEMBERS');
+
+  // Real-time Duplicate NIK check terhadap database anggota
+  const duplicateNikMember = useMemo(() => {
+    const raw = (formData.nik || '').replace(/[^0-9]/g, '');
+    if (!raw || raw.length < 16) return null;
+    return members.find((m) => m.nik && m.nik.replace(/[^0-9]/g, '') === raw) || null;
+  }, [formData.nik, members]);
 
   const validateField = (name: string, value: any): string | null => {
     switch (name) {
@@ -74,7 +89,8 @@ const PublicRegistrationPage: React.FC = () => {
       }
       case 'nik': {
         const clean = String(value).trim().replace(/\s+/g, '');
-        if (clean && !/^\d{16}$/.test(clean)) return 'NIK harus berupa tepat 16 digit angka.';
+        if (!clean) return 'NIK 16 digit wajib diisi.';
+        if (!/^\d{16}$/.test(clean)) return 'NIK harus berupa tepat 16 digit angka.';
         return null;
       }
       case 'address':
@@ -123,8 +139,16 @@ const PublicRegistrationPage: React.FC = () => {
     e.preventDefault();
     setSubmitError(null);
 
+    // Cek duplikasi NIK lokal
+    if (duplicateNikMember) {
+      setSubmitError(`NIK ${formData.nik} sudah terdaftar atas nama ${duplicateNikMember.name} (${duplicateNikMember.nia}). Pendaftaran dengan NIK yang sama tidak diizinkan.`);
+      window.scrollTo({ top: 300, behavior: 'smooth' });
+      return;
+    }
+
     const errors: Record<string, string> = {};
-    const fieldsToValidate = ['name', 'nik', 'birthDate', 'wa', 'email', 'address', 'faculty', 'major', 'entryYear'];
+    const fieldsToValidate = ['name', 'nik', 'birthDate', 'wa', 'address', 'faculty', 'major', 'entryYear'];
+    if (formData.email) fieldsToValidate.push('email');
     if (formData.maritalStatus === 'Menikah') fieldsToValidate.push('weddingDate');
 
     for (const key of fieldsToValidate) {
@@ -134,56 +158,83 @@ const PublicRegistrationPage: React.FC = () => {
 
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
-      setSubmitError('Mohon perbaiki data formulir yang bertanda merah sebelum mengirim.');
+      setSubmitError('Mohon perbaiki isian formulir yang bertanda merah sebelum mengirim.');
       window.scrollTo({ top: 300, behavior: 'smooth' });
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const res = await api.registrations.publicRegister({
+      const cleanNik = formData.nik.replace(/[^0-9]/g, '').trim();
+      const payloadData = {
         fullName: formData.name.trim(),
-        nik: formData.nik?.trim() || undefined,
+        nik: cleanNik,
         gender: formData.gender,
+        birthPlace: formData.birthPlace?.trim() || undefined,
         birthDate: formData.birthDate,
         weddingDate: formData.maritalStatus === 'Menikah' ? formData.weddingDate : undefined,
         phoneNumber: formData.wa.trim(),
         email: formData.email?.trim() || undefined,
-        faculty: formData.faculty,
-        major: formData.major.trim(),
-        entryYear: Number(formData.entryYear),
         homeAddress: formData.address.trim(),
         city: formData.city,
         province: formData.province,
+        postalCode: formData.postalCode?.trim() || undefined,
+        faculty: formData.faculty,
+        major: formData.major.trim(),
+        entryYear: Number(formData.entryYear),
+        graduationYear: formData.graduationYear ? Number(formData.graduationYear) : undefined,
+        gradYear: formData.graduationYear ? Number(formData.graduationYear) : undefined,
         currentProfession: formData.profession?.trim() || undefined,
+        profession: formData.profession?.trim() || undefined,
+        company: formData.company?.trim() || undefined,
+        ktb: formData.ktb?.trim() || undefined,
+        ministryInterest: formData.ministryInterest || undefined,
         maritalStatus: formData.maritalStatus,
-      });
+        partnerName: formData.maritalStatus === 'Menikah' ? formData.partnerName : undefined,
+        childrenCount: formData.maritalStatus === 'Menikah' ? Number(formData.childrenCount) : 0,
+        memberType: formData.type as any,
+        socialMedia: {
+          linkedin: formData.socialMedia.linkedin?.trim() || undefined,
+          instagram: formData.socialMedia.instagram?.trim() || undefined,
+        },
+        customValues,
+      };
+
+      const res = await api.registrations.publicRegister(payloadData);
 
       if (res.success && res.ticket) {
         setSubmittedTicket(res.ticket.registration_code);
         submitPublicRegistration({
           name: formData.name,
-          nik: formData.nik,
+          nik: cleanNik,
           gender: formData.gender,
+          birthPlace: formData.birthPlace,
           birthDate: formData.birthDate,
+          address: formData.address,
+          city: formData.city,
+          province: formData.province,
+          postalCode: formData.postalCode,
+          wa: formData.wa,
+          email: formData.email,
           faculty: formData.faculty,
           major: formData.major,
           entryYear: Number(formData.entryYear),
-          wa: formData.wa,
-          email: formData.email,
-          city: formData.city,
-          address: formData.address,
+          graduationYear: formData.graduationYear ? Number(formData.graduationYear) : undefined,
+          gradYear: formData.graduationYear ? Number(formData.graduationYear) : undefined,
           profession: formData.profession,
           company: formData.company,
           ktb: formData.ktb,
+          ministryInterest: formData.ministryInterest,
           maritalStatus: formData.maritalStatus,
           weddingDate: formData.maritalStatus === 'Menikah' ? formData.weddingDate : undefined,
           partnerName: formData.maritalStatus === 'Menikah' ? formData.partnerName : undefined,
           childrenCount: formData.maritalStatus === 'Menikah' ? Number(formData.childrenCount) : 0,
+          memberType: formData.type as any,
+          socialMedia: formData.socialMedia,
         });
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
-        setSubmitError(res.message || 'Gagal memproses pendaftaran.');
+        setSubmitError(res.message || 'Gagal memproses formulir pendaftaran.');
       }
     } catch (err: any) {
       setSubmitError(err.message || 'Terjadi kesalahan sistem saat mengirim formulir.');
@@ -229,7 +280,7 @@ const PublicRegistrationPage: React.FC = () => {
                 Yayasan Global Mission House
               </div>
               <div style={{ fontSize: 12, color: 'var(--gmh-green-pale)', opacity: 0.9 }}>
-                Persekutuan Alumni PA KMK USU · Portal Pendaftaran Mandiri Anggota & Alumni
+                Persekutuan Alumni PA KMK USU · Portal Pendaftaran Mandiri Anggota &amp; Alumni
               </div>
             </div>
           </div>
@@ -313,7 +364,7 @@ const PublicRegistrationPage: React.FC = () => {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, textAlign: 'left', margin: '0 auto 32px', maxWidth: 680 }}>
               <div style={{ padding: 14, background: 'var(--gmh-white)', borderRadius: 'var(--radius-md)', border: '1px solid var(--gmh-border)' }}>
                 <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--gmh-green)', marginBottom: 4 }}>1. Verifikasi Admin</div>
-                <div style={{ fontSize: 11.5, color: 'var(--gmh-text-muted)' }}>Admin memeriksa data stambuk & kelulusan Anda.</div>
+                <div style={{ fontSize: 11.5, color: 'var(--gmh-text-muted)' }}>Admin memeriksa data stambuk &amp; kelulusan Anda.</div>
               </div>
               <div style={{ padding: 14, background: 'var(--gmh-white)', borderRadius: 'var(--radius-md)', border: '1px solid var(--gmh-border)' }}>
                 <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--gmh-green)', marginBottom: 4 }}>2. Penerbitan NIA</div>
@@ -332,27 +383,34 @@ const PublicRegistrationPage: React.FC = () => {
                   setSubmittedTicket(null);
                   setFormData({
                     name: '',
+                    type: 'ALUMNI',
                     nik: '',
                     gender: 'Laki-laki',
                     birthPlace: '',
                     birthDate: '',
-                    wa: '',
-                    email: '',
-                    address: '',
-                    city: 'Medan',
-                    province: 'Sumatera Utara',
-                    faculty: lookups.faculties[0] || 'Fakultas Teknik',
-                    major: '',
-                    entryYear: 2020,
-                    gradYear: 2024,
-                    ktb: '',
-                    profession: '',
-                    company: '',
-                    ministryInterest: 'Pelayanan Mahasiswa & KTB',
                     maritalStatus: 'Lajang',
                     weddingDate: '',
                     partnerName: '',
                     childrenCount: 0,
+                    address: '',
+                    city: '',
+                    province: '',
+                    postalCode: '',
+                    wa: '',
+                    email: '',
+                    socialMedia: {
+                      linkedin: '',
+                      instagram: '',
+                      facebook: '',
+                    },
+                    faculty: '',
+                    major: '',
+                    entryYear: '' as any,
+                    graduationYear: '' as any,
+                    profession: '',
+                    company: '',
+                    ktb: '',
+                    ministryInterest: '',
                   });
                 }}
               >
@@ -395,7 +453,7 @@ const PublicRegistrationPage: React.FC = () => {
                 </div>
                 <div>
                   <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--gmh-green-dark)', marginBottom: 6 }}>
-                    Formulir Pendaftaran Alumni & Anggota Yayasan
+                    Formulir Pendaftaran Alumni &amp; Anggota Yayasan
                   </h1>
                   <p style={{ fontSize: 13.5, color: 'var(--gmh-text-muted)', lineHeight: 1.6 }}>
                     Formulir ini diperuntukkan bagi alumni PA KMK USU, staf yayasan, dan mitra pergerakan misi GMH. Seluruh data dilindungi dengan standar keamanan privasi data yayasan dan digunakan untuk koordinasi persekutuan alumni, warta yayasan, serta pengingat hari ulang tahun.
@@ -417,6 +475,7 @@ const PublicRegistrationPage: React.FC = () => {
                   alignItems: 'center',
                   gap: 10,
                   boxShadow: '0 2px 6px rgba(239,68,68,0.08)',
+                  marginBottom: 20,
                 }}
               >
                 <AlertCircle size={18} style={{ flexShrink: 0, color: '#dc2626' }} />
@@ -425,17 +484,17 @@ const PublicRegistrationPage: React.FC = () => {
             )}
 
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-              {/* SECTION 1: IDENTITAS DIRI */}
+              {/* SECTION 1: IDENTITAS PRIBADI & KELUARGA (100% Selaras dengan Admin) */}
               <div className="card">
                 <div className="card-header">
                   <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <UserCheck size={18} color="var(--gmh-gold)" /> 1. Identitas Pribadi
+                    <UserCheck size={18} color="var(--gmh-gold)" /> 1. Identitas Utama &amp; Tanggal Lahir (Ultah)
                   </div>
                 </div>
                 <div className="card-body">
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                      <label className="form-label">Nama Lengkap & Gelar *</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 16 }}>
+                    <div className="form-group">
+                      <label className="form-label">Nama Lengkap &amp; Gelar *</label>
                       <input
                         type="text"
                         name="name"
@@ -450,19 +509,77 @@ const PublicRegistrationPage: React.FC = () => {
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label">Nomor Induk Kependudukan (NIK) *</label>
+                      <label className="form-label">Tipe Keanggotaan *</label>
+                      <select
+                        name="type"
+                        className="form-select"
+                        value={formData.type}
+                        onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                        required
+                      >
+                        <option value="ALUMNI">Alumni PA KMK USU</option>
+                        <option value="MAHASISWA">Mahasiswa Aktif</option>
+                        <option value="STAF_YAYASAN">Staf / Pengurus Yayasan</option>
+                        <option value="MITRA">Mitra / Donatur Yayasan</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>NIK (16 Digit) *</span>
+                        {formData.nik && (
+                          <span style={{ fontSize: 11, color: formData.nik.replace(/[^0-9]/g, '').length === 16 ? 'var(--gmh-green)' : 'var(--gmh-text-muted)', fontWeight: 600 }}>
+                            {formData.nik.replace(/[^0-9]/g, '').length}/16 digit
+                          </span>
+                        )}
+                      </label>
                       <input
                         type="text"
                         name="nik"
                         className="form-input"
-                        placeholder="16 digit NIK KTP"
-                        value={formData.nik}
-                        onChange={handleChange}
+                        placeholder="Contoh: 1271010101960001"
                         maxLength={16}
+                        value={formData.nik}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9]/g, '');
+                          setFormData({ ...formData, nik: val });
+                          const err = validateField('nik', val);
+                          setFormErrors((prev) => {
+                            const next = { ...prev };
+                            if (err) next.nik = err;
+                            else delete next.nik;
+                            return next;
+                          });
+                        }}
                         required
-                        style={{ borderColor: formErrors.nik ? '#dc2626' : undefined }}
+                        style={{
+                          borderColor: duplicateNikMember || formErrors.nik ? 'var(--gmh-danger)' : undefined,
+                          background: duplicateNikMember ? '#fff1f2' : undefined,
+                        }}
                       />
                       {formErrors.nik && <div style={{ color: '#dc2626', fontSize: 11.5, marginTop: 4, fontWeight: 600 }}>{formErrors.nik}</div>}
+                      {duplicateNikMember && (
+                        <div
+                          style={{
+                            marginTop: 6,
+                            padding: '8px 12px',
+                            background: '#fff1f2',
+                            border: '1px solid #fecdd3',
+                            borderRadius: 6,
+                            fontSize: 12,
+                            color: '#9f1239',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          <AlertTriangle size={16} style={{ flexShrink: 0, color: '#e11d48' }} />
+                          <div>
+                            <strong>NIK Terdeteksi Duplikat:</strong> Sudah terdaftar atas nama <strong>{duplicateNikMember.name}</strong> ({duplicateNikMember.nia}).
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="form-group">
@@ -479,14 +596,14 @@ const PublicRegistrationPage: React.FC = () => {
                         type="text"
                         name="birthPlace"
                         className="form-input"
-                        placeholder="Kota Tempat Lahir"
+                        placeholder="Medan / Tarutung"
                         value={formData.birthPlace}
                         onChange={handleChange}
                       />
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label">Tanggal Lahir (Pengingat Ultah) *</label>
+                      <label className="form-label">Tanggal Lahir (Ultah) *</label>
                       <input
                         type="date"
                         name="birthDate"
@@ -499,254 +616,6 @@ const PublicRegistrationPage: React.FC = () => {
                       {formErrors.birthDate && <div style={{ color: '#dc2626', fontSize: 11.5, marginTop: 4, fontWeight: 600 }}>{formErrors.birthDate}</div>}
                     </div>
 
-                    <div className="form-group">
-                      <label className="form-label">Nomor WhatsApp Aktif *</label>
-                      <input
-                        type="tel"
-                        name="wa"
-                        className="form-input"
-                        placeholder="Contoh: 081234567890"
-                        value={formData.wa}
-                        onChange={handleChange}
-                        required
-                        style={{ borderColor: formErrors.wa ? '#dc2626' : undefined }}
-                      />
-                      {formErrors.wa ? (
-                        <div style={{ color: '#dc2626', fontSize: 11.5, marginTop: 4, fontWeight: 600 }}>{formErrors.wa}</div>
-                      ) : (
-                        <span style={{ fontSize: 11, color: 'var(--gmh-text-muted)' }}>
-                          Digunakan untuk pengiriman Nomor Induk Anggota (NIA) resmi
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label">Alamat Email Aktif *</label>
-                      <input
-                        type="email"
-                        name="email"
-                        className="form-input"
-                        placeholder="nama@email.com"
-                        value={formData.email}
-                        onChange={handleChange}
-                        required
-                        style={{ borderColor: formErrors.email ? '#dc2626' : undefined }}
-                      />
-                      {formErrors.email && <div style={{ color: '#dc2626', fontSize: 11.5, marginTop: 4, fontWeight: 600 }}>{formErrors.email}</div>}
-                    </div>
-
-                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                      <label className="form-label">Alamat Domisili Lengkap *</label>
-                      <textarea
-                        name="address"
-                        className="form-input"
-                        rows={2}
-                        placeholder="Jalan, Nomor Rumah, RT/RW, Kelurahan, Kecamatan"
-                        value={formData.address}
-                        onChange={handleChange}
-                        style={{ borderColor: formErrors.address ? '#dc2626' : undefined }}
-                      />
-                      {formErrors.address && <div style={{ color: '#dc2626', fontSize: 11.5, marginTop: 4, fontWeight: 600 }}>{formErrors.address}</div>}
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label">Kota / Kabupaten Domisili</label>
-                      <input
-                        type="text"
-                        name="city"
-                        className="form-input"
-                        placeholder="Contoh: Medan, Jakarta, Bandung"
-                        value={formData.city}
-                        onChange={handleChange}
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label">Wilayah / Kring Alumni</label>
-                      <select name="province" className="form-select" value={formData.province} onChange={handleChange}>
-                        {lookups.alumniRegions.map((r) => (
-                          <option key={r} value={r}>
-                            {r}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* SECTION 2: DATA AKADEMIK ALUMNI USU */}
-              <div className="card">
-                <div className="card-header">
-                  <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Building size={18} color="var(--gmh-gold)" /> 2. Data Akademik Alumni PA KMK USU
-                  </div>
-                </div>
-                <div className="card-body">
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                    <div className="form-group">
-                      <label className="form-label">
-                        {fieldLabels['member.faculty'] || 'Fakultas Asal USU'} *
-                      </label>
-                      <select
-                        name="faculty"
-                        className="form-select"
-                        value={formData.faculty}
-                        onChange={handleChange}
-                        required
-                        style={{ borderColor: formErrors.faculty ? '#dc2626' : undefined }}
-                      >
-                        {lookups.faculties.map((f) => (
-                          <option key={f} value={f}>
-                            {f}
-                          </option>
-                        ))}
-                      </select>
-                      {formErrors.faculty && <div style={{ color: '#dc2626', fontSize: 11.5, marginTop: 4, fontWeight: 600 }}>{formErrors.faculty}</div>}
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label">
-                        {fieldLabels['member.major'] || 'Program Studi / Jurusan'} *
-                      </label>
-                      <input
-                        type="text"
-                        name="major"
-                        className="form-input"
-                        placeholder="Contoh: Teknik Informatika, Kedokteran Umum"
-                        value={formData.major}
-                        onChange={handleChange}
-                        required
-                        style={{ borderColor: formErrors.major ? '#dc2626' : undefined }}
-                      />
-                      {formErrors.major && <div style={{ color: '#dc2626', fontSize: 11.5, marginTop: 4, fontWeight: 600 }}>{formErrors.major}</div>}
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label">
-                        {fieldLabels['member.entryYear'] || 'Stambuk / Tahun Masuk'} *
-                      </label>
-                      <input
-                        type="number"
-                        name="entryYear"
-                        className="form-input"
-                        placeholder="Tahun masuk, misal: 2016"
-                        value={formData.entryYear}
-                        onChange={handleChange}
-                        min={1970}
-                        max={2030}
-                        required
-                        style={{ borderColor: formErrors.entryYear ? '#dc2626' : undefined }}
-                      />
-                      {formErrors.entryYear && <div style={{ color: '#dc2626', fontSize: 11.5, marginTop: 4, fontWeight: 600 }}>{formErrors.entryYear}</div>}
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label">Tahun Kelulusan (Opsional)</label>
-                      <input
-                        type="number"
-                        name="gradYear"
-                        className="form-input"
-                        placeholder="Tahun wisuda / lulus"
-                        value={formData.gradYear}
-                        onChange={handleChange}
-                        min={1975}
-                        max={2030}
-                      />
-                    </div>
-
-                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                      <label className="form-label">
-                        {fieldLabels['member.ktb'] || 'Kelompok Tumbuh Bersama (KTB) Asal Kampus'}
-                      </label>
-                      <input
-                        type="text"
-                        name="ktb"
-                        className="form-input"
-                        list="public-ktb-datalist"
-                        placeholder="Pilih atau ketik KTB saat mahasiswa / Pemimpin KTB"
-                        value={formData.ktb}
-                        onChange={handleChange}
-                      />
-                      <datalist id="public-ktb-datalist">
-                        {(lookups.ktbGroups || []).map((ktb) => (
-                          <option key={ktb} value={ktb} />
-                        ))}
-                      </datalist>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* SECTION 3: PROFESI & MINAT PELAYANAN */}
-              <div className="card">
-                <div className="card-header">
-                  <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Globe size={18} color="var(--gmh-gold)" /> 3. Profesi & Minat Pelayanan Alumni
-                  </div>
-                </div>
-                <div className="card-body">
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                    <div className="form-group">
-                      <label className="form-label">
-                        {fieldLabels['member.profession'] || 'Profesi / Pekerjaan Saat Ini'}
-                      </label>
-                      <input
-                        type="text"
-                        name="profession"
-                        className="form-input"
-                        list="public-profession-datalist"
-                        placeholder="Pilih atau ketik: Dosen, Dokter, ASN, Wirausaha..."
-                        value={formData.profession}
-                        onChange={handleChange}
-                      />
-                      <datalist id="public-profession-datalist">
-                        {(lookups.professions || []).map((prof) => (
-                          <option key={prof} value={prof} />
-                        ))}
-                      </datalist>
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label">Nama Instansi / Perusahaan / Usaha</label>
-                      <input
-                        type="text"
-                        name="company"
-                        className="form-input"
-                        placeholder="Contoh: PT Telkom, RS Adam Malik"
-                        value={formData.company}
-                        onChange={handleChange}
-                      />
-                    </div>
-
-                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                      <label className="form-label">Minat Keterlibatan Pelayanan Alumni</label>
-                      <select
-                        name="ministryInterest"
-                        className="form-select"
-                        value={formData.ministryInterest}
-                        onChange={handleChange}
-                      >
-                        <option>Pelayanan Pembinaan Mahasiswa & Mentor KTB</option>
-                        <option>Dukungan Misi Daerah & Pengutusan Pekabar Injil</option>
-                        <option>Pengembangan Fasilitas Rumah Persekutuan GMH</option>
-                        <option>Tim Doa Syafaat & Pastoral Care Alumni</option>
-                        <option>Profesional Mentorship & Workshop Karir</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* SECTION 4: DATA KELUARGA & ULTAH PERNIKAHAN */}
-              <div className="card">
-                <div className="card-header">
-                  <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Heart size={18} color="var(--gmh-gold)" /> 4. Status Pernikahan & Keluarga
-                  </div>
-                </div>
-                <div className="card-body">
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                     <div className="form-group">
                       <label className="form-label">{fieldLabels['member.maritalStatus'] || 'Status Pernikahan'}</label>
                       <select
@@ -763,11 +632,11 @@ const PublicRegistrationPage: React.FC = () => {
                       </select>
                     </div>
 
-                    {formData.maritalStatus === 'Menikah' && (
+                    {formData.maritalStatus !== 'Lajang' && (
                       <>
                         <div className="form-group">
                           <label className="form-label">
-                            {fieldLabels['member.weddingDate'] || 'Tanggal Pernikahan (Pengingat Ultah Nikah)'} *
+                            {fieldLabels['member.weddingDate'] || 'Tanggal Pernikahan (Ultah Nikah)'} *
                           </label>
                           <input
                             type="date"
@@ -775,7 +644,7 @@ const PublicRegistrationPage: React.FC = () => {
                             className="form-input"
                             value={formData.weddingDate}
                             onChange={handleChange}
-                            required={formData.maritalStatus === 'Menikah'}
+                            required={formData.maritalStatus !== 'Lajang'}
                             style={{ borderColor: formErrors.weddingDate ? '#dc2626' : undefined }}
                           />
                           {formErrors.weddingDate && <div style={{ color: '#dc2626', fontSize: 11.5, marginTop: 4, fontWeight: 600 }}>{formErrors.weddingDate}</div>}
@@ -810,7 +679,303 @@ const PublicRegistrationPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* DYNAMIC CUSTOM FIELDS (If configured by admin in Utility) */}
+              {/* SECTION 2: TEMPAT TINGGAL & DOMISILI DETAIL (100% Selaras dengan Admin) */}
+              <div className="card">
+                <div className="card-header">
+                  <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <MapPin size={18} color="var(--gmh-gold)" /> 2. Tempat Tinggal &amp; Domisili Detail
+                  </div>
+                </div>
+                <div className="card-body">
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 16 }}>
+                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                      <label className="form-label">Alamat Rumah Lengkap (Jalan, RT/RW, Kelurahan) *</label>
+                      <textarea
+                        name="address"
+                        className="form-input"
+                        rows={2}
+                        placeholder="Contoh: Jl. Dr. Mansyur No. 45, Kel. Padang Bulan, Medan"
+                        value={formData.address}
+                        onChange={handleChange}
+                        required
+                        style={{ borderColor: formErrors.address ? '#dc2626' : undefined }}
+                      />
+                      {formErrors.address && <div style={{ color: '#dc2626', fontSize: 11.5, marginTop: 4, fontWeight: 600 }}>{formErrors.address}</div>}
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Kota / Kabupaten *</label>
+                      <input
+                        type="text"
+                        name="city"
+                        className="form-input"
+                        placeholder="Contoh: Medan, Jakarta, Bandung"
+                        value={formData.city}
+                        onChange={handleChange}
+                        required
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Wilayah / Kring Alumni</label>
+                      <select name="province" className="form-select" value={formData.province} onChange={handleChange}>
+                        <option value="">-- Pilih Wilayah / Kring --</option>
+                        {(lookups.alumniRegions || ['Medan & Sekitarnya', 'Jabodetabek', 'Batam & Kepri', 'Riau & Pekanbaru', 'Luar Negeri / Lainnya']).map((r) => (
+                          <option key={r} value={r}>
+                            {r}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Kode Pos</label>
+                      <input
+                        type="text"
+                        name="postalCode"
+                        className="form-input"
+                        placeholder="Contoh: 20155"
+                        value={formData.postalCode}
+                        onChange={handleChange}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 3: KONTAK & MEDIA SOSIAL (100% Selaras dengan Admin) */}
+              <div className="card">
+                <div className="card-header">
+                  <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Phone size={18} color="var(--gmh-gold)" /> 3. Kontak &amp; Media Sosial
+                  </div>
+                </div>
+                <div className="card-body">
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 16 }}>
+                    <div className="form-group">
+                      <label className="form-label">Nomor WhatsApp Aktif *</label>
+                      <input
+                        type="tel"
+                        name="wa"
+                        className="form-input"
+                        placeholder="Contoh: 081234567890"
+                        value={formData.wa}
+                        onChange={handleChange}
+                        required
+                        style={{ borderColor: formErrors.wa ? '#dc2626' : undefined }}
+                      />
+                      {formErrors.wa ? (
+                        <div style={{ color: '#dc2626', fontSize: 11.5, marginTop: 4, fontWeight: 600 }}>{formErrors.wa}</div>
+                      ) : (
+                        <span style={{ fontSize: 11, color: 'var(--gmh-text-muted)' }}>
+                          Digunakan untuk pengiriman Nomor Induk Anggota (NIA) resmi
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Alamat Email Aktif</label>
+                      <input
+                        type="email"
+                        name="email"
+                        className="form-input"
+                        placeholder="nama@email.com"
+                        value={formData.email}
+                        onChange={handleChange}
+                        style={{ borderColor: formErrors.email ? '#dc2626' : undefined }}
+                      />
+                      {formErrors.email && <div style={{ color: '#dc2626', fontSize: 11.5, marginTop: 4, fontWeight: 600 }}>{formErrors.email}</div>}
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">LinkedIn (URL / Profil)</label>
+                      <input
+                        type="text"
+                        placeholder="linkedin.com/in/username"
+                        className="form-input"
+                        value={formData.socialMedia.linkedin}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            socialMedia: { ...formData.socialMedia, linkedin: e.target.value },
+                          })
+                        }
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Instagram (@username)</label>
+                      <input
+                        type="text"
+                        placeholder="@username"
+                        className="form-input"
+                        value={formData.socialMedia.instagram}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            socialMedia: { ...formData.socialMedia, instagram: e.target.value },
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 4: DATA AKADEMIK USU & KARIER (100% Selaras dengan Admin) */}
+              <div className="card">
+                <div className="card-header">
+                  <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Building size={18} color="var(--gmh-gold)" /> 4. Data Akademik USU &amp; Karier
+                  </div>
+                </div>
+                <div className="card-body">
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 16 }}>
+                    <div className="form-group">
+                      <label className="form-label">
+                        {fieldLabels['member.faculty'] || 'Fakultas Asal USU'} *
+                      </label>
+                      <select
+                        name="faculty"
+                        className="form-select"
+                        value={formData.faculty}
+                        onChange={handleChange}
+                        required
+                        style={{ borderColor: formErrors.faculty ? '#dc2626' : undefined }}
+                      >
+                        <option value="">-- Pilih Fakultas Asal USU --</option>
+                        {lookups.faculties.map((f) => (
+                          <option key={f} value={f}>
+                            {f}
+                          </option>
+                        ))}
+                      </select>
+                      {formErrors.faculty && <div style={{ color: '#dc2626', fontSize: 11.5, marginTop: 4, fontWeight: 600 }}>{formErrors.faculty}</div>}
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">
+                        {fieldLabels['member.major'] || 'Program Studi / Jurusan'} *
+                      </label>
+                      <input
+                        type="text"
+                        name="major"
+                        className="form-input"
+                        placeholder="Contoh: Teknik Informatika, Kedokteran Umum"
+                        value={formData.major}
+                        onChange={handleChange}
+                        required
+                        style={{ borderColor: formErrors.major ? '#dc2626' : undefined }}
+                      />
+                      {formErrors.major && <div style={{ color: '#dc2626', fontSize: 11.5, marginTop: 4, fontWeight: 600 }}>{formErrors.major}</div>}
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">
+                        {fieldLabels['member.entryYear'] || 'Tahun Masuk (Stambuk)'} *
+                      </label>
+                      <input
+                        type="number"
+                        name="entryYear"
+                        className="form-input"
+                        placeholder="Tahun masuk, misal: 2020"
+                        value={formData.entryYear || ''}
+                        onChange={handleChange}
+                        min={1960}
+                        max={2030}
+                        required
+                        style={{ borderColor: formErrors.entryYear ? '#dc2626' : undefined }}
+                      />
+                      {formErrors.entryYear && <div style={{ color: '#dc2626', fontSize: 11.5, marginTop: 4, fontWeight: 600 }}>{formErrors.entryYear}</div>}
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Tahun Kelulusan (Wisuda / Opsional)</label>
+                      <input
+                        type="number"
+                        name="graduationYear"
+                        className="form-input"
+                        placeholder="Contoh: 2024"
+                        value={formData.graduationYear || ''}
+                        onChange={(e) => setFormData({ ...formData, graduationYear: e.target.value ? Number(e.target.value) : ('' as any) })}
+                        min={1975}
+                        max={2035}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">
+                        {fieldLabels['member.profession'] || 'Profesi / Pekerjaan Saat Ini'}
+                      </label>
+                      <input
+                        type="text"
+                        name="profession"
+                        className="form-input"
+                        list="public-profession-datalist"
+                        placeholder="Pilih atau ketik profesi..."
+                        value={formData.profession}
+                        onChange={handleChange}
+                      />
+                      <datalist id="public-profession-datalist">
+                        {(lookups.professions || []).map((prof) => (
+                          <option key={prof} value={prof} />
+                        ))}
+                      </datalist>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Nama Instansi / Perusahaan / Usaha</label>
+                      <input
+                        type="text"
+                        name="company"
+                        className="form-input"
+                        placeholder="Contoh: PT Telkom, RS Adam Malik"
+                        value={formData.company}
+                        onChange={handleChange}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">
+                        {fieldLabels['member.ktb'] || 'Kelompok Tumbuh Bersama (KTB) Asal Kampus'}
+                      </label>
+                      <input
+                        type="text"
+                        name="ktb"
+                        className="form-input"
+                        list="public-ktb-datalist"
+                        placeholder="Pilih atau ketik KTB saat mahasiswa / Pemimpin KTB"
+                        value={formData.ktb}
+                        onChange={handleChange}
+                      />
+                      <datalist id="public-ktb-datalist">
+                        {(lookups.ktbGroups || []).map((ktb) => (
+                          <option key={ktb} value={ktb} />
+                        ))}
+                      </datalist>
+                    </div>
+
+                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                      <label className="form-label">Minat Keterlibatan Pelayanan Alumni</label>
+                      <select
+                        name="ministryInterest"
+                        className="form-select"
+                        value={formData.ministryInterest}
+                        onChange={handleChange}
+                      >
+                        <option value="">-- Belum Memilih / Belum Menentukan --</option>
+                        <option value="Pelayanan Pembinaan Mahasiswa &amp; Mentor KTB">Pelayanan Pembinaan Mahasiswa &amp; Mentor KTB</option>
+                        <option value="Dukungan Misi Daerah &amp; Pengutusan Pekabar Injil">Dukungan Misi Daerah &amp; Pengutusan Pekabar Injil</option>
+                        <option value="Pengembangan Fasilitas Rumah Persekutuan GMH">Pengembangan Fasilitas Rumah Persekutuan GMH</option>
+                        <option value="Tim Doa Syafaat &amp; Pastoral Care Alumni">Tim Doa Syafaat &amp; Pastoral Care Alumni</option>
+                        <option value="Profesional Mentorship &amp; Workshop Karir">Profesional Mentorship &amp; Workshop Karir</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 5: DYNAMIC CUSTOM FIELDS (If configured by admin in Utility) */}
               {memberCustomFields.length > 0 && (
                 <div className="card">
                   <div className="card-header">
@@ -862,7 +1027,7 @@ const PublicRegistrationPage: React.FC = () => {
                   type="submit"
                   className="btn btn-primary"
                   style={{ minWidth: 220, padding: '12px 24px', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !!duplicateNikMember}
                   id="btn-submit-registration"
                 >
                   {isSubmitting ? (

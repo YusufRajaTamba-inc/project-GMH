@@ -16,7 +16,7 @@ import { api } from '../../services/api';
 interface NotificationItem {
   id: string;
   rawId: string;
-  type: 'PROGRAM' | 'REGISTRATION' | 'ASSET_LOAN';
+  type: 'PROGRAM' | 'REGISTRATION' | 'ASSET_LOAN' | 'BIRTHDAY';
   title: string;
   category?: string;
   description: string;
@@ -31,8 +31,8 @@ interface NotificationItem {
 export const NotificationsPage: React.FC = () => {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [counts, setCounts] = useState({ total: 0, programs: 0, registrations: 0, loans: 0 });
-  const [activeTab, setActiveTab] = useState<'ALL' | 'PROGRAM' | 'REGISTRATION' | 'ASSET_LOAN'>('ALL');
+  const [counts, setCounts] = useState<{ total: number; programs: number; registrations: number; loans: number; birthdays?: number }>({ total: 0, programs: 0, registrations: 0, loans: 0, birthdays: 0 });
+  const [activeTab, setActiveTab] = useState<'ALL' | 'PROGRAM' | 'REGISTRATION' | 'ASSET_LOAN' | 'BIRTHDAY'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -229,6 +229,7 @@ export const NotificationsPage: React.FC = () => {
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {[
               { key: 'ALL', label: 'Semua Notifikasi', count: counts.total },
+              { key: 'BIRTHDAY', label: 'Ulang Tahun 🎂', count: counts.birthdays || 0 },
               { key: 'PROGRAM', label: 'Kegiatan Mendekati (≤ 5 Hari)', count: counts.programs },
               { key: 'REGISTRATION', label: 'Verifikasi Pendaftar', count: counts.registrations },
               { key: 'ASSET_LOAN', label: 'Peminjaman Aset', count: counts.loans },

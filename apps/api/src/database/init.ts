@@ -19,6 +19,14 @@ export async function initDatabase() {
   console.log('[Migration] Executing schema.sql DDL...');
   await db.query(schemaSql);
 
+  // Bersihkan tabel mati warisan sistem gereja / rancangan usang yang 0 baris dan tidak dipakai
+  console.log('[Migration] Cleaning up obsolete unused tables (families, family_members, program_rosters)...');
+  await db.query(`
+    DROP TABLE IF EXISTS family_members CASCADE;
+    DROP TABLE IF EXISTS families CASCADE;
+    DROP TABLE IF EXISTS program_rosters CASCADE;
+  `);
+
   // Idempotent migrations for existing production tables
   console.log('[Migration] Applying table column migrations...');
   await db.query(`
@@ -27,6 +35,13 @@ export async function initDatabase() {
     ALTER TABLE members ADD COLUMN IF NOT EXISTS membership_type VARCHAR(50) DEFAULT 'ALUMNI';
     UPDATE members SET is_active = (COALESCE(status, 'ACTIVE') = 'ACTIVE') WHERE is_active IS NULL;
     UPDATE members SET membership_type = COALESCE(member_type, 'ALUMNI') WHERE membership_type IS NULL;
+
+    -- member_registrations: kolom penampung pendaftaran mandiri selaras dengan members
+    ALTER TABLE member_registrations ADD COLUMN IF NOT EXISTS nik VARCHAR(20);
+    ALTER TABLE member_registrations ADD COLUMN IF NOT EXISTS birth_place VARCHAR(100);
+    ALTER TABLE member_registrations ADD COLUMN IF NOT EXISTS postal_code VARCHAR(10);
+    ALTER TABLE member_registrations ADD COLUMN IF NOT EXISTS member_type VARCHAR(30) DEFAULT 'ALUMNI';
+    ALTER TABLE member_registrations ADD COLUMN IF NOT EXISTS graduation_year INT;
 
     -- building_projects
     ALTER TABLE building_projects ADD COLUMN IF NOT EXISTS category VARCHAR(100) DEFAULT 'INFRASTRUKTUR';

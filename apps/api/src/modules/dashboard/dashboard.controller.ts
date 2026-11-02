@@ -105,12 +105,12 @@ export const getDashboardSummary = async (req: Request, res: Response): Promise<
       ),
       mission_counts AS (
         SELECT
-          COALESCE(SUBSTRING(event_date FROM 1 FOR 7), TO_CHAR(created_at, 'YYYY-MM')) AS month_key,
+          COALESCE(TO_CHAR(event_date, 'YYYY-MM'), TO_CHAR(created_at, 'YYYY-MM')) AS month_key,
           COUNT(*)::int AS missions_count
         FROM mission_activities
         WHERE created_at >= date_trunc('month', CURRENT_DATE) - INTERVAL '5 months'
-           OR (event_date IS NOT NULL AND event_date >= TO_CHAR(date_trunc('month', CURRENT_DATE) - INTERVAL '5 months', 'YYYY-MM-DD'))
-        GROUP BY COALESCE(SUBSTRING(event_date FROM 1 FOR 7), TO_CHAR(created_at, 'YYYY-MM'))
+           OR (event_date IS NOT NULL AND event_date >= (date_trunc('month', CURRENT_DATE) - INTERVAL '5 months')::date)
+        GROUP BY COALESCE(TO_CHAR(event_date, 'YYYY-MM'), TO_CHAR(created_at, 'YYYY-MM'))
       )
       SELECT
         m.month_key AS month,

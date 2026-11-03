@@ -30,10 +30,21 @@ async function request<T = any>(endpoint: string, options: RequestInit = {}): Pr
     ...options,
     headers,
   });
-  const data = await response.json();
+  let data: any = null;
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
+  }
 
   if (!response.ok) {
-    throw new Error(data.message || `HTTP ${response.status}: Terjadi kesalahan.`);
+    const errorMsg = data?.message || `HTTP ${response.status}: Terjadi kesalahan pada server.`;
+    const err: any = new Error(errorMsg);
+    err.status = response.status;
+    err.code = data?.code;
+    err.details = data?.details;
+    err.data = data;
+    throw err;
   }
 
   return data;

@@ -483,14 +483,24 @@ const MembersPage: React.FC = () => {
     navigate(`/members/${m.id}/edit`);
   };
 
-  const handleDeleteMember = (m: Member) => {
-    if (confirm(`Hapus anggota ${m.name} (${m.nia}) dari database?`)) {
-      deleteMember(m.id);
+  const handleDeleteMember = async (m: Member) => {
+    if (!confirm(`Hapus anggota ${m.name} (${m.nia}) dari database?`)) return;
+
+    try {
+      await deleteMember(m.id);
       showToast(`Data anggota ${m.name} telah dihapus.`);
+    } catch (err: any) {
+      const message = err?.message || 'Gagal menghapus anggota dari database.';
+      showAlert(
+        'Gagal Menghapus Anggota',
+        message,
+        'Database menolak penghapusan karena anggota ini masih memiliki data terikat pada sistem (seperti staf aktif, perbendaharaan, atau kepengurusan).',
+        'danger'
+      );
     }
   };
 
-  const handleCreateMember = (e: React.FormEvent) => {
+  const handleCreateMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMemberData.name.trim()) {
       showAlert('Nama Lengkap Wajib Diisi', 'Silakan masukkan nama lengkap anggota yayasan sebelum menyimpan.', undefined, 'warning');
@@ -523,7 +533,7 @@ const MembersPage: React.FC = () => {
     const isSingle = newMemberData.maritalStatus === 'Lajang';
 
     try {
-      addMember({
+      await addMember({
         ...newMemberData,
         nik: cleanNik || undefined,
         weddingDate: isSingle ? undefined : newMemberData.weddingDate,

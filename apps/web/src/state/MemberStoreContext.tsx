@@ -85,7 +85,7 @@ interface MemberStoreContextValue {
   registrations: Registration[];
   isLoading: boolean;
   refreshFromApi: () => Promise<void>;
-  addMember: (member: Omit<Member, 'id' | 'nia'>) => Member;
+  addMember: (member: Omit<Member, 'id' | 'nia'>) => Promise<Member>;
   addBulkMembers: (newMembers: Omit<Member, 'id' | 'nia'>[]) => number;
   addBulkMembersChunked: (
     newMembers: Omit<Member, 'id' | 'nia'>[],
@@ -97,11 +97,11 @@ interface MemberStoreContextValue {
       percent: number;
     }) => void
   ) => Promise<{ success: boolean; count: number }>;
-  updateMember: (id: string, updates: Partial<Member>) => void;
-  deleteMember: (id: string) => void;
+  updateMember: (id: string, updates: Partial<Member>) => Promise<void>;
+  deleteMember: (id: string) => Promise<void>;
   submitPublicRegistration: (reg: Omit<Registration, 'id' | 'ticket' | 'submittedAt' | 'status'>) => string;
-  approveRegistration: (regId: string) => Member | null;
-  rejectRegistration: (regId: string, reason?: string) => void;
+  approveRegistration: (regId: string) => Promise<Member | null>;
+  rejectRegistration: (regId: string, reason?: string) => Promise<void>;
 }
 
 const MemberStoreContext = createContext<MemberStoreContextValue>({
@@ -109,14 +109,14 @@ const MemberStoreContext = createContext<MemberStoreContextValue>({
   registrations: [],
   isLoading: false,
   refreshFromApi: async () => {},
-  addMember: () => ({} as Member),
+  addMember: async () => ({} as Member),
   addBulkMembers: () => 0,
   addBulkMembersChunked: async () => ({ success: true, count: 0 }),
-  updateMember: () => {},
-  deleteMember: () => {},
+  updateMember: async () => {},
+  deleteMember: async () => {},
   submitPublicRegistration: () => '',
-  approveRegistration: () => null,
-  rejectRegistration: () => {},
+  approveRegistration: async () => null,
+  rejectRegistration: async () => {},
 });
 
 const STORAGE_KEY = 'gmh_member_store_v2';
@@ -259,7 +259,7 @@ export const MemberStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     return `GMH-${year}-${padded}`;
   };
 
-  const addMember = (memberData: Omit<Member, 'id' | 'nia'>): Member => {
+  const addMember = async (memberData: Omit<Member, 'id' | 'nia'>): Promise<Member> => {
     if (memberData.nik && memberData.nik.trim()) {
       const cleanNik = memberData.nik.trim();
       const existing = members.find((m) => m.nik && m.nik.trim() === cleanNik);
@@ -270,52 +270,46 @@ export const MemberStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       }
     }
 
-    const newMember: Member = {
-      ...memberData,
-      id: String(Date.now()),
-      nia: generateNextNia(),
-      createdAt: new Date().toISOString().split('T')[0],
-    };
-    setMembers((prev) => [newMember, ...prev]);
+    try {
+      const res = await api.members.create({
+        fullName: memberData.name,
+        nik: memberData.nik,
+        gender: memberData.gender === 'Perempuan' ? 'F' : 'M',
+        birthPlace: memberData.birthPlace,
+        birthDate: memberData.birthDate,
+        bloodType: memberData.bloodType,
+        email: memberData.email,
+        phoneNumber: memberData.phone,
+        homeAddress: memberData.address,
+        city: memberData.city,
+        province: memberData.province,
+        postalCode: memberData.postalCode,
+        faculty: memberData.faculty,
+        major: memberData.major,
+        entryYear: memberData.entryYear,
+        graduationYear: memberData.graduationYear,
+        profession: memberData.profession,
+        company: memberData.company,
+        ktb: memberData.ktb,
+        maritalStatus: memberData.maritalStatus,
+        weddingDate: memberData.weddingDate,
+        partnerName: memberData.partnerName,
+        childrenCount: memberData.childrenCount,
+        ministryInterest: memberData.ministryInterest,
+        socialMedia: memberData.socialMedia,
+        memberType: memberData.type,
+        status: memberData.status,
+      });
 
-    // Backend sync
-    api.members.create({
-      fullName: memberData.name,
-      nik: memberData.nik,
-      gender: memberData.gender === 'Perempuan' ? 'F' : 'M',
-      birthPlace: memberData.birthPlace,
-      birthDate: memberData.birthDate,
-      bloodType: memberData.bloodType,
-      email: memberData.email,
-      phoneNumber: memberData.phone,
-      homeAddress: memberData.address,
-      city: memberData.city,
-      province: memberData.province,
-      postalCode: memberData.postalCode,
-      faculty: memberData.faculty,
-      major: memberData.major,
-      entryYear: memberData.entryYear,
-      graduationYear: memberData.graduationYear,
-      profession: memberData.profession,
-      company: memberData.company,
-      ktb: memberData.ktb,
-      maritalStatus: memberData.maritalStatus,
-      weddingDate: memberData.weddingDate,
-      partnerName: memberData.partnerName,
-      childrenCount: memberData.childrenCount,
-      ministryInterest: memberData.ministryInterest,
-      socialMedia: memberData.socialMedia,
-      memberType: memberData.type,
-      status: memberData.status,
-    }).then((res) => {
-      if (res?.member) {
-        setMembers((prev) =>
-          prev.map((m) => m.id === newMember.id ? { ...m, id: res.member.id, nia: res.member.nia } : m)
-        );
-      }
-    }).catch((err) => console.error('Failed to create member via API:', err));
-
-    return newMember;
+      return {
+        ...memberData,
+        id: res?.member?.id || String(Date.now()),
+        nia: res?.member?.nia || res?.member?.member_number || generateNextNia(),
+        createdAt: new Date().toISOString().split('T')[0],
+      };
+    } finally {
+      await refreshFromApi();
+    }
   };
 
   const addBulkMembersChunked = async (
@@ -380,14 +374,12 @@ export const MemberStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     return newMembersData.length;
   };
 
-  const updateMember = async (id: string, updates: Partial<Member>) => {
-    setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, ...updates } : m)));
-
+  const updateMember = async (id: string, updates: Partial<Member>): Promise<void> => {
     try {
       await api.members.update(id, {
         fullName: updates.name,
         nik: updates.nik,
-        gender: updates.gender,
+        gender: updates.gender === 'Perempuan' ? 'F' : updates.gender === 'Laki-laki' ? 'M' : updates.gender,
         birthPlace: updates.birthPlace,
         birthDate: updates.birthDate,
         bloodType: updates.bloodType,
@@ -410,19 +402,18 @@ export const MemberStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
         status: updates.status,
         socialMedia: updates.socialMedia,
       });
+    } finally {
       await refreshFromApi();
-    } catch (err) {
-      console.error('Failed to update member via API:', err);
     }
   };
 
-  const deleteMember = async (id: string) => {
-    setMembers((prev) => prev.filter((m) => m.id !== id));
+  const deleteMember = async (id: string): Promise<void> => {
     try {
       await api.members.delete(id);
+    } finally {
+      // Selalu panggil get/refresh dari server DB baik sukses maupun gagal
+      // agar data di UI selalu real dari database.
       await refreshFromApi();
-    } catch (err) {
-      console.error('Failed to delete member via API:', err);
     }
   };
 
@@ -485,80 +476,58 @@ export const MemberStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     return ticket;
   };
 
-  const approveRegistration = (regId: string): Member | null => {
+  const approveRegistration = async (regId: string): Promise<Member | null> => {
     const reg = registrations.find((r) => r.id === regId);
     if (!reg) return null;
 
-    const newNia = generateNextNia();
-    const newMember: Member = {
-      id: `m-from-reg-${Date.now()}`,
-      nia: newNia,
-      name: reg.name,
-      nik: reg.nik,
-      gender: reg.gender,
-      birthPlace: reg.birthPlace,
-      birthDate: reg.birthDate,
-      bloodType: reg.bloodType,
-      faculty: reg.faculty,
-      major: reg.major,
-      entryYear: reg.entryYear,
-      graduationYear: reg.graduationYear || reg.gradYear,
-      address: reg.address,
-      city: reg.city,
-      province: reg.province || 'Sumatera Utara',
-      postalCode: reg.postalCode,
-      phone: reg.wa,
-      email: reg.email,
-      profession: reg.profession || 'Alumni Profesional',
-      company: reg.company || '-',
-      ktb: reg.ktb || '-',
-      ministryInterest: reg.ministryInterest,
-      maritalStatus: reg.maritalStatus || 'Lajang',
-      weddingDate: reg.weddingDate,
-      partnerName: reg.partnerName,
-      childrenCount: reg.childrenCount,
-      socialMedia: reg.socialMedia || {},
-      status: 'ACTIVE',
-      type: reg.memberType || 'ALUMNI',
-      createdAt: new Date().toISOString().split('T')[0],
-    };
+    try {
+      const res = await api.registrations.approve(regId);
+      const officialNia = res?.member?.nia || res?.member?.memberNumber || res?.memberNumber || generateNextNia();
+      const officialId = res?.member?.id || `m-${Date.now()}`;
 
-    setMembers((prev) => [newMember, ...prev]);
-    setRegistrations((prev) =>
-      prev.map((r) => (r.id === regId ? { ...r, status: 'APPROVED' } : r))
-    );
-
-    // Sync with API
-    api.registrations.approve(regId).then((res) => {
-      const officialNia = res?.member?.nia || res?.member?.memberNumber || res?.memberNumber || newNia;
-      const officialId = res?.member?.id || newMember.id;
-      setMembers((prev) =>
-        prev.map((m) =>
-          m.id === newMember.id || (reg.name && m.name.toLowerCase().trim() === reg.name.toLowerCase().trim())
-            ? { ...m, id: officialId, nia: officialNia }
-            : m
-        )
-      );
-      refreshFromApi();
-    }).catch((err) => {
-      console.error('Failed to approve registration via API:', err);
-      refreshFromApi();
-    });
-
-    return newMember;
+      return {
+        id: officialId,
+        nia: officialNia,
+        name: reg.name,
+        nik: reg.nik,
+        gender: reg.gender,
+        birthPlace: reg.birthPlace,
+        birthDate: reg.birthDate,
+        bloodType: reg.bloodType,
+        faculty: reg.faculty,
+        major: reg.major,
+        entryYear: reg.entryYear,
+        graduationYear: reg.graduationYear || reg.gradYear,
+        address: reg.address,
+        city: reg.city,
+        province: reg.province || 'Sumatera Utara',
+        postalCode: reg.postalCode,
+        phone: reg.wa,
+        email: reg.email,
+        profession: reg.profession || 'Alumni Profesional',
+        company: reg.company || '-',
+        ktb: reg.ktb || '-',
+        ministryInterest: reg.ministryInterest,
+        maritalStatus: reg.maritalStatus || 'Lajang',
+        weddingDate: reg.weddingDate,
+        partnerName: reg.partnerName,
+        childrenCount: reg.childrenCount,
+        socialMedia: reg.socialMedia || {},
+        status: 'ACTIVE',
+        type: reg.memberType || 'ALUMNI',
+        createdAt: new Date().toISOString().split('T')[0],
+      };
+    } finally {
+      await refreshFromApi();
+    }
   };
 
-  const rejectRegistration = (regId: string, reason?: string) => {
-    setRegistrations((prev) =>
-      prev.map((r) =>
-        r.id === regId
-          ? { ...r, status: 'REJECTED', rejectionReason: reason || 'Data tidak memenuhi syarat verifikasi' }
-          : r
-      )
-    );
-
-    api.registrations.reject(regId, reason || 'Data tidak memenuhi syarat verifikasi')
-      .catch((err) => console.error('Failed to reject registration via API:', err));
+  const rejectRegistration = async (regId: string, reason?: string): Promise<void> => {
+    try {
+      await api.registrations.reject(regId, reason || 'Data tidak memenuhi syarat verifikasi');
+    } finally {
+      await refreshFromApi();
+    }
   };
 
   return (

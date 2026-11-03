@@ -15,6 +15,7 @@ import { useMemberStore } from '../../state/MemberStoreContext';
 import type { Member } from '../../state/MemberStoreContext';
 import { useDynamicConfig } from '../../state/DynamicConfigContext';
 import { api } from '../../services/api';
+import { ActionAlertModal, type ActionAlertState } from '../../components/common/ActionAlertModal';
 
 export const MemberEditPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -25,6 +26,12 @@ export const MemberEditPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [modalAlert, setModalAlert] = useState<ActionAlertState>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'danger',
+  });
 
   const [formData, setFormData] = useState<Partial<Member>>({
     name: '',
@@ -166,20 +173,19 @@ export const MemberEditPage: React.FC = () => {
         socialMedia: formData.socialMedia,
       };
 
-      updateMember(id, updatedMember);
-      try {
-        await api.members.update(id, updatedMember);
-      } catch (apiErr) {
-        console.warn('Backend sync warning:', apiErr);
-      }
-
+      await updateMember(id, updatedMember);
       showToast(`Data anggota ${updatedMember.name} berhasil diperbarui!`);
 
       setTimeout(() => {
         navigate(`/members/${id}`);
       }, 700);
-    } catch (err) {
-      alert('Gagal menyimpan perubahan anggota.');
+    } catch (err: any) {
+      setModalAlert({
+        isOpen: true,
+        title: 'Gagal Memperbarui Anggota',
+        message: err?.message || 'Terjadi kesalahan sistem saat menyimpan perubahan ke database.',
+        type: 'danger',
+      });
     } finally {
       setIsSaving(false);
     }
@@ -866,6 +872,11 @@ export const MemberEditPage: React.FC = () => {
           </div>
         </div>
       </form>
+
+      <ActionAlertModal
+        modalAlert={modalAlert}
+        onClose={() => setModalAlert({ ...modalAlert, isOpen: false })}
+      />
     </div>
   );
 };

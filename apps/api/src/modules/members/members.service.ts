@@ -546,13 +546,75 @@ export async function updateMember(id: string, input: UpdateMemberInput, actorUs
   }
 }
 
+/**
+ * Pemetaan nama constraint PostgreSQL -> label tabel turunan yang menahan
+ * penghapusan anggota (staf, jabatan, komitmen donasi, transaksi, dsb).
+ */
+const MEMBER_BLOCKER_LABELS: Record<string, string> = {
+  staff_members_member_id_fkey: 'data staf',
+  staff_members_pkey: 'data staf',
+  departments_head_member_id_fkey: 'kepala departemen',
+  pledges_member_id_fkey: 'komitmen donasi',
+  financial_transactions_member_id_fkey: 'transaksi keuangan',
+  financial_transactions_donor_member_id_fkey: 'transaksi donasi',
+  prayer_requests_assigned_counselor_id_fkey: 'pendamping doa',
+  asset_loans_borrower_member_id_fkey: 'peminjaman aset',
+  member_registrations_member_id_fkey: 'pendaftaran anggota',
+  committee_records_member_id_fkey: 'data komite',
+  org_position_tenures_member_id_fkey: 'riwayat jabatan',
+  division_members_member_id_fkey: 'keanggotaan divisi',
+};
+
 export async function deleteMember(id: string, actorUserId?: string | null) {
   const existing = await queryOne('SELECT * FROM members WHERE id = $1', [id]);
   if (!existing) {
     throw HttpError.notFound('Anggota tidak ditemukan.');
   }
 
-  await query(`DELETE FROM members WHERE id = $1`, [id]);
+  const client = await db.getClient();
+  try {
+    await client.query('BEGIN');
+
+    // Lepaskan dulu referensi yang boleh NULL, supaya anggota tetap bisa dihapus
+    // tanpa merusak riwayat donasi/doa/jabatan.
+    await client.query('UPDATE departments SET head_member_id = NULL WHERE head_member_id = $1', [id]);
+    await client.query('UPDATE pledges SET member_id = NULL WHERE member_id = $1', [id]);
+    await client.query('UPDATE financial_transactions SET donor_member_id = NULL WHERE donor_member_id = $1', [id]);
+    await client.query('UPDATE prayer_requests SET assigned_counselor_id = NULL WHERE assigned_counselor_id = $1', [id]);
+
+    await client.query('DELETE FROM members WHERE id = $1', [id]);
+
+    await client.query('COMMIT');
+  } catch (err: any) {
+    await client.query('ROLLBACK').catch(() => undefined);
+
+    // 23503: masih ada tabel dengan ON DELETE RESTRICT (mis. staff_members)
+    // yang menahan penghapusan anggota.
+    if (err?.code === '23503') {
+      const constraint = String(err?.constraint || '');
+      const label = MEMBER_BLOCKER_LABELS[constraint];
+      throw HttpError.conflict(
+        label
+          ? `Anggota tidak dapat dihapus karena masih terikat pada ${label}. Hapus atau pindahkan data terkait terlebih dahulu.`
+          : 'Anggota tidak dapat dihapus karena masih memiliki data terkait (staf, jabatan, komitmen donasi, atau transaksi). Hapus data terkait terlebih dahulu.',
+        'MEMBER_HAS_DEPENDENT_RECORDS',
+        { constraint }
+      );
+    }
+
+    // 23505: NIK / nomor anggota bentrok (mis. trigger uniqueness).
+    if (err?.code === '23505') {
+      throw HttpError.conflict(
+        'Anggota tidak dapat dihapus karena data unik (NIK / nomor anggota) masih bentrok.',
+        'MEMBER_DUPLICATE_KEY'
+      );
+    }
+
+    throw err;
+  } finally {
+    client.release();
+  }
+
   await logAudit(actorUserId || null, 'DELETE', 'members', id, existing, null);
 
   return existing;

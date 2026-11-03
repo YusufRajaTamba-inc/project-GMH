@@ -21,6 +21,7 @@ import { useAuth } from '../../state/AuthContext';
 import { useDynamicConfig } from '../../state/DynamicConfigContext';
 import { Pagination } from '../../components/common/Pagination';
 import { usePagination } from '../../utils/usePagination';
+import { ActionAlertModal, type ActionAlertState } from '../../components/common/ActionAlertModal';
 
 const RegistrationsPage: React.FC = () => {
   const { user } = useAuth();
@@ -36,6 +37,12 @@ const RegistrationsPage: React.FC = () => {
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [modalAlert, setModalAlert] = useState<ActionAlertState>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'danger',
+  });
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -145,25 +152,43 @@ const RegistrationsPage: React.FC = () => {
     setCurrentPage(1);
   };
 
-  const handleApprove = (reg: Registration) => {
-    const createdMember = approveRegistration(reg.id);
-    if (createdMember) {
-      showToast(
-        `Pendaftaran ${reg.name} disetujui! NIA resmi diterbitkan: ${createdMember.nia}`
-      );
-      if (selectedReg?.id === reg.id) {
-        setSelectedReg(null);
+  const handleApprove = async (reg: Registration) => {
+    try {
+      const createdMember = await approveRegistration(reg.id);
+      if (createdMember) {
+        showToast(
+          `Pendaftaran ${reg.name} disetujui! NIA resmi diterbitkan: ${createdMember.nia}`
+        );
+        if (selectedReg?.id === reg.id) {
+          setSelectedReg(null);
+        }
       }
+    } catch (err: any) {
+      setModalAlert({
+        isOpen: true,
+        title: 'Gagal Menyetujui Pendaftaran',
+        message: err?.message || 'Terjadi kesalahan sistem saat memproses persetujuan.',
+        type: 'danger',
+      });
     }
   };
 
-  const handleConfirmReject = (regId: string) => {
-    rejectRegistration(regId, rejectReasonInput || 'Data tidak memenuhi syarat.');
-    setShowRejectModal(null);
-    setRejectReasonInput('');
-    showToast('Pendaftaran telah ditolak dan notifikasi perbaikan disiapkan.');
-    if (selectedReg?.id === regId) {
-      setSelectedReg(null);
+  const handleConfirmReject = async (regId: string) => {
+    try {
+      await rejectRegistration(regId, rejectReasonInput || 'Data tidak memenuhi syarat.');
+      setShowRejectModal(null);
+      setRejectReasonInput('');
+      showToast('Pendaftaran telah ditolak dan notifikasi perbaikan disiapkan.');
+      if (selectedReg?.id === regId) {
+        setSelectedReg(null);
+      }
+    } catch (err: any) {
+      setModalAlert({
+        isOpen: true,
+        title: 'Gagal Menolak Pendaftaran',
+        message: err?.message || 'Terjadi kesalahan sistem saat menolak pendaftaran.',
+        type: 'danger',
+      });
     }
   };
 
@@ -943,6 +968,11 @@ const RegistrationsPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ActionAlertModal
+        modalAlert={modalAlert}
+        onClose={() => setModalAlert({ ...modalAlert, isOpen: false })}
+      />
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, X, Filter, RotateCcw, Eye, Edit3, Trash2 } from 'lucide-react';
+import { Search, X, Filter, RotateCcw, Eye, Edit3, Trash2, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { Member } from '../../../state/MemberStoreContext';
 import { Pagination } from '../../../components/common/Pagination';
@@ -8,6 +8,7 @@ interface MemberListTableProps {
   members: Member[];
   filtered: Member[];
   paginatedMembers: Member[];
+  isLoading?: boolean;
   search: string;
   setSearch: (s: string) => void;
   activeFilterCount: number;
@@ -43,6 +44,7 @@ export const MemberListTable: React.FC<MemberListTableProps> = ({
   members,
   filtered,
   paginatedMembers,
+  isLoading = false,
   search,
   setSearch,
   activeFilterCount,
@@ -353,7 +355,18 @@ export const MemberListTable: React.FC<MemberListTableProps> = ({
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
+              {isLoading && members.length === 0 ? (
+                <tr>
+                  <td colSpan={9} style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--gmh-text-muted)' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+                      <Loader2 size={26} className="animate-spin" style={{ color: 'var(--gmh-green-primary, #047857)' }} />
+                      <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--gmh-text)' }}>
+                        Memuat data anggota dari database yayasan...
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={9} style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--gmh-text-muted)' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>

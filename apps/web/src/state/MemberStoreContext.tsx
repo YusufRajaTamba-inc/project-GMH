@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { api } from '../services/api';
+import { useAuth } from './AuthContext';
 
 export interface Member {
   id: string;
@@ -122,17 +123,36 @@ const MemberStoreContext = createContext<MemberStoreContextValue>({
 const STORAGE_KEY = 'gmh_member_store_v2';
 
 export const MemberStoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [members, setMembers] = useState<Member[]>([]);
-  const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const { isAuthenticated, user } = useAuth();
+  const [members, setMembers] = useState<Member[]>(() => {
+    try {
+      const saved = localStorage.getItem(`${STORAGE_KEY}_members`);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [registrations, setRegistrations] = useState<Registration[]>(() => {
+    try {
+      const saved = localStorage.getItem(`${STORAGE_KEY}_registrations`);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [isLoading, setIsLoading] = useState(false);
 
   // Sync state to local storage
   useEffect(() => {
-    localStorage.setItem(`${STORAGE_KEY}_members`, JSON.stringify(members));
+    if (members.length > 0) {
+      localStorage.setItem(`${STORAGE_KEY}_members`, JSON.stringify(members));
+    }
   }, [members]);
 
   useEffect(() => {
-    localStorage.setItem(`${STORAGE_KEY}_registrations`, JSON.stringify(registrations));
+    if (registrations.length > 0) {
+      localStorage.setItem(`${STORAGE_KEY}_registrations`, JSON.stringify(registrations));
+    }
   }, [registrations]);
 
   // Load from backend PostgreSQL API
@@ -239,8 +259,10 @@ export const MemberStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
   }, []);
 
   useEffect(() => {
-    refreshFromApi();
-  }, [refreshFromApi]);
+    if (isAuthenticated) {
+      void refreshFromApi();
+    }
+  }, [isAuthenticated, user?.id, refreshFromApi]);
 
   const generateNextNia = (): string => {
     const year = new Date().getFullYear();

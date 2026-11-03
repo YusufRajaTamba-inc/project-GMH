@@ -34,7 +34,7 @@ import { MemberAlertModal } from './components/MemberAlertModal';
 
 const MembersPage: React.FC = () => {
   const { user } = useAuth();
-  const { members, addMember, deleteMember, addBulkMembersChunked } = useMemberStore();
+  const { members, addMember, deleteMember, addBulkMembersChunked, refreshFromApi, isLoading } = useMemberStore();
   const { lookups, fieldLabels } = useDynamicConfig();
   const navigate = useNavigate();
 
@@ -54,19 +54,13 @@ const MembersPage: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
 
-  // Mission Activities integration
-  const [missionActivities, setMissionActivities] = useState<any[]>([]);
-
+  // Fetch fresh member list from API when page mounts
   useEffect(() => {
-    api.missions
-      .getAll()
-      .then((res: any) => {
-        if (res?.activities && Array.isArray(res.activities)) {
-          setMissionActivities(res.activities);
-        }
-      })
-      .catch(() => {});
-  }, []);
+    void refreshFromApi();
+  }, [refreshFromApi]);
+
+  // Mission Activities integration (loaded lazily only when viewing member details)
+  const [missionActivities, setMissionActivities] = useState<any[]>([]);
 
   const memberServiceRecords = useMemo((): MemberServiceRecord[] => {
     if (!selectedMember) return [];
@@ -190,6 +184,16 @@ const MembersPage: React.FC = () => {
   useEffect(() => {
     if (selectedMember) {
       fetchMemberDonations(selectedMember.id);
+      if (missionActivities.length === 0) {
+        api.missions
+          .getAll()
+          .then((res: any) => {
+            if (res?.activities && Array.isArray(res.activities)) {
+              setMissionActivities(res.activities);
+            }
+          })
+          .catch(() => {});
+      }
     } else {
       setMemberPledges([]);
       setMemberTransactions([]);
@@ -197,7 +201,7 @@ const MembersPage: React.FC = () => {
       setMemberTotalDonated(0);
       setShowDonationsPortfolioModal(false);
     }
-  }, [selectedMember]);
+  }, [selectedMember, missionActivities.length]);
 
   // Draft filters state
   const [draftFilters, setDraftFilters] = useState<DraftFilters>({
@@ -1306,6 +1310,7 @@ const MembersPage: React.FC = () => {
         members={members}
         filtered={filtered}
         paginatedMembers={paginatedMembers}
+        isLoading={isLoading}
         search={search}
         setSearch={setSearch}
         activeFilterCount={activeFilterCount}
